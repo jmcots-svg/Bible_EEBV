@@ -22,14 +22,14 @@ model Book {
   name        String
   testament   String
   abbr        String?
-  order       Int
+  order       Int?     // <--- AÑADE EL SIGNO DE INTERROGACIÓN AQUÍ
   versionId   Int
   chapters    Chapter[]
   version     BibleVersion @relation(fields: [versionId], references: [id])
   createdAt   DateTime @default(now())
 
   @@unique([name, versionId])
-  @@index([versionId]) // Optimiza la carga de libros de una versión
+  @@index([versionId]) 
 }
 
 model Chapter {
