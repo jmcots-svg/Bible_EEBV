@@ -6,113 +6,121 @@ const client = new Client({
   ssl: { rejectUnauthorized: false }
 });
 
-// CONFIGURACIÓN DE LA NUEVA VERSIÓN
-const XMLURL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/NUEVA_VERSION.xml'; // <--- CAMBIA ESTO
-const VERSION_SHORT = 'NVI'; // <--- CAMBIA ESTO (Ej: NVI, KJV)
-const VERSION_FULL = 'Nueva Versión Internacional'; // <--- CAMBIA ESTO
+// CONFIGURACIÓN PARA LBLA
+const XMLURL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/LBLA.xml'; 
+const VERSION_SHORT = 'LBLA';
+const VERSION_FULL = 'La Biblia de las Américas 1997';
+
+// Mapeo de nombres de libros por número (Basado en el canon estándar)
+const bookNames = {
+  1: "Génesis", 2: "Éxodo", 3: "Levítico", 4: "Números", 5: "Deuteronomio",
+  6: "Josué", 7: "Jueces", 8: "Rut", 9: "1 Samuel", 10: "2 Samuel",
+  11: "1 Reyes", 12: "2 Reyes", 13: "1 Crónicas", 14: "2 Crónicas", 15: "Esdras",
+  16: "Nehemías", 17: "Ester", 18: "Job", 19: "Salmos", 20: "Proverbios",
+  21: "Eclesiastés", 22: "Cantares", 23: "Isaías", 24: "Jeremías", 25: "Lamentaciones",
+  26: "Ezequiel", 27: "Daniel", 28: "Oseas", 29: "Joel", 30: "Amós",
+  31: "Abdías", 32: "Jonás", 33: "Miqueas", 34: "Nahúm", 35: "Habacuc",
+  36: "Sofonías", 37: "Hageo", 38: "Zacarías", 39: "Malaquías", 40: "Mateo",
+  41: "Marcos", 42: "Lucas", 43: "Juan", 44: "Hechos", 45: "Romanos",
+  46: "1 Corintios", 47: "2 Corintios", 48: "Gálatas", 49: "Efesios", 50: "Filipenses",
+  51: "Colosenses", 52: "1 Tesalonicenses", 53: "2 Tesalonicenses", 54: "1 Timoteo", 55: "2 Timoteo",
+  56: "Tito", 57: "Filemón", 58: "Hebreos", 59: "Santiago", 60: "1 Pedro",
+  61: "2 Pedro", 62: "1 Juan", 63: "2 Juan", 64: "3 Juan", 65: "Judas", 66: "Apocalipsis"
+};
 
 async function seed() {
   await client.connect();
-  console.log('Conectado a la DB');
+  console.log('Conectado a la DB para cargar LBLA');
 
-  // 1. Crear tablas solo si no existen (No borramos nada)
-  await client.query(`CREATE TABLE IF NOT EXISTS "BibleVersion" (id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL, "fullName" TEXT NOT NULL)`);
-  await client.query(`CREATE TABLE IF NOT EXISTS "Book" (id SERIAL PRIMARY KEY, name TEXT NOT NULL, testament TEXT NOT NULL, abbr TEXT, "bookOrder" INTEGER, "versionId" INTEGER REFERENCES "BibleVersion"(id))`);
-  await client.query(`CREATE TABLE IF NOT EXISTS "Chapter" (id SERIAL PRIMARY KEY, number INTEGER NOT NULL, "bookId" INTEGER REFERENCES "Book"(id))`);
-  await client.query(`CREATE TABLE IF NOT EXISTS "Verse" (id SERIAL PRIMARY KEY, number INTEGER NOT NULL, text TEXT NOT NULL, "chapterId" INTEGER REFERENCES "Chapter"(id))`);
-  
-  console.log('Estructura de tablas verificada.');
-
-  // 2. Verificar si la versión ya existe para no duplicar
+  // Verificar si la versión ya existe para no duplicar
   const checkVersion = await client.query('SELECT id FROM "BibleVersion" WHERE name = $1', [VERSION_SHORT]);
   if (checkVersion.rows.length > 0) {
-    console.error(`❌ ERROR: La versión ${VERSION_SHORT} ya existe en la base de datos. Abortando para evitar duplicados.`);
+    console.error(`❌ La versión ${VERSION_SHORT} ya existe. Abortando.`);
     await client.end();
     return;
   }
 
-  // 3. Insertar nueva versión
+  // Insertar la versión
   const rv = await client.query(
     `INSERT INTO "BibleVersion" (name, "fullName") VALUES ($1, $2) RETURNING id`,
     [VERSION_SHORT, VERSION_FULL]
   );
   const versionId = rv.rows[0].id;
-  console.log(`✅ Registrada nueva versión: ${VERSION_FULL} (ID: ${versionId})`);
 
-  // 4. Fetch XML
-  console.log(`Descargando XML de: ${XMLURL}`);
+  console.log(`Descargando y parseando XML de LBLA...`);
   const res = await fetch(XMLURL);
-  if (!res.ok) throw new Error('No se pudo descargar el XML: ' + res.status);
-  
   let xml = await res.text();
   xml = xml.replace(/^\uFEFF/, '').trimStart();
 
-  const parser = new xml2js.Parser({ explicitArray: false, trim: true, normalizeTags: true });
+  const parser = new xml2js.Parser({ 
+    explicitArray: false, 
+    trim: true,
+    mergeAttrs: true 
+  });
+  
   const data = await parser.parseStringPromise(xml);
-  const root = data.bible;
+  
+  // Navegamos por: testament -> book -> chapter -> verse
+  let testaments = data.bible.testament;
+  if (!Array.isArray(testaments)) testaments = [testaments];
 
-  let books = root.b || [];
-  if (!Array.isArray(books)) books = [books];
-  console.log(`Procesando ${books.length} libros...`);
-
-  let bookNum = 1;
   let totalV = 0;
 
-  for (const b of books) {
-    const attrs = b.$ || {};
-    const bName = (attrs.n || '').trim();
-    if (!bName) continue;
-    
-    const testament = bookNum <= 39 ? 'OT' : 'NT';
-    const abbr = bName.slice(0, 3).toUpperCase();
+  for (const t of testaments) {
+    const tName = t.name === 'Old' ? 'OT' : 'NT';
+    let books = t.book || [];
+    if (!Array.isArray(books)) books = [books];
 
-    // Insertar Libro vinculado a la nueva VersionID
-    const rb = await client.query(
-      `INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [bName, testament, abbr, bookNum++, versionId]
-    );
-    const bookId = rb.rows[0].id;
+    for (const b of books) {
+      const bNumber = parseInt(b.number);
+      const bName = bookNames[bNumber] || `Libro ${bNumber}`;
+      const abbr = bName.slice(0, 3).toUpperCase();
 
-    let chapters = b.c || [];
-    if (!Array.isArray(chapters)) chapters = [chapters];
+      console.log(`Cargando: ${bName}...`);
 
-    for (const ch of chapters) {
-      const chAttrs = ch.$ || {};
-      const chNum = parseInt(chAttrs.n || '1');
-
-      const rc = await client.query(
-        `INSERT INTO "Chapter" (number, "bookId") VALUES ($1,$2) RETURNING id`,
-        [chNum, bookId]
+      const rb = await client.query(
+        `INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [bName, tName, abbr, bNumber, versionId]
       );
-      const chId = rc.rows[0].id;
+      const bookId = rb.rows[0].id;
 
-      let verses = ch.v || [];
-      if (!Array.isArray(verses)) verses = [verses];
+      let chapters = b.chapter || [];
+      if (!Array.isArray(chapters)) chapters = [chapters];
 
-      for (const v of verses) {
-        const vAttrs = v.$ || {};
-        const vNum = parseInt(vAttrs.n || '1');
-        const vText = (v._ || v || '').toString().trim();
-        
-        if (vText && vText !== '[object Object]') {
-          await client.query(
-            `INSERT INTO "Verse" (number, text, "chapterId") VALUES ($1,$2,$3)`,
-            [vNum, vText, chId]
-          );
-          totalV++;
+      for (const ch of chapters) {
+        const chNum = parseInt(ch.number);
+        const rc = await client.query(
+          `INSERT INTO "Chapter" (number, "bookId") VALUES ($1,$2) RETURNING id`,
+          [chNum, bookId]
+        );
+        const chId = rc.rows[0].id;
+
+        let verses = ch.verse || [];
+        if (!Array.isArray(verses)) verses = [verses];
+
+        for (const v of verses) {
+          const vNum = parseInt(v.number);
+          // En xml2js con mergeAttrs, si hay texto y atributos, el texto va a "_" o es el valor directo si es string
+          const vText = (typeof v === 'string') ? v : (v._ || "");
+          
+          if (vText) {
+            await client.query(
+              `INSERT INTO "Verse" (number, text, "chapterId") VALUES ($1,$2,$3)`,
+              [vNum, vText.toString().trim(), chId]
+            );
+            totalV++;
+          }
         }
       }
     }
-    console.log(`Libro finalizado: ${bName}`);
   }
 
-  console.log(`\n🎉 ¡CARGA COMPLETADA!`);
-  console.log(`Versión: ${VERSION_SHORT}`);
+  console.log(`\n🎉 ¡LBLA Cargada con éxito!`);
   console.log(`Total versículos insertados: ${totalV}`);
   await client.end();
 }
 
 seed().catch(e => { 
-  console.error('🔴 ERROR CRÍTICO:', e.message); 
+  console.error('Error durante el seed:', e); 
   process.exit(1); 
 });
