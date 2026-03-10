@@ -7,6 +7,6 @@
   },
   "nodeModulesDir": "auto",
   "imports": {
-    "@prisma/client": "npm:@prisma/client@5.22.0"
+    "@prisma/client": "./generated/client/deno/edge.ts"
   }
 }
