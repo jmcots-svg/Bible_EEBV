@@ -1,5 +1,5 @@
 import { parse } from "https://deno.land/x/xml@2.1.1/mod.ts";
-import prisma from "./db.ts";
+import { prisma } from "./db.ts";
 
 interface VersionConfig {
   xmlPath: string;

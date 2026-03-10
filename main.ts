@@ -1,10 +1,9 @@
 import { Application, Router } from "https://deno.land/x/oak@v12.6.1/mod.ts";
 import { oakCors } from "https://deno.land/x/cors@v1.2.2/mod.ts";
-import prisma from "./db.ts";
+import { prisma } from "./db.ts";
 
 const router = new Router();
 
-// Obtener todas las versiones
 router.get("/api/versions", async (ctx) => {
   const versions = await prisma.bibleVersion.findMany({
     orderBy: { abbreviation: "asc" }
@@ -12,7 +11,6 @@ router.get("/api/versions", async (ctx) => {
   ctx.response.body = versions;
 });
 
-// Obtener todos los libros
 router.get("/api/books", async (ctx) => {
   const books = await prisma.book.findMany({
     orderBy: { canonicalOrder: "asc" }
@@ -20,7 +18,6 @@ router.get("/api/books", async (ctx) => {
   ctx.response.body = books;
 });
 
-// Obtener capítulos de un libro
 router.get("/api/books/:bookId/chapters", async (ctx) => {
   const bookId = parseInt(ctx.params.bookId);
   const chapters = await prisma.chapter.findMany({
@@ -30,7 +27,6 @@ router.get("/api/books/:bookId/chapters", async (ctx) => {
   ctx.response.body = chapters;
 });
 
-// Obtener versículos de un capítulo
 router.get("/api/chapters/:chapterId/verses", async (ctx) => {
   const chapterId = parseInt(ctx.params.chapterId);
   const versionId = ctx.request.url.searchParams.get("version");
@@ -47,11 +43,12 @@ router.get("/api/chapters/:chapterId/verses", async (ctx) => {
   ctx.response.body = verses;
 });
 
-// Comparar versiones de un capítulo
 router.get("/api/compare/chapter/:bookId/:chapterNum", async (ctx) => {
   const bookId = parseInt(ctx.params.bookId);
   const chapterNum = parseInt(ctx.params.chapterNum);
-  const versionIds = ctx.request.url.searchParams.getAll("versions").map(id => parseInt(id));
+  const versionIds = ctx.request.url.searchParams
+    .getAll("versions")
+    .map(id => parseInt(id));
 
   const chapter = await prisma.chapter.findUnique({
     where: {
@@ -72,14 +69,10 @@ router.get("/api/compare/chapter/:bookId/:chapterNum", async (ctx) => {
       ...(versionIds.length > 0 && { versionId: { in: versionIds } })
     },
     include: { version: true },
-    orderBy: [
-      { verseNumber: "asc" },
-      { versionId: "asc" }
-    ]
+    orderBy: [{ verseNumber: "asc" }, { versionId: "asc" }]
   });
 
   const grouped: Record<number, any[]> = {};
-
   verses.forEach(verse => {
     if (!grouped[verse.verseNumber]) {
       grouped[verse.verseNumber] = [];
@@ -98,12 +91,11 @@ router.get("/api/compare/chapter/:bookId/:chapterNum", async (ctx) => {
   };
 });
 
-// Estadísticas
 router.get("/api/stats", async (ctx) => {
   const versions = await prisma.bibleVersion.count();
   const books = await prisma.book.count();
   const verses = await prisma.verse.count();
-  
+
   const versionsList = await prisma.bibleVersion.findMany({
     select: {
       abbreviation: true,

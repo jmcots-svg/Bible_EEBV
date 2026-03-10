@@ -8,6 +8,6 @@
   "nodeModulesDir": "auto",
   "imports": {
     "@prisma/client": "./generated/client/deno/edge.ts",
-    "@prisma/extension-accelerate": "npm:@prisma/extension-accelerate"
+    "@prisma/extension-accelerate": "npm:@prisma/extension-accelerate@1.2.1"
   }
 }
