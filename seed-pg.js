@@ -1,6 +1,20 @@
 const { Client } = require('pg');
 const xml2js = require('xml2js');
 
+// Configuramos el cliente con una lógica de conexión más compatible
+const client = new Client({ 
+  connectionString: process.env.DIRECT_URL,
+  // Forzamos SSL pero con una configuración que acepta la mayoría de proveedores de nube
+  ssl: {
+    rejectUnauthorized: false,
+  },
+  // Añadimos un pequeño tiempo de espera por si la DB está "despertando" (común en Neon/Supabase)
+  connectionTimeoutMillis: 10000, 
+});
+
+const { Client } = require('pg');
+const xml2js = require('xml2js');
+
 const client = new Client({ 
   connectionString: process.env.DIRECT_URL,
   ssl: { rejectUnauthorized: false }
