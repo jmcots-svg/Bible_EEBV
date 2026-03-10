@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"] // Habilita búsquedas avanzadas si usas Postgres
 }
 
 datasource db {
@@ -25,7 +26,9 @@ model Book {
   chapters    Chapter[]
   version     BibleVersion @relation(fields: [versionId], references: [id])
   createdAt   DateTime @default(now())
+
   @@unique([name, versionId])
+  @@index([versionId]) // Optimiza la carga de libros de una versión
 }
 
 model Chapter {
@@ -35,7 +38,9 @@ model Chapter {
   verses    Verse[]
   book      Book    @relation(fields: [bookId], references: [id])
   createdAt DateTime @default(now())
+
   @@unique([number, bookId])
+  @@index([bookId]) // Optimiza la búsqueda de capítulos por libro
 }
 
 model Verse {
@@ -45,5 +50,9 @@ model Verse {
   chapterId Int
   chapter   Chapter  @relation(fields: [chapterId], references: [id])
   createdAt DateTime @default(now())
+
   @@unique([number, chapterId])
+  @@index([chapterId]) // Optimiza la carga de versículos de un capítulo
+  // Opcional: Descomenta la siguiente línea si quieres búsquedas de palabras muy rápidas
+  // @@index([text(ops: "text_pattern_ops")]) 
 }
