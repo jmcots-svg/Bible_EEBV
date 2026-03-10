@@ -6,6 +6,9 @@
     "import": "deno run --allow-net --allow-env --allow-read import-all.ts"
   },
   "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  },
   "imports": {
     "@prisma/client": "npm:@prisma/client@^7.4.0"
   }
