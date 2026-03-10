@@ -1,31 +1,28 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// prisma/schema.prisma - FIJO Y SIMPLE
 generator client {
   provider = "prisma-client"
 }
 
 datasource db {
-  provider  = "postgresql"  // Cambia si tu DB es MySQL/SQLite (ver Prisma dashboard)
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")  // Opcional para seed
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model BibleVersion {
-  id        String @id @default(cuid())
-  name      String @unique
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
   fullName  String
   books     Book[]
   createdAt DateTime @default(now())
 }
 
 model Book {
-  id          String   @id @default(cuid())
-  name        String   // ej: "Génesis"
-  testament   String   // "OT" o "NT"
-  abbr        String?  // ej: "Gen"
-  order       Int      // 1-66 para orden
-  versionId   String
+  id          Int      @id @default(autoincrement())
+  name        String
+  testament   String
+  abbr        String?
+  order       Int
+  versionId   Int
   chapters    Chapter[]
   version     BibleVersion @relation(fields: [versionId], references: [id])
   createdAt   DateTime @default(now())
@@ -34,23 +31,23 @@ model Book {
 }
 
 model Chapter {
-  id          String  @id @default(cuid())
-  number      Int
-  bookId      String
-  verses      Verse[]
-  book        Book    @relation(fields: [bookId], references: [id])
-  createdAt   DateTime @default(now())
+  id        Int     @id @default(autoincrement())
+  number    Int
+  bookId    Int
+  verses    Verse[]
+  book      Book    @relation(fields: [bookId], references: [id])
+  createdAt DateTime @default(now())
 
   @@unique([number, bookId])
 }
 
 model Verse {
-  id          String  @id @default(cuid())
-  number      Int
-  text        String
-  chapterId   String
-  chapter     Chapter @relation(fields: [chapterId], references: [id])
-  createdAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  number     Int
+  text       String
+  chapterId  Int
+  chapter    Chapter  @relation(fields: [chapterId], references: [id])
+  createdAt  DateTime @default(now())
 
   @@unique([number, chapterId])
 }
