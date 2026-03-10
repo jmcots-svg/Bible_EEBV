@@ -12,9 +12,6 @@ const client = new Client({
   connectionTimeoutMillis: 10000, 
 });
 
-const { Client } = require('pg');
-const xml2js = require('xml2js');
-
 const client = new Client({ 
   connectionString: process.env.DIRECT_URL,
   ssl: { rejectUnauthorized: false }
