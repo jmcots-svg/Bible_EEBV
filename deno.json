@@ -5,8 +5,5 @@
     "db:push": "deno run -A npm:prisma@5.22.0 db push",
     "import": "deno run --allow-net --allow-env --allow-read import-all.ts"
   },
-  "nodeModulesDir": "auto",
-  "imports": {
-    "@prisma/client": "./generated/client/deno/edge.ts"
-  }
+  "nodeModulesDir": "auto"
 }

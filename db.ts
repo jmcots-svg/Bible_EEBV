@@ -1,5 +1,3 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "./generated/client/mod.ts";
 
-export const prisma = new PrismaClient({
-  datasourceUrl: Deno.env.get("DATABASE_URL"),
-});
+export const prisma = new PrismaClient();
