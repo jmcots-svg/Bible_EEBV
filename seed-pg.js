@@ -1,161 +1,140 @@
 const { Client } = require('pg');
 const xml2js = require('xml2js');
 
-const DIRECT_URL = process.env.DIRECT_URL;
-const VERSION_NAME = 'RV60';
-const XML_URL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/RV60.xml';
+const client = new Client({ 
+  connectionString: process.env.DIRECT_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+const XMLURL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/RV60.xml';
 
 async function seed() {
-  const client = new Client({ 
-    connectionString: DIRECT_URL,
-    ssl: { rejectUnauthorized: false }
-  });
   await client.connect();
-  console.log('✅ PG conectado');
+  console.log('Conectado');
 
-  // DROP y CREATE TABLES
-  await client.query(`DROP TABLE IF EXISTS "Verse" CASCADE;`);
-  await client.query(`DROP TABLE IF EXISTS "Chapter" CASCADE;`);
-  await client.query(`DROP TABLE IF EXISTS "Book" CASCADE;`);
-  await client.query(`DROP TABLE IF EXISTS "BibleVersion" CASCADE;`);
-  console.log('🧹 Tablas borradas');
+  await client.query('DROP TABLE IF EXISTS "Verse" CASCADE');
+  await client.query('DROP TABLE IF EXISTS "Chapter" CASCADE');
+  await client.query('DROP TABLE IF EXISTS "Book" CASCADE');
+  await client.query('DROP TABLE IF EXISTS "BibleVersion" CASCADE');
+  console.log('Limpio');
 
   await client.query(`
     CREATE TABLE "BibleVersion" (
       id SERIAL PRIMARY KEY,
-      name VARCHAR(50) UNIQUE NOT NULL,
-      "fullName" VARCHAR(100) NOT NULL,
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+      name TEXT UNIQUE NOT NULL,
+      "fullName" TEXT NOT NULL
+    )
   `);
-
   await client.query(`
     CREATE TABLE "Book" (
       id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      testament VARCHAR(10) NOT NULL,
-      abbr VARCHAR(10),
+      name TEXT NOT NULL,
+      testament TEXT NOT NULL,
+      abbr TEXT,
       "bookOrder" INTEGER NOT NULL,
-      "versionId" INTEGER REFERENCES "BibleVersion"(id),
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(name, "versionId")
-    );
+      "versionId" INTEGER REFERENCES "BibleVersion"(id)
+    )
   `);
-
   await client.query(`
     CREATE TABLE "Chapter" (
       id SERIAL PRIMARY KEY,
       number INTEGER NOT NULL,
-      "bookId" INTEGER REFERENCES "Book"(id),
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(number, "bookId")
-    );
+      "bookId" INTEGER REFERENCES "Book"(id)
+    )
   `);
-
   await client.query(`
     CREATE TABLE "Verse" (
       id SERIAL PRIMARY KEY,
       number INTEGER NOT NULL,
       text TEXT NOT NULL,
-      "chapterId" INTEGER REFERENCES "Chapter"(id),
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(number, "chapterId")
-    );
+      "chapterId" INTEGER REFERENCES "Chapter"(id)
+    )
   `);
-  console.log('✅ Tablas creadas');
+  console.log('Tablas OK');
 
-  // Version
-  const resVersion = await client.query(
-    'INSERT INTO "BibleVersion" (name, "fullName") VALUES (\$1, \$2) RETURNING id',
-    [VERSION_NAME, 'Reina-Valera 1960']
+  const rv = await client.query(
+    `INSERT INTO "BibleVersion" (name, "fullName") VALUES ('RV60', 'Reina-Valera 1960') RETURNING id`
   );
-  const versionId = resVersion.rows[0].id;
-  console.log(`✅ Versión ID: ${versionId}`);
+  const versionId = rv.rows[0].id;
+  console.log('Version ID:', versionId);
 
-  // XML fetch y parse
-  console.log('📥 Descargando XML...');
-  const response = await fetch(XML_);
-let xmlContent = await response.text();
-// Elimina BOM y caracteres invisibles al inicio
-xmlContent = xmlContent.replace(/^\uFEFF/, '').trim();
-console.log('📋 Parseando XML... (chars:', xmlContent.length, ')');
-console.log('📋 Primeros chars:', JSON.stringify(xmlContent.slice(0,50)));
-const parser = new xml2js.Parser({ 
+  console.log('Fetch XML...');
+  const res = await fetch(XMLURL);
+  console.log('HTTP Status:', res.status);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  
+  let xml = await res.text();
+  xml = xml.replace(/^\uFEFF/, '').trimStart();
+  console.log('XML chars:', xml.length, 'inicio:', JSON.stringify(xml.slice(0,50)));
+
+  const parser = new xml2js.Parser({ 
     explicitArray: false, 
-    trim: true,
-    normalizeTags: true
+    trim: true, 
+    normalizeTags: true 
   });
-  const data = await parser.parseStringPromise(xmlContent);
 
-  const xmlbible = data.xmlbible || data.XMLBIBLE;
-  let bibleBooks = xmlbible.biblebook || xmlbible.BibleBook || [];
-  if (!Array.isArray(bibleBooks)) bibleBooks = [bibleBooks];
-  console.log(`📚 ${bibleBooks.length} libros encontrados`);
+  const data = await parser.parseStringPromise(xml);
+  const root = data.xmlbible;
 
-  const otBooks = ['GÉNESIS','ÉXODO','LEVÍTICO','NÚMEROS','DEUTERONOMIO','JOSUÉ','JUECES','RUT','1SAMUEL','2SAMUEL','1REYES','2REYES','1CRÓNICAS','2CRÓNICAS','ESDRAS','NEHEMÍAS','ESTER','JOB','SALMOS','PROVERBIOS','ECLESIASTÉS','CANTARES','ISAÍAS','JEREMÍAS','LAMENTACIONES','EZEQUIEL','DANIEL','OSEAS','JOEL','AMÓS','OBADÍAS','JONÁS','MIQUEAS','NAHÚM','HABACUC','SOFONÍAS','HAGEO','ZACARÍAS','MALAQUÍAS'];
+  let books = root.biblebook || [];
+  if (!Array.isArray(books)) books = [books];
+  console.log('Libros:', books.length);
 
-  let bookOrder = 1;
-  let totalVerses = 0;
+  let bookNum = 1;
+  let totalV = 0;
 
-  for (const bookNode of bibleBooks) {
-    const bookName = (bookNode.bookname || bookNode.BookName || '').toUpperCase().trim();
-    if (!bookName) continue;
+  for (const b of books) {
+    const bName = (b.bookname || '').toUpperCase().trim();
+    if (!bName) continue;
+    const testament = bookNum <= 39 ? 'OT' : 'NT';
+    const attrs = b.$ || {};
+    const abbr = (attrs.osisid || bName.slice(0,3)).split('.')[0];
 
-    const testament = bookOrder <= 39 ? 'OT' : 'NT';
-    const attrs = bookNode.$ || bookNode._attributes || {};
-    const osisId = attrs.osisid || attrs.osisID || '';
-    const abbr = osisId.split('.')[0] || bookName.slice(0,3);
-
-    const resBook = await client.query(
-      'INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES (\$1, \$2, \$3, \$4, \$5) RETURNING id',
-      [bookName, testament, abbr, bookOrder++, versionId]
+    const rb = await client.query(
+      `INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES (\$1,\$2,\$3,\$4,\$5) RETURNING id`,
+      [bName, testament, abbr, bookNum++, versionId]
     );
-    const bookId = resBook.rows[0].id;
-    console.log(`📖 ${bookOrder-1}. ${bookName} (${testament})`);
+    const bookId = rb.rows[0].id;
+    console.log(bookNum-1 + '. ' + bName);
 
-    let chapters = bookNode.chapter || bookNode.Chapter || [];
+    let chapters = b.chapter || [];
     if (!Array.isArray(chapters)) chapters = [chapters];
 
-    for (const chNode of chapters) {
-      const chAttrs = chNode.$ || chNode._attributes || {};
-      const osisIdCh = chAttrs.osisid || chAttrs.osisID || '';
-      const chNum = parseInt(osisIdCh.split('.')?.[1] || 1);
+    for (const ch of chapters) {
+      const chAttrs = ch.$ || {};
+      const osisId = chAttrs.osisid || '';
+      const chNum = parseInt(osisId.split('.')[1] || '1');
 
-      const resCh = await client.query(
-        'INSERT INTO "Chapter" (number, "bookId") VALUES (\$1, \$2) RETURNING id',
+      const rc = await client.query(
+        `INSERT INTO "Chapter" (number, "bookId") VALUES (\$1,\$2) RETURNING id`,
         [chNum, bookId]
       );
-      const chapterId = resCh.rows[0].id;
+      const chId = rc.rows[0].id;
 
-      let verses = chNode.verse || chNode.Verse || [];
+      let verses = ch.verse || [];
       if (!Array.isArray(verses)) verses = [verses];
 
-      let vCount = 0;
-      for (const vNode of verses) {
-        const vAttrs = vNode.$ || vNode._attributes || {};
-        const osisIdV = vAttrs.osisid || vAttrs.osisID || '';
-        const vNum = parseInt(osisIdV.split('.')?.[2] || 1);
-        const vText = (vNode.versetext || vNode.VerseText || '').trim();
-
+      for (const v of verses) {
+        const vAttrs = v.$ || {};
+        const vOsis = vAttrs.osisid || '';
+        const vNum = parseInt(vOsis.split('.')[2] || '1');
+        const vText = (v.versetext || '').trim();
         if (vText) {
           await client.query(
-            'INSERT INTO "Verse" (number, text, "chapterId") VALUES (\$1, \$2, \$3)',
-            [vNum, vText, chapterId]
+            `INSERT INTO "Verse" (number, text, "chapterId") VALUES (\$1,\$2,\$3)`,
+            [vNum, vText, chId]
           );
-          vCount++;
-          totalVerses++;
+          totalV++;
         }
       }
-      console.log(`  Cap ${chNum}: ${vCount} versos`);
     }
   }
 
-  console.log(`🎉 SEED OK! Libros: ${bookOrder-1} | Versos: ${totalVerses}`);
+  console.log('DONE! Versos:', totalV);
   await client.end();
-  process.exit(0);
 }
 
-seed().catch(e => {
-  console.error('💥 ERROR:', e.message);
-  process.exit(1);
+seed().catch(e => { 
+  console.error('ERROR:', e.message); 
+  process.exit(1); 
 });
