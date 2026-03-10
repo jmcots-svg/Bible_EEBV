@@ -1,0 +1,38 @@
+name: Seed Bible DB
+
+on:
+  workflow_dispatch:  # Ejecuta manual desde GitHub > Actions tab
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.40.0
+
+      - name: Install Prisma CLI (Node shim para Deno)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install prisma @prisma/client -g
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Prisma Migrate & Generate
+        run: |
+          npx prisma migrate deploy
+          deno task prisma:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run Seed
+        run: deno task seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
