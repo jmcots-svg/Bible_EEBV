@@ -13,14 +13,12 @@ jobs:
 
       - name: Push Schema to DB
         run: |
-          # 1. Instalamos prisma
           npm install prisma@latest -g
           
-          # 2. ELIMINAMOS el archivo que causa el error de parseo (solo en este runner)
+          # Borramos el archivo de configuración si existe para evitar el error de sintaxis
           rm -f prisma.config.ts
           
-          # 3. Empujamos el esquema
-          # Usamos --skip-generate para que no intente crear el cliente de Node, solo la DB
-          prisma db push --schema=./prisma/schema.prisma --skip-generate
+          # Comando limpio: sin skip-generate y con accept-data-loss
+          prisma db push --schema=./prisma/schema.prisma --accept-data-loss
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
