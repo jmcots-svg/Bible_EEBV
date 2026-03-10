@@ -1,13 +1,15 @@
-// ⚠️ CAMBIA ESTA URL por la URL de tu backend en Deno Deploy
+// ⚠️ URL de tu backend en Deno Deploy
 const API_URL = 'https://bible-eebv.jmcots-svg.deno.net';
 
 // Elementos del DOM
+const versionSelect = document.getElementById('version'); // Nuevo selector
 const bookSelect = document.getElementById('book');
 const chapterSelect = document.getElementById('chapter');
 const verseSelect = document.getElementById('verse');
 const searchBtn = document.getElementById('searchBtn');
 const content = document.getElementById('content');
 const reference = document.getElementById('reference');
+const mainTitle = document.getElementById('mainTitle');
 
 // Estado
 let books = [];
@@ -18,7 +20,8 @@ document.addEventListener('DOMContentLoaded', init);
 
 async function init() {
   try {
-    await loadBooks();
+    // Carga inicial (por defecto RV60)
+    await loadBooks(versionSelect.value);
     setupEventListeners();
   } catch (error) {
     showError('Error al conectar con el servidor');
@@ -27,21 +30,45 @@ async function init() {
 }
 
 function setupEventListeners() {
+  // Escuchar cambio de versión
+  versionSelect.addEventListener('change', onVersionChange);
   bookSelect.addEventListener('change', onBookChange);
   chapterSelect.addEventListener('change', onChapterChange);
   searchBtn.addEventListener('click', onSearch);
 }
 
-// Cargar libros
-async function loadBooks() {
-  const response = await fetch(`${API_URL}/api/books`);
+// NUEVO: Al cambiar la versión (RV60 o LBLA)
+async function onVersionChange() {
+  const selectedVersion = versionSelect.value;
+  
+  // Actualizar título visualmente
+  mainTitle.textContent = `📖 Biblia ${versionSelect.options[versionSelect.selectedIndex].text}`;
+  
+  // Reset de todos los selectores dependientes
+  bookSelect.innerHTML = '<option value="">Cargando libros...</option>';
+  bookSelect.disabled = true;
+  resetSelects(['chapter', 'verse']);
+  searchBtn.disabled = true;
+  content.innerHTML = '<p class="placeholder">Cambiando de versión...</p>';
+  reference.classList.remove('visible');
+
+  try {
+    await loadBooks(selectedVersion);
+  } catch (error) {
+    showError('Error al cambiar de versión');
+  }
+}
+
+// Cargar libros filtrados por versión
+async function loadBooks(version) {
+  // Enviamos el parámetro ?version= a Deno
+  const response = await fetch(`${API_URL}/api/books?version=${version}`);
   if (!response.ok) throw new Error('Error cargando libros');
   
   books = await response.json();
   
   bookSelect.innerHTML = '<option value="">-- Selecciona libro --</option>';
   
-  // Separar por testamento
   const ot = books.filter(b => b.testament === 'OT');
   const nt = books.filter(b => b.testament === 'NT');
   
@@ -68,22 +95,16 @@ async function loadBooks() {
   bookSelect.disabled = false;
 }
 
-// Al cambiar libro
+// Al cambiar libro (Igual que antes, ya que usa bookId único)
 async function onBookChange() {
   const bookId = bookSelect.value;
-  
-  // Reset
-  chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
-  chapterSelect.disabled = true;
-  verseSelect.innerHTML = '<option value="">Todo el capítulo</option>';
-  verseSelect.disabled = true;
+  resetSelects(['chapter', 'verse']);
   searchBtn.disabled = true;
   
   if (!bookId) return;
   
   try {
     chapterSelect.innerHTML = '<option value="">Cargando...</option>';
-    
     const response = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
     if (!response.ok) throw new Error('Error cargando capítulos');
     
@@ -101,22 +122,18 @@ async function onBookChange() {
     chapterSelect.disabled = false;
   } catch (error) {
     showError('Error al cargar capítulos');
-    console.error(error);
   }
 }
 
 // Al cambiar capítulo
 async function onChapterChange() {
   const chapterId = chapterSelect.value;
-  
-  verseSelect.innerHTML = '<option value="">Todo el capítulo</option>';
-  verseSelect.disabled = true;
+  resetSelects(['verse']);
   searchBtn.disabled = true;
   
   if (!chapterId) return;
   
   try {
-    // Cargar versículos para el selector
     const response = await fetch(`${API_URL}/api/verses?chapterId=${chapterId}`);
     if (!response.ok) throw new Error('Error cargando versículos');
     
@@ -133,11 +150,10 @@ async function onChapterChange() {
     searchBtn.disabled = false;
   } catch (error) {
     showError('Error al cargar versículos');
-    console.error(error);
   }
 }
 
-// Buscar
+// Buscar y mostrar contenido
 async function onSearch() {
   const chapterId = chapterSelect.value;
   const verseNum = verseSelect.value;
@@ -145,16 +161,11 @@ async function onSearch() {
   if (!chapterId) return;
   
   try {
-    content.innerHTML = '<p class="loading">Cargando</p>';
-    
+    content.innerHTML = '<p class="loading">Cargando...</p>';
     let url = `${API_URL}/api/verses?chapterId=${chapterId}`;
-    if (verseNum) {
-      url += `&verse=${verseNum}`;
-    }
+    if (verseNum) url += `&verse=${verseNum}`;
     
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Error buscando versículos');
-    
     const verses = await response.json();
     
     if (verses.length === 0) {
@@ -162,29 +173,34 @@ async function onSearch() {
       return;
     }
     
-    // Mostrar referencia
     const bookName = bookSelect.options[bookSelect.selectedIndex].text;
     const chapterNum = chapterSelect.options[chapterSelect.selectedIndex].dataset.number;
+    const versionLabel = versionSelect.options[versionSelect.selectedIndex].value;
     
-    let refText = `${bookName} ${chapterNum}`;
-    if (verseNum) {
-      refText += `:${verseNum}`;
-    }
-    
-    reference.textContent = refText;
+    reference.textContent = `${bookName} ${chapterNum}${verseNum ? ':' + verseNum : ''} (${versionLabel})`;
     reference.classList.add('visible');
     
-    // Mostrar versículos
     content.innerHTML = verses.map(v => `
       <p class="verse">
         <span class="verse-number">${v.number}</span>${v.text}
       </p>
     `).join('');
     
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
   } catch (error) {
     showError('Error al buscar');
-    console.error(error);
   }
+}
+
+// Utilidad para limpiar selectores
+function resetSelects(ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (id === 'chapter') el.innerHTML = '<option value="">-- Selecciona libro --</option>';
+    if (id === 'verse') el.innerHTML = '<option value="">Todo el capítulo</option>';
+    el.disabled = true;
+  });
 }
 
 function showError(message) {
