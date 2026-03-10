@@ -11,17 +11,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install deps
-        run: npm install prisma @prisma/client xml2js
-      - name: DB Push (DIRECT for CLI)
-        run: npx prisma db push --force-reset
+      - name: Install
+        run: npm install pg xml2js
+      - name: Seed SQL Direct
+        run: node seed-pg.js
         env:
-          DATABASE_URL: ${{ secrets.DIRECT_URL }}  # ! Direct para push
-      - name: Generate Client (Accelerate)
-        run: npx prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Accelerate para client
-      - name: Seed (Accelerate)
-        run: node seed-node.js
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Writes OK in Accelerate
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
