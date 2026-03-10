@@ -1,3 +1,3 @@
-import { PrismaClient } from "./generated/client/mod.ts";
+import { PrismaClient } from "@prisma/client";
 
 export const prisma = new PrismaClient();
