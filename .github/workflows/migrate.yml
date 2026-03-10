@@ -1,0 +1,12 @@
+name: Prisma Migrate
+on: [push]
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: npm install
+      - run: npx prisma migrate deploy # 'deploy' se usa para entornos remotos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
