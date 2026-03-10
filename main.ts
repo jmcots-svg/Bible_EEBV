@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.220.0/http/server.ts";
 import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 
-// Obtener URL de la base de datos
+// Configuración explícita de la conexión
 const databaseUrl = Deno.env.get("DATABASE_URL");
 
 if (!databaseUrl) {
@@ -9,7 +9,18 @@ if (!databaseUrl) {
   Deno.exit(1);
 }
 
-const pool = new Pool(databaseUrl, 3, true);
+console.log("🔗 Conectando a la base de datos...");
+
+// Parsear la URL manualmente para mayor control
+const url = new URL(databaseUrl);
+const pool = new Pool({
+  hostname: url.hostname,
+  port: url.port || "5432",
+  user: url.username,
+  password: url.password,
+  database: url.pathname.slice(1), // Quita el "/" inicial
+  tls: { enabled: true, enforce: false },
+}, 3, true);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +36,14 @@ async function handler(req: Request): Promise<Response> {
 
   const url = new URL(req.url);
   const path = url.pathname;
+
+  // Health check sin base de datos
+  if (path === "/" || path === "/health") {
+    return new Response(
+      JSON.stringify({ status: "ok", message: "API Biblia RV60" }), 
+      { headers: corsHeaders }
+    );
+  }
 
   let client;
   
@@ -89,27 +108,15 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // Health check
-    if (path === "/" || path === "/api") {
-      return new Response(
-        JSON.stringify({ 
-          status: "ok", 
-          message: "API Biblia RV60",
-          endpoints: ["/api/books", "/api/chapters?bookId=", "/api/verses?chapterId="]
-        }), 
-        { headers: corsHeaders }
-      );
-    }
-
     return new Response(
       JSON.stringify({ error: "Ruta no encontrada" }), 
       { status: 404, headers: corsHeaders }
     );
 
   } catch (error) {
-    console.error("Error:", error);
+    console.error("❌ Error:", error);
     return new Response(
-      JSON.stringify({ error: "Error interno del servidor" }), 
+      JSON.stringify({ error: "Error interno", details: String(error) }), 
       { status: 500, headers: corsHeaders }
     );
   } finally {
@@ -119,5 +126,5 @@ async function handler(req: Request): Promise<Response> {
   }
 }
 
-console.log("🚀 API Biblia corriendo");
+console.log("🚀 API Biblia corriendo en puerto 8000");
 serve(handler, { port: 8000 });
