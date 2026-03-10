@@ -1,38 +1,25 @@
-name: Seed Bible DB
+name: 🌿 Seed Bible RV60
 
 on:
-  workflow_dispatch:  # Ejecuta manual desde GitHub > Actions tab
+  workflow_dispatch:
 
 jobs:
   seed:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.40.0
-
-      - name: Install Prisma CLI (Node shim para Deno)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install prisma @prisma/client -g
+          cache: 'npm'
+      - run: npm install prisma @prisma/client xml2js
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Prisma Migrate & Generate
-        run: |
-          npx prisma migrate deploy
-          deno task prisma:generate
+      - run: npx prisma db push --force-reset  # Fuerza create tablas
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Run Seed
-        run: deno task seed
+      - run: |
+          npx prisma generate
+          node seed-node.js
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
