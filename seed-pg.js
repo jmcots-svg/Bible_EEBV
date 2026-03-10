@@ -12,13 +12,8 @@ const client = new Client({
   connectionTimeoutMillis: 10000, 
 });
 
-const client = new Client({ 
-  connectionString: process.env.DIRECT_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
 // CONFIGURACIÓN PARA LBLA
-const XMLURL = 'https://github.com/Beblia/Holy-Bible-XML-Format/blob/eff0443644f4c49cb39d59d75aa6beb8ca985d14/SpanishLBLABible.xml'; 
+const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/SpanishLBLABible.xml'; 
 const VERSION_SHORT = 'LBLA';
 const VERSION_FULL = 'La Biblia de las Américas 1997';
 
