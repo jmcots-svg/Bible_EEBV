@@ -75,9 +75,12 @@ async function seed() {
   // XML fetch y parse
   console.log('📥 Descargando XML...');
   const response = await fetch(XML_URL);
-  const xmlContent = await response.text();
-  console.log('📋 Parseando XML...');
-  const parser = new xml2js.Parser({ 
+let xmlContent = await response.text();
+// Elimina BOM y caracteres invisibles al inicio
+xmlContent = xmlContent.replace(/^\uFEFF/, '').trim();
+console.log('📋 Parseando XML... (chars:', xmlContent.length, ')');
+console.log('📋 Primeros chars:', JSON.stringify(xmlContent.slice(0,50)));
+const parser = new xml2js.Parser({ 
     explicitArray: false, 
     trim: true,
     normalizeTags: true
