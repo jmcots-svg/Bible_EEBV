@@ -8,12 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install
-        run: npm install pg xml2js
-      - name: Seed SQL Direct
+        run: npm install pg xml2js node-fetch
+
+      - name: Run Seed
         run: node seed-pg.js
         env:
           DIRECT_URL: ${{ secrets.DIRECT_URL }}
