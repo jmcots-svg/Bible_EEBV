@@ -1,8 +1,15 @@
 import { serve } from "https://deno.land/std@0.220.0/http/server.ts";
 import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 
-// Conexión a la base de datos (Deno Deploy inyecta DATABASE_URL automáticamente)
-const pool = new Pool(Deno.env.get("DATABASE_URL")!, 3, true);
+// Obtener URL de la base de datos
+const databaseUrl = Deno.env.get("DATABASE_URL");
+
+if (!databaseUrl) {
+  console.error("❌ ERROR: DATABASE_URL no está configurada");
+  Deno.exit(1);
+}
+
+const pool = new Pool(databaseUrl, 3, true);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +19,6 @@ const corsHeaders = {
 };
 
 async function handler(req: Request): Promise<Response> {
-  // Manejar preflight CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,10 +26,12 @@ async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const path = url.pathname;
 
-  const client = await pool.connect();
-
+  let client;
+  
   try {
-    // GET /api/books - Lista de libros
+    client = await pool.connect();
+
+    // GET /api/books
     if (path === "/api/books") {
       const result = await client.queryObject(`
         SELECT id, name, testament, "bookOrder" 
@@ -49,7 +57,7 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // GET /api/verses?chapterId=1&verse=16 (verse opcional)
+    // GET /api/verses?chapterId=1&verse=16
     if (path === "/api/verses") {
       const chapterId = url.searchParams.get("chapterId");
       const verse = url.searchParams.get("verse");
@@ -81,7 +89,7 @@ async function handler(req: Request): Promise<Response> {
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // Ruta raíz - health check
+    // Health check
     if (path === "/" || path === "/api") {
       return new Response(
         JSON.stringify({ 
@@ -93,7 +101,6 @@ async function handler(req: Request): Promise<Response> {
       );
     }
 
-    // 404
     return new Response(
       JSON.stringify({ error: "Ruta no encontrada" }), 
       { status: 404, headers: corsHeaders }
@@ -106,9 +113,11 @@ async function handler(req: Request): Promise<Response> {
       { status: 500, headers: corsHeaders }
     );
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
 
-console.log("🚀 API Biblia corriendo en puerto 8000");
+console.log("🚀 API Biblia corriendo");
 serve(handler, { port: 8000 });
