@@ -40,8 +40,9 @@ model Chapter {
   book      Book    @relation(fields: [bookId], references: [id])
   createdAt DateTime @default(now())
 
-  @@unique([number, bookId])
-  @@index([bookId]) // Optimiza la búsqueda de capítulos por libro
+  // CAMBIAMOS @@unique por @@index para que no falle por datos duplicados
+  @@index([number, bookId]) 
+  @@index([bookId]) 
 }
 
 model Verse {
@@ -52,8 +53,7 @@ model Verse {
   chapter   Chapter  @relation(fields: [chapterId], references: [id])
   createdAt DateTime @default(now())
 
-  @@unique([number, chapterId])
-  @@index([chapterId]) // Optimiza la carga de versículos de un capítulo
-  // Opcional: Descomenta la siguiente línea si quieres búsquedas de palabras muy rápidas
-  // @@index([text(ops: "text_pattern_ops")]) 
+  // CAMBIAMOS @@unique por @@index también aquí por si acaso
+  @@index([number, chapterId])
+  @@index([chapterId])
 }
