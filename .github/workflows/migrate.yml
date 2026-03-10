@@ -13,12 +13,13 @@ jobs:
 
       - name: Push Schema to DB
         run: |
-          npm install prisma@latest -g
+          # INSTALAMOS LA VERSIÓN 5 (Estable y compatible con tu esquema)
+          npm install prisma@5 -g
           
-          # Borramos el archivo de configuración si existe para evitar el error de sintaxis
+          # Borramos el config de Deno para que no confunda al CLI de Node
           rm -f prisma.config.ts
           
-          # Comando limpio: sin skip-generate y con accept-data-loss
+          # Ejecutamos el push con la versión 5
           prisma db push --schema=./prisma/schema.prisma --accept-data-loss
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
