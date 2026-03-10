@@ -22,7 +22,7 @@ model Book {
   name        String
   testament   String
   abbr        String?
-  order       Int?     // <--- AÑADE EL SIGNO DE INTERROGACIÓN AQUÍ
+  bookOrder       Int?     // <--- AÑADE EL SIGNO DE INTERROGACIÓN AQUÍ
   versionId   Int
   chapters    Chapter[]
   version     BibleVersion @relation(fields: [versionId], references: [id])
