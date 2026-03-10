@@ -5,8 +5,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model BibleVersion {
@@ -25,10 +26,10 @@ model BibleVersion {
 }
 
 model Book {
-  id             Int      @id @default(autoincrement())
-  name           String   @unique
+  id             Int       @id @default(autoincrement())
+  name           String    @unique
   abbreviation   String?
-  canonicalOrder Int      @map("canonical_order")
+  canonicalOrder Int       @map("canonical_order")
   testament      String?
   
   chapters       Chapter[]
@@ -37,11 +38,11 @@ model Book {
 }
 
 model Chapter {
-  id            Int    @id @default(autoincrement())
-  bookId        Int    @map("book_id")
-  chapterNumber Int    @map("chapter_number")
+  id            Int     @id @default(autoincrement())
+  bookId        Int     @map("book_id")
+  chapterNumber Int     @map("chapter_number")
   
-  book          Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  book          Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
   verses        Verse[]
   
   @@unique([bookId, chapterNumber])
