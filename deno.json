@@ -1,15 +1,12 @@
 {
   "tasks": {
     "start": "deno run --allow-net --allow-env --allow-read main.ts",
-    "generate": "deno run -A npm:prisma@latest generate",
-    "db:push": "deno run -A npm:prisma@latest db push",
+    "generate": "deno run -A npm:prisma@5.22.0 generate",
+    "db:push": "deno run -A npm:prisma@5.22.0 db push",
     "import": "deno run --allow-net --allow-env --allow-read import-all.ts"
   },
   "nodeModulesDir": "auto",
-  "compilerOptions": {
-    "lib": ["deno.window", "dom"]
-  },
   "imports": {
-    "@prisma/client": "npm:@prisma/client@^7.4.0"
+    "@prisma/client": "npm:@prisma/client@5.22.0"
   }
 }
