@@ -3,7 +3,7 @@ const xml2js = require('xml2js');
 
 const DIRECT_URL = process.env.DIRECT_URL;
 const VERSION_NAME = 'RV60';
-const XML_URL = 'const XML_URL = 'raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/RV60.xml';
+const XML_URL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/RV60.xml';
 
 async function seed() {
   const client = new Client({ 
