@@ -70,13 +70,16 @@ async function seed() {
   const parser = new xml2js.Parser({ 
     explicitArray: false, 
     trim: true, 
-    normalizeTags: true 
+    normalizeTags: true  // Esto convierte las etiquetas a minúsculas
   });
 
   const data = await parser.parseStringPromise(xml);
-  const root = data.xmlbible;
+  
+  // ✅ CAMBIO: El elemento raíz es "bible", no "xmlbible"
+  const root = data.bible;
 
-  let books = root.biblebook || [];
+  // ✅ CAMBIO: Los libros están en "b", no en "biblebook"
+  let books = root.b || [];
   if (!Array.isArray(books)) books = [books];
   console.log('Libros:', books.length);
 
@@ -84,26 +87,29 @@ async function seed() {
   let totalV = 0;
 
   for (const b of books) {
-    const bName = (b.bookname || '').toUpperCase().trim();
-    if (!bName) continue;
-    const testament = bookNum <= 39 ? 'OT' : 'NT';
+    // ✅ CAMBIO: El nombre del libro está en el atributo "n"
     const attrs = b.$ || {};
-    const abbr = (attrs.osisid || bName.slice(0,3)).split('.')[0];
+    const bName = (attrs.n || '').trim();
+    if (!bName) continue;
+    
+    const testament = bookNum <= 39 ? 'OT' : 'NT';
+    const abbr = bName.slice(0, 3).toUpperCase();
 
     const rb = await client.query(
       `INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES (\$1,\$2,\$3,\$4,\$5) RETURNING id`,
       [bName, testament, abbr, bookNum++, versionId]
     );
     const bookId = rb.rows[0].id;
-    console.log(bookNum-1 + '. ' + bName);
+    console.log((bookNum - 1) + '. ' + bName);
 
-    let chapters = b.chapter || [];
+    // ✅ CAMBIO: Los capítulos están en "c", no en "chapter"
+    let chapters = b.c || [];
     if (!Array.isArray(chapters)) chapters = [chapters];
 
     for (const ch of chapters) {
+      // ✅ CAMBIO: El número de capítulo está en el atributo "n"
       const chAttrs = ch.$ || {};
-      const osisId = chAttrs.osisid || '';
-      const chNum = parseInt(osisId.split('.')[1] || '1');
+      const chNum = parseInt(chAttrs.n || '1');
 
       const rc = await client.query(
         `INSERT INTO "Chapter" (number, "bookId") VALUES (\$1,\$2) RETURNING id`,
@@ -111,15 +117,19 @@ async function seed() {
       );
       const chId = rc.rows[0].id;
 
-      let verses = ch.verse || [];
+      // ✅ CAMBIO: Los versículos están en "v", no en "verse"
+      let verses = ch.v || [];
       if (!Array.isArray(verses)) verses = [verses];
 
       for (const v of verses) {
+        // ✅ CAMBIO: El número de versículo está en el atributo "n"
         const vAttrs = v.$ || {};
-        const vOsis = vAttrs.osisid || '';
-        const vNum = parseInt(vOsis.split('.')[2] || '1');
-        const vText = (v.versetext || '').trim();
-        if (vText) {
+        const vNum = parseInt(vAttrs.n || '1');
+        
+        // ✅ CAMBIO: El texto está directamente en "_", no en "versetext"
+        const vText = (v._ || v || '').toString().trim();
+        
+        if (vText && vText !== '[object Object]') {
           await client.query(
             `INSERT INTO "Verse" (number, text, "chapterId") VALUES (\$1,\$2,\$3)`,
             [vNum, vText, chId]
