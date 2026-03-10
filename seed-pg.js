@@ -7,7 +7,7 @@ const client = new Client({
 });
 
 // CONFIGURACIÓN PARA LBLA
-const XMLURL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/main/data/LBLA.xml'; 
+const XMLURL = 'https://github.com/Beblia/Holy-Bible-XML-Format/blob/eff0443644f4c49cb39d59d75aa6beb8ca985d14/SpanishLBLABible.xml'; 
 const VERSION_SHORT = 'LBLA';
 const VERSION_FULL = 'La Biblia de las Américas 1997';
 
