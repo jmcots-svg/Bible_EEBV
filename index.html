@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biblia RV60</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📖 Biblia Reina-Valera 1960</h1>
+    </header>
+
+    <div class="filters">
+      <div class="filter-group">
+        <label for="book">Libro</label>
+        <select id="book" disabled>
+          <option value="">Cargando...</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="chapter">Capítulo</label>
+        <select id="chapter" disabled>
+          <option value="">Selecciona libro</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="verse">Versículo (opcional)</label>
+        <select id="verse" disabled>
+          <option value="">Todo el capítulo</option>
+        </select>
+      </div>
+
+      <button id="searchBtn" disabled>Buscar</button>
+    </div>
+
+    <div class="reference" id="reference"></div>
+
+    <div class="content" id="content">
+      <p class="placeholder">Selecciona un libro y capítulo para comenzar</p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
