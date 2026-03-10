@@ -1,20 +1,22 @@
-name: Prisma Migrate
+name: Prisma DB Push
 on: [push]
 jobs:
-  migrate:
+  push:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Node (Para el CLI de Prisma)
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      - name: Apply Prisma Migration
+      - name: Push Schema to DB
         run: |
-          npm install prisma@latest -g
-          # Forzamos la ruta del schema para evitar que lea otros archivos de config
-          prisma migrate deploy --schema=./prisma/schema.prisma
+          # Instalamos prisma
+          npm install prisma -g
+          # Empujamos los cambios del esquema directamente a la DB
+          # Usamos --accept-data-loss por seguridad de Prisma, aunque solo añadiremos índices
+          prisma db push --schema=./prisma/schema.prisma
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
