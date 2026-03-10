@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read main.ts",
+    "generate": "deno run -A npm:prisma@latest generate --data-proxy",
+    "db:push": "deno run -A npm:prisma@latest db push",
+    "import": "deno run --allow-net --allow-env --allow-read import-all.ts"
+  },
+  "imports": {
+    "@prisma/client": "./generated/client/deno/edge.ts"
+  }
+}
