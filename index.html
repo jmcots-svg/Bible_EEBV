@@ -3,16 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biblia RV60</title>
+  <title>Biblia Multi-versión</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>📖 Biblia Reina-Valera 1960</h1>
+      <h1 id="mainTitle">📖 Biblia Digital</h1>
     </header>
 
     <div class="filters">
+      <div class="filter-group">
+        <label for="version">Versión</label>
+        <select id="version">
+          <option value="RV60" selected>Reina-Valera 1960</option>
+          <option value="LBLA">Biblia de las Américas</option>
+        </select>
+      </div>
+
       <div class="filter-group">
         <label for="book">Libro</label>
         <select id="book" disabled>
@@ -40,7 +48,7 @@
     <div class="reference" id="reference"></div>
 
     <div class="content" id="content">
-      <p class="placeholder">Selecciona un libro y capítulo para comenzar</p>
+      <p class="placeholder">Selecciona una versión y libro para comenzar</p>
     </div>
   </div>
 
