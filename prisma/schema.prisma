@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["deno"]
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BibleVersion {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  abbreviation String   @unique
+  languageCode String   @map("language_code")
+  languageName String   @map("language_name")
+  year         Int?
+  copyright    String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  verses       Verse[]
+  
+  @@map("bible_versions")
+}
+
+model Book {
+  id              Int       @id @default(autoincrement())
+  name            String    @unique
+  abbreviation    String?
+  canonicalOrder  Int       @map("canonical_order")
+  testament       String?
+  
+  chapters        Chapter[]
+  
+  @@map("books")
+}
+
+model Chapter {
+  id            Int     @id @default(autoincrement())
+  bookId        Int     @map("book_id")
+  chapterNumber Int     @map("chapter_number")
+  
+  book          Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  verses        Verse[]
+  
+  @@unique([bookId, chapterNumber])
+  @@map("chapters")
+}
+
+model Verse {
+  id            BigInt        @id @default(autoincrement())
+  chapterId     Int           @map("chapter_id")
+  verseNumber   Int           @map("verse_number")
+  versionId     Int           @map("version_id")
+  text          String
+  
+  chapter       Chapter       @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  version       BibleVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  
+  @@unique([chapterId, verseNumber, versionId])
+  @@index([chapterId])
+  @@index([versionId])
+  @@map("verses")
+}
