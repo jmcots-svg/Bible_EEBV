@@ -47,11 +47,8 @@ Deno.serve(async (req: Request) => {
     }), { headers: corsHeaders });
   }
 
-  // Si no hay pool, retornar error
   if (!pool) {
-    return new Response(JSON.stringify({ 
-      error: "Base de datos no configurada" 
-    }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Base de datos no configurada" }), { status: 500, headers: corsHeaders });
   }
 
   let client;
@@ -59,13 +56,25 @@ Deno.serve(async (req: Request) => {
   try {
     client = await pool.connect();
 
-    // GET /api/books
-    if (path === "/api/books") {
+    // 1. NUEVA RUTA: Listar versiones disponibles
+    if (path === "/api/versions") {
       const result = await client.queryObject(`
-        SELECT id, name, testament, "bookOrder" 
-        FROM "Book" 
-        ORDER BY "bookOrder"
+        SELECT id, name, "fullName" FROM "BibleVersion" ORDER BY name
       `);
+      return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
+    }
+
+    // 2. RUTA MODIFICADA: Listar libros filtrados por versión
+    // Ejemplo: /api/books?version=LBLA
+    if (path === "/api/books") {
+      const versionName = url.searchParams.get("version") || "RV60";
+      const result = await client.queryObject(`
+        SELECT b.id, b.name, b.testament, b."bookOrder" 
+        FROM "Book" b
+        JOIN "BibleVersion" v ON b."versionId" = v.id
+        WHERE v.name = $1
+        ORDER BY b."bookOrder"
+      `, [versionName]);
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
@@ -73,13 +82,10 @@ Deno.serve(async (req: Request) => {
     if (path === "/api/chapters") {
       const bookId = url.searchParams.get("bookId");
       if (!bookId) {
-        return new Response(
-          JSON.stringify({ error: "bookId requerido" }), 
-          { status: 400, headers: corsHeaders }
-        );
+        return new Response(JSON.stringify({ error: "bookId requerido" }), { status: 400, headers: corsHeaders });
       }
       const result = await client.queryObject(
-        `SELECT id, number FROM "Chapter" WHERE "bookId" = \$1 ORDER BY number`,
+        `SELECT id, number FROM "Chapter" WHERE "bookId" = $1 ORDER BY number`,
         [bookId]
       );
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
@@ -91,10 +97,7 @@ Deno.serve(async (req: Request) => {
       const verse = url.searchParams.get("verse");
       
       if (!chapterId) {
-        return new Response(
-          JSON.stringify({ error: "chapterId requerido" }), 
-          { status: 400, headers: corsHeaders }
-        );
+        return new Response(JSON.stringify({ error: "chapterId requerido" }), { status: 400, headers: corsHeaders });
       }
 
       let query = `
@@ -102,12 +105,12 @@ Deno.serve(async (req: Request) => {
         FROM "Verse" v
         JOIN "Chapter" c ON v."chapterId" = c.id
         JOIN "Book" b ON c."bookId" = b.id
-        WHERE c.id = \$1
+        WHERE c.id = $1
       `;
       const params: (string | number)[] = [chapterId];
 
       if (verse) {
-        query += ` AND v.number = \$2`;
+        query += ` AND v.number = $2`;
         params.push(parseInt(verse));
       }
 
@@ -117,20 +120,12 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    return new Response(
-      JSON.stringify({ error: "Ruta no encontrada" }), 
-      { status: 404, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ error: "Ruta no encontrada" }), { status: 404, headers: corsHeaders });
 
   } catch (error) {
     console.error("❌ Error:", error);
-    return new Response(
-      JSON.stringify({ error: "Error de base de datos", details: String(error) }), 
-      { status: 500, headers: corsHeaders }
-    );
+    return new Response(JSON.stringify({ error: "Error de base de datos", details: String(error) }), { status: 500, headers: corsHeaders });
   } finally {
-    if (client) {
-      client.release();
-    }
+    if (client) client.release();
   }
 });
