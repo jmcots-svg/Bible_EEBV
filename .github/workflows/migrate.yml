@@ -6,16 +6,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
+      - name: Setup Node (Para el CLI de Prisma)
+        uses: actions/setup-node@v3
         with:
-          deno-version: v1.x
+          node-version: 20
 
       - name: Apply Prisma Migration
         run: |
-          # Instalamos Prisma CLI de forma temporal en el runner
-          npm install -g prisma 
-          # Ejecutamos la migración
-          prisma migrate deploy
+          npm install prisma@latest -g
+          # Forzamos la ruta del schema para evitar que lea otros archivos de config
+          prisma migrate deploy --schema=./prisma/schema.prisma
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
