@@ -11,21 +11,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Install
+      - name: Install deps
         run: npm install prisma @prisma/client xml2js
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: DB Push (crea tablas con DIRECT)
+      - name: DB Push (DIRECT for CLI)
         run: npx prisma db push --force-reset
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
-      - name: Generate Client
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}  # ! Direct para push
+      - name: Generate Client (Accelerate)
         run: npx prisma generate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      - name: Seed Data
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Accelerate para client
+      - name: Seed (Accelerate)
         run: node seed-node.js
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}  # Writes OK in Accelerate
