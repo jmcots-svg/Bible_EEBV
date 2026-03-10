@@ -1,5 +1,5 @@
 // ⚠️ CAMBIA ESTA URL por la URL de tu backend en Deno Deploy
-const API_URL = 'https://Bible_EEBV/jmcots-svg.deno.net/';
+const API_URL = 'https://bible-eebv.jmcots-svg.deno.net';
 
 // Elementos del DOM
 const bookSelect = document.getElementById('book');
