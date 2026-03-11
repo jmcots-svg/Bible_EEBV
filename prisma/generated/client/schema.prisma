@@ -1,0 +1,57 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "deno"] // Añadimos deno
+  output          = "./generated/client" // Carpeta local para Deno
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BibleVersion {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  fullName  String
+  books     Book[]
+  createdAt DateTime @default(now())
+}
+
+model Book {
+  id        Int          @id @default(autoincrement())
+  name      String
+  testament String
+  abbr      String?
+  bookOrder Int?
+  versionId Int
+  chapters  Chapter[]
+  version   BibleVersion @relation(fields: [versionId], references: [id])
+  createdAt DateTime     @default(now())
+
+  @@unique([name, versionId])
+  @@index([versionId, bookOrder]) // Optimiza el listado ordenado de libros
+}
+
+model Chapter {
+  id        Int      @id @default(autoincrement())
+  number    Int
+  bookId    Int
+  book      Book     @relation(fields: [bookId], references: [id])
+  verses    Verse[]
+  createdAt DateTime @default(now())
+
+  @@unique([number, bookId]) // Evita duplicados como el que arreglamos
+  @@index([bookId, number])
+}
+
+model Verse {
+  id        Int      @id @default(autoincrement())
+  number    Int
+  text      String
+  chapterId Int
+  chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([chapterId, number]) // Carga versículos en orden instantáneamente
+  @@index([chapterId])
+}
