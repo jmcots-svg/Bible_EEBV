@@ -1,5 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+// Importamos el paquete completo
+import PrismaDefault from "@prisma/client";
 import { withAccelerate } from "@prisma/extension-accelerate";
+
+// Extraemos la clase manualmente del default o del objeto
+// Esto soluciona el "does not provide an export named 'PrismaClient'"
+const PrismaClient = (PrismaDefault as any).PrismaClient || PrismaDefault;
 
 // Inicialización
 const prisma = new PrismaClient({
