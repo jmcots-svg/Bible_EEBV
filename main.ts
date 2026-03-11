@@ -26,17 +26,24 @@ const corsHeaders = {
 };
 
 function makeHeaders(cacheControl?: string) {
-  function jsonResponse(data: unknown, cacheControl?: string, extra?: Record<string, string>) {
-  const headers = new Headers(makeHeaders(cacheControl));
-  if (extra) {
-    for (const [k, v] of Object.entries(extra)) headers.set(k, v);
-  }
-  return new Response(JSON.stringify(data), { headers });
-}
   return {
     ...corsHeaders,
     ...(cacheControl ? { "Cache-Control": cacheControl } : {}),
   };
+}
+
+// (Opcional) helper para responder JSON con headers extra
+function jsonResponse(
+  data: unknown,
+  cacheControl?: string,
+  extra?: Record<string, string>,
+  status = 200,
+) {
+  const headers = makeHeaders(cacheControl);
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) headers[k] = v;
+  }
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 Deno.serve(async (req: Request) => {
