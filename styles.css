@@ -1,4 +1,4 @@
-/* 1. VARIABLES (Controlan los colores en ambos modos) */
+/* 1. VARIABLES */
 :root {
   --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --bg-container: #ffffff;
@@ -8,6 +8,12 @@
   --text-muted: #495057;
   --border: #dee2e6;
   --accent: #667eea;
+  --highlight-bg: #fff3cd;
+  --highlight-text: #856404;
+  --card-hover: #f0f4ff;
+  --tab-inactive: rgba(255,255,255,0.2);
+  --tab-active: rgba(255,255,255,0.95);
+  --tab-active-text: #1e3a5f;
 }
 
 [data-theme="dark"] {
@@ -19,6 +25,12 @@
   --text-muted: #cbd5e0;
   --border: #4a5568;
   --accent: #a5b4fc;
+  --highlight-bg: #854d0e;
+  --highlight-text: #fef3c7;
+  --card-hover: #2d3a4f;
+  --tab-inactive: rgba(255,255,255,0.1);
+  --tab-active: rgba(255,255,255,0.15);
+  --tab-active-text: #e2e8f0;
 }
 
 /* 2. RESET Y BASE */
@@ -27,7 +39,7 @@
 body {
   font-family: 'Georgia', serif;
   background: var(--bg-body);
-  background-attachment: fixed; /* Para que el degradado no se corte al hacer scroll */
+  background-attachment: fixed;
   min-height: 100vh;
   padding: 20px;
   color: var(--text-main);
@@ -72,7 +84,42 @@ header {
 input:checked + .slider { background-color: #4a90e2; }
 input:checked + .slider:before { transform: translateX(24px); content: "☀️"; }
 
-/* 4. FILTROS */
+/* ===================== */
+/* 4. TABS DE MODO       */
+/* ===================== */
+.mode-tabs {
+  display: flex;
+  background: var(--bg-header);
+  padding: 0 24px;
+  gap: 4px;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  background: var(--tab-inactive);
+  color: rgba(255,255,255,0.7);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 12px 12px 0 0;
+  position: relative;
+}
+
+.mode-tab:hover {
+  background: rgba(255,255,255,0.3);
+  color: white;
+}
+
+.mode-tab.active {
+  background: var(--tab-active);
+  color: var(--tab-active-text);
+}
+
+/* 5. FILTROS */
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -85,7 +132,7 @@ input:checked + .slider:before { transform: translateX(24px); content: "☀️";
 .filter-group { display: flex; flex-direction: column; gap: 6px; }
 .filter-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
 
-select, .btn-search {
+select, .btn-search, input[type="text"] {
   padding: 12px;
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -95,20 +142,186 @@ select, .btn-search {
   font-family: inherit;
 }
 
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
 .btn-search {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
 }
 
-/* 5. CONTENIDO Y VERSÍCULOS */
+.btn-search:hover { opacity: 0.9; }
+.btn-search:active { transform: scale(0.98); }
+.btn-search:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===================== */
+/* 6. CONCORDANCIA       */
+/* ===================== */
+.concordancia-filters {
+  grid-template-columns: 1fr 1fr;
+}
+
+.search-input-group {
+  grid-column: 1 / -1;
+}
+
+.search-wrapper {
+  display: flex;
+  gap: 10px;
+}
+
+.search-wrapper input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-conc-search {
+  white-space: nowrap;
+  padding: 12px 24px;
+}
+
+/* Search Stats */
+.search-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.search-total {
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+.search-range {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Search Result Cards */
+.search-result-card {
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  transition: background 0.2s ease, transform 0.15s ease;
+  cursor: default;
+}
+
+.search-result-card:hover {
+  background: var(--card-hover);
+  transform: translateX(4px);
+}
+
+.search-result-header {
+  margin-bottom: 8px;
+}
+
+.search-result-ref {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+
+.search-result-text {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-main);
+  text-align: justify;
+}
+
+/* Highlight */
+.search-highlight {
+  background-color: var(--highlight-bg);
+  color: var(--highlight-text);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* No Results */
+.search-no-results {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.search-no-results .search-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.search-no-results h3 {
+  margin-bottom: 8px;
+  color: var(--text-main);
+}
+
+/* Pagination */
+.search-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+}
+
+.pagination-btn:hover { opacity: 0.9; }
+.pagination-btn:active { transform: scale(0.97); }
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* 7. CONTENIDO Y VERSÍCULOS */
 .content { padding: 32px; line-height: 1.8; font-size: 1.1rem; }
 .verse { margin-bottom: 16px; text-align: justify; }
 .verse-number { font-weight: bold; color: var(--accent); margin-right: 8px; font-size: 0.9rem; }
 
-/* 6. TARJETAS DE COMPARACIÓN */
+.reference {
+  padding: 0 32px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-main);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.reference.visible {
+  opacity: 1;
+  padding-top: 20px;
+}
+
+/* 8. TARJETAS DE COMPARACIÓN */
 .comparison-card {
   background: var(--bg-container);
   border-radius: 8px;
@@ -137,10 +350,32 @@ select, .btn-search {
   border-radius: 8px;
   cursor: pointer;
   margin-top: 20px;
+  font-family: inherit;
+  font-size: 1rem;
 }
 
-/* 7. RESPONSIVE */
+.back-btn:hover { background: #5a6b7e; }
+
+/* Loading & Error */
+.loading, .placeholder {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.error {
+  text-align: center;
+  color: #e53e3e;
+}
+
+/* 9. RESPONSIVE */
 @media (max-width: 600px) {
   .filters { grid-template-columns: 1fr; }
+  .concordancia-filters { grid-template-columns: 1fr; }
   .content { padding: 20px; }
+  .search-wrapper { flex-direction: column; }
+  .mode-tab { font-size: 0.9rem; padding: 12px 14px; }
+  .search-stats { flex-direction: column; text-align: center; }
+  .search-pagination { flex-direction: column; }
+  .reference { padding: 0 20px; }
 }
