@@ -1,0 +1,22 @@
+name: Generate Prisma Client
+on:
+  push:
+    branches: [ main ] # O el nombre de tu rama principal
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: npm install prisma
+      - run: npx prisma generate
+      # Este paso sube la carpeta generada para que Deno pueda verla
+      - name: Commit generated client
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -f generated/
+          git commit -m "chore: generate prisma client" || echo "No changes to commit"
+          git push
