@@ -81,24 +81,38 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadBooks(version);
     }
 
-    async function onBookChange() {
-        const bookId = bookSelect.value;
-        resetSelects(['chapter', 'verse']);
-        if (!bookId) return;
+async function onBookChange() {
+    const bookId = bookSelect.value;
+    resetSelects(['chapter', 'verse']);
+    if (!bookId) return;
 
-        // Uso de caché para capítulos
-        if (cache.chapters[bookId]) {
-            renderChapters(cache.chapters[bookId]);
-            return;
-        }
-
-        try {
-            const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
-            const data = await res.json();
-            cache.chapters[bookId] = data; 
-            renderChapters(data);
-        } catch (e) { showError('Error al cargar capítulos'); }
+    // 1. Intentar Memoria RAM
+    if (cache.chapters[bookId]) {
+        renderChapters(cache.chapters[bookId]);
+        return;
     }
+
+    // 2. Intentar Memoria DISCO (LocalStorage)
+    const localData = localStorage.getItem(`chapters_${bookId}`);
+    if (localData) {
+        const parsed = JSON.parse(localData);
+        cache.chapters[bookId] = parsed; // Subimos a RAM para la próxima
+        renderChapters(parsed);
+        return;
+    }
+
+    try {
+        // 3. Solo si no hay nada, vamos a la red
+        const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
+        const data = await res.json();
+        
+        // Guardamos en ambos sitios
+        cache.chapters[bookId] = data;
+        localStorage.setItem(`chapters_${bookId}`, JSON.stringify(data));
+        
+        renderChapters(data);
+    } catch (e) { showError('Error al cargar capítulos'); }
+}
 
     function renderChapters(chapters) {
         chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
