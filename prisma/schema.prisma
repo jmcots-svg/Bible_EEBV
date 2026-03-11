@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "deno"] // Añadimos deno
+  output          = "./generated/client"      // Carpeta local para Deno
 }
 
 datasource db {
