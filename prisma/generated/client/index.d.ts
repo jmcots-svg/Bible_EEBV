@@ -50,7 +50,7 @@ export type Verse = $Result.DefaultSelection<Prisma.$VersePayload>
  */
 export class PrismaClient<
   ClientOptions extends Prisma.PrismaClientOptions = Prisma.PrismaClientOptions,
-  const U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
+  U = 'log' extends keyof ClientOptions ? ClientOptions['log'] extends Array<Prisma.LogLevel | Prisma.LogDefinition> ? Prisma.GetEvents<ClientOptions['log']> : never : never,
   ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs
 > {
   [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['other'] }
@@ -71,7 +71,7 @@ export class PrismaClient<
    */
 
   constructor(optionsArg ?: Prisma.Subset<ClientOptions, Prisma.PrismaClientOptions>);
-  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): PrismaClient;
+  $on<V extends U>(eventType: V, callback: (event: V extends 'query' ? Prisma.QueryEvent : Prisma.LogEvent) => void): void;
 
   /**
    * Connect with the database
@@ -82,6 +82,13 @@ export class PrismaClient<
    * Disconnect from the database
    */
   $disconnect(): $Utils.JsPromise<void>;
+
+  /**
+   * Add a middleware
+   * @deprecated since 4.16.0. For new code, prefer client extensions instead.
+   * @see https://pris.ly/d/extensions
+   */
+  $use(cb: Prisma.Middleware): void
 
 /**
    * Executes a prepared raw query and returns the number of affected rows.
@@ -148,9 +155,9 @@ export class PrismaClient<
   $transaction<R>(fn: (prisma: Omit<PrismaClient, runtime.ITXClientDenyList>) => $Utils.JsPromise<R>, options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<R>
 
 
-  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb<ClientOptions>, ExtArgs, $Utils.Call<Prisma.TypeMapCb<ClientOptions>, {
+  $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb, ExtArgs, $Utils.Call<Prisma.TypeMapCb, {
     extArgs: ExtArgs
-  }>>
+  }>, ClientOptions>
 
       /**
    * `prisma.bibleVersion`: Exposes CRUD operations for the **BibleVersion** model.
@@ -231,7 +238,7 @@ export namespace Prisma {
   export type DecimalJsLike = runtime.DecimalJsLike
 
   /**
-   * Metrics
+   * Metrics 
    */
   export type Metrics = runtime.Metrics
   export type Metric<T> = runtime.Metric<T>
@@ -249,21 +256,20 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 6.19.2
-   * Query Engine version: c2990dca591cba766e3b7ef5d9e8a84796e47ab7
+   * Prisma Client JS version: 6.2.1
+   * Query Engine version: 4123509d24aa4dede1e864b46351bf2790323b69
    */
   export type PrismaVersion = {
     client: string
   }
 
-  export const prismaVersion: PrismaVersion
+  export const prismaVersion: PrismaVersion 
 
   /**
    * Utility Types
    */
 
 
-  export import Bytes = runtime.Bytes
   export import JsonObject = runtime.JsonObject
   export import JsonArray = runtime.JsonArray
   export import JsonValue = runtime.JsonValue
@@ -273,15 +279,15 @@ export namespace Prisma {
 
   /**
    * Types of the values used to represent different kinds of `null` values when working with JSON fields.
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   namespace NullTypes {
     /**
     * Type of `Prisma.DbNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.DbNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class DbNull {
@@ -291,9 +297,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.JsonNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.JsonNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class JsonNull {
@@ -303,9 +309,9 @@ export namespace Prisma {
 
     /**
     * Type of `Prisma.AnyNull`.
-    *
+    * 
     * You cannot use other instances of this class. Please use the `Prisma.AnyNull` value.
-    *
+    * 
     * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
     */
     class AnyNull {
@@ -316,21 +322,21 @@ export namespace Prisma {
 
   /**
    * Helper for filtering JSON entries that have `null` on the database (empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const DbNull: NullTypes.DbNull
 
   /**
    * Helper for filtering JSON entries that have JSON `null` values (not empty on the db)
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const JsonNull: NullTypes.JsonNull
 
   /**
    * Helper for filtering JSON entries that are `Prisma.DbNull` or `Prisma.JsonNull`
-   *
+   * 
    * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
    */
   export const AnyNull: NullTypes.AnyNull
@@ -518,7 +524,7 @@ export namespace Prisma {
   type AtLeast<O extends object, K extends string> = NoExpand<
     O extends unknown
     ? | (K extends keyof O ? { [P in K]: O[P] } & O : O)
-      | {[P in keyof O as P extends K ? P : never]-?: O[P]} & O
+      | {[P in keyof O as P extends K ? K : never]-?: O[P]} & O
     : never>;
 
   type _Strict<U, _U = U> = U extends unknown ? U & OptionalFlat<_Record<Exclude<Keys<_U>, keyof U>, never>> : never;
@@ -645,14 +651,11 @@ export namespace Prisma {
     db?: Datasource
   }
 
-  interface TypeMapCb<ClientOptions = {}> extends $Utils.Fn<{extArgs: $Extensions.InternalArgs }, $Utils.Record<string, any>> {
-    returns: Prisma.TypeMap<this['params']['extArgs'], ClientOptions extends { omit: infer OmitOptions } ? OmitOptions : {}>
+  interface TypeMapCb extends $Utils.Fn<{extArgs: $Extensions.InternalArgs, clientOptions: PrismaClientOptions }, $Utils.Record<string, any>> {
+    returns: Prisma.TypeMap<this['params']['extArgs'], this['params']['clientOptions']>
   }
 
-  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> = {
-    globalOmitOptions: {
-      omit: GlobalOmitOptions
-    }
+  export type TypeMap<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> = {
     meta: {
       modelProps: "bibleVersion" | "book" | "chapter" | "verse"
       txIsolationLevel: Prisma.TransactionIsolationLevel
@@ -997,24 +1000,16 @@ export namespace Prisma {
     /**
      * @example
      * ```
-     * // Shorthand for `emit: 'stdout'`
+     * // Defaults to stdout
      * log: ['query', 'info', 'warn', 'error']
      * 
-     * // Emit as events only
+     * // Emit as events
      * log: [
-     *   { emit: 'event', level: 'query' },
-     *   { emit: 'event', level: 'info' },
-     *   { emit: 'event', level: 'warn' }
-     *   { emit: 'event', level: 'error' }
+     *   { emit: 'stdout', level: 'query' },
+     *   { emit: 'stdout', level: 'info' },
+     *   { emit: 'stdout', level: 'warn' }
+     *   { emit: 'stdout', level: 'error' }
      * ]
-     * 
-     * / Emit as events and log to stdout
-     * og: [
-     *  { emit: 'stdout', level: 'query' },
-     *  { emit: 'stdout', level: 'info' },
-     *  { emit: 'stdout', level: 'warn' }
-     *  { emit: 'stdout', level: 'error' }
-     * 
      * ```
      * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/logging#the-log-option).
      */
@@ -1029,10 +1024,6 @@ export namespace Prisma {
       timeout?: number
       isolationLevel?: Prisma.TransactionIsolationLevel
     }
-    /**
-     * Instance of a Driver Adapter, e.g., like one provided by `@prisma/adapter-planetscale`
-     */
-    adapter?: runtime.SqlDriverAdapterFactory | null
     /**
      * Global configuration for omitting model fields by default.
      * 
@@ -1063,15 +1054,10 @@ export namespace Prisma {
     emit: 'stdout' | 'event'
   }
 
-  export type CheckIsLogLevel<T> = T extends LogLevel ? T : never;
-
-  export type GetLogType<T> = CheckIsLogLevel<
-    T extends LogDefinition ? T['level'] : T
-  >;
-
-  export type GetEvents<T extends any[]> = T extends Array<LogLevel | LogDefinition>
-    ? GetLogType<T[number]>
-    : never;
+  export type GetLogType<T extends LogLevel | LogDefinition> = T extends LogDefinition ? T['emit'] extends 'event' ? T['level'] : never : never
+  export type GetEvents<T extends any> = T extends Array<LogLevel | LogDefinition> ?
+    GetLogType<T[0]> | GetLogType<T[1]> | GetLogType<T[2]> | GetLogType<T[3]>
+    : never
 
   export type QueryEvent = {
     timestamp: Date
@@ -1111,6 +1097,25 @@ export namespace Prisma {
     | 'runCommandRaw'
     | 'findRaw'
     | 'groupBy'
+
+  /**
+   * These options are being passed into the middleware as "params"
+   */
+  export type MiddlewareParams = {
+    model?: ModelName
+    action: PrismaAction
+    args: any
+    dataPath: string[]
+    runInTransaction: boolean
+  }
+
+  /**
+   * The `T` type makes sure, that the `return proceed` is not forgotten in the middleware implementation
+   */
+  export type Middleware<T = any> = (
+    params: MiddlewareParams,
+    next: (params: MiddlewareParams) => $Utils.JsPromise<T>,
+  ) => $Utils.JsPromise<T>
 
   // tested in getLogLevel.test.ts
   export function getLogLevel(log: Array<LogLevel | LogDefinition>): LogLevel | undefined;
@@ -1470,7 +1475,7 @@ export namespace Prisma {
       select?: BibleVersionCountAggregateInputType | true
     }
 
-  export interface BibleVersionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface BibleVersionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['BibleVersion'], meta: { name: 'BibleVersion' } }
     /**
      * Find zero or one BibleVersion that matches the filter.
@@ -1483,7 +1488,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends BibleVersionFindUniqueArgs>(args: SelectSubset<T, BibleVersionFindUniqueArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends BibleVersionFindUniqueArgs>(args: SelectSubset<T, BibleVersionFindUniqueArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUnique", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find one BibleVersion that matches the filter or throw an error with `error.code='P2025'`
@@ -1497,7 +1502,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends BibleVersionFindUniqueOrThrowArgs>(args: SelectSubset<T, BibleVersionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends BibleVersionFindUniqueOrThrowArgs>(args: SelectSubset<T, BibleVersionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find the first BibleVersion that matches the filter.
@@ -1512,7 +1517,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends BibleVersionFindFirstArgs>(args?: SelectSubset<T, BibleVersionFindFirstArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends BibleVersionFindFirstArgs>(args?: SelectSubset<T, BibleVersionFindFirstArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findFirst", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find the first BibleVersion that matches the filter or
@@ -1528,7 +1533,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends BibleVersionFindFirstOrThrowArgs>(args?: SelectSubset<T, BibleVersionFindFirstOrThrowArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends BibleVersionFindFirstOrThrowArgs>(args?: SelectSubset<T, BibleVersionFindFirstOrThrowArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findFirstOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find zero or more BibleVersions that matches the filter.
@@ -1546,7 +1551,7 @@ export namespace Prisma {
      * const bibleVersionWithIdOnly = await prisma.bibleVersion.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends BibleVersionFindManyArgs>(args?: SelectSubset<T, BibleVersionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends BibleVersionFindManyArgs>(args?: SelectSubset<T, BibleVersionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findMany", ClientOptions>>
 
     /**
      * Create a BibleVersion.
@@ -1560,7 +1565,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends BibleVersionCreateArgs>(args: SelectSubset<T, BibleVersionCreateArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends BibleVersionCreateArgs>(args: SelectSubset<T, BibleVersionCreateArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "create", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Create many BibleVersions.
@@ -1598,7 +1603,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends BibleVersionCreateManyAndReturnArgs>(args?: SelectSubset<T, BibleVersionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends BibleVersionCreateManyAndReturnArgs>(args?: SelectSubset<T, BibleVersionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "createManyAndReturn", ClientOptions>>
 
     /**
      * Delete a BibleVersion.
@@ -1612,7 +1617,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends BibleVersionDeleteArgs>(args: SelectSubset<T, BibleVersionDeleteArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends BibleVersionDeleteArgs>(args: SelectSubset<T, BibleVersionDeleteArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "delete", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Update one BibleVersion.
@@ -1629,7 +1634,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends BibleVersionUpdateArgs>(args: SelectSubset<T, BibleVersionUpdateArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends BibleVersionUpdateArgs>(args: SelectSubset<T, BibleVersionUpdateArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "update", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Delete zero or more BibleVersions.
@@ -1692,7 +1697,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    updateManyAndReturn<T extends BibleVersionUpdateManyAndReturnArgs>(args: SelectSubset<T, BibleVersionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+    updateManyAndReturn<T extends BibleVersionUpdateManyAndReturnArgs>(args: SelectSubset<T, BibleVersionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "updateManyAndReturn", ClientOptions>>
 
     /**
      * Create or update one BibleVersion.
@@ -1711,7 +1716,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends BibleVersionUpsertArgs>(args: SelectSubset<T, BibleVersionUpsertArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends BibleVersionUpsertArgs>(args: SelectSubset<T, BibleVersionUpsertArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "upsert", ClientOptions>, never, ExtArgs, ClientOptions>
 
 
     /**
@@ -1851,9 +1856,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__BibleVersionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__BibleVersionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    books<T extends BibleVersion$booksArgs<ExtArgs> = {}>(args?: Subset<T, BibleVersion$booksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    books<T extends BibleVersion$booksArgs<ExtArgs> = {}>(args?: Subset<T, BibleVersion$booksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findMany", ClientOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1881,7 +1886,7 @@ export namespace Prisma {
 
   /**
    * Fields of the BibleVersion model
-   */
+   */ 
   interface BibleVersionFieldRefs {
     readonly id: FieldRef<"BibleVersion", 'Int'>
     readonly name: FieldRef<"BibleVersion", 'String'>
@@ -2176,10 +2181,6 @@ export namespace Prisma {
      * Filter which BibleVersions to update
      */
     where?: BibleVersionWhereInput
-    /**
-     * Limit how many BibleVersions to update.
-     */
-    limit?: number
   }
 
   /**
@@ -2202,10 +2203,6 @@ export namespace Prisma {
      * Filter which BibleVersions to update
      */
     where?: BibleVersionWhereInput
-    /**
-     * Limit how many BibleVersions to update.
-     */
-    limit?: number
   }
 
   /**
@@ -2268,10 +2265,6 @@ export namespace Prisma {
      * Filter which BibleVersions to delete
      */
     where?: BibleVersionWhereInput
-    /**
-     * Limit how many BibleVersions to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -2614,7 +2607,7 @@ export namespace Prisma {
       select?: BookCountAggregateInputType | true
     }
 
-  export interface BookDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface BookDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Book'], meta: { name: 'Book' } }
     /**
      * Find zero or one Book that matches the filter.
@@ -2627,7 +2620,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends BookFindUniqueArgs>(args: SelectSubset<T, BookFindUniqueArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends BookFindUniqueArgs>(args: SelectSubset<T, BookFindUniqueArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUnique", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find one Book that matches the filter or throw an error with `error.code='P2025'`
@@ -2641,7 +2634,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends BookFindUniqueOrThrowArgs>(args: SelectSubset<T, BookFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends BookFindUniqueOrThrowArgs>(args: SelectSubset<T, BookFindUniqueOrThrowArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find the first Book that matches the filter.
@@ -2656,7 +2649,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends BookFindFirstArgs>(args?: SelectSubset<T, BookFindFirstArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends BookFindFirstArgs>(args?: SelectSubset<T, BookFindFirstArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findFirst", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find the first Book that matches the filter or
@@ -2672,7 +2665,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends BookFindFirstOrThrowArgs>(args?: SelectSubset<T, BookFindFirstOrThrowArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends BookFindFirstOrThrowArgs>(args?: SelectSubset<T, BookFindFirstOrThrowArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findFirstOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find zero or more Books that matches the filter.
@@ -2690,7 +2683,7 @@ export namespace Prisma {
      * const bookWithIdOnly = await prisma.book.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends BookFindManyArgs>(args?: SelectSubset<T, BookFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends BookFindManyArgs>(args?: SelectSubset<T, BookFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findMany", ClientOptions>>
 
     /**
      * Create a Book.
@@ -2704,7 +2697,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends BookCreateArgs>(args: SelectSubset<T, BookCreateArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends BookCreateArgs>(args: SelectSubset<T, BookCreateArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "create", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Create many Books.
@@ -2742,7 +2735,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends BookCreateManyAndReturnArgs>(args?: SelectSubset<T, BookCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends BookCreateManyAndReturnArgs>(args?: SelectSubset<T, BookCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "createManyAndReturn", ClientOptions>>
 
     /**
      * Delete a Book.
@@ -2756,7 +2749,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends BookDeleteArgs>(args: SelectSubset<T, BookDeleteArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends BookDeleteArgs>(args: SelectSubset<T, BookDeleteArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "delete", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Update one Book.
@@ -2773,7 +2766,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends BookUpdateArgs>(args: SelectSubset<T, BookUpdateArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends BookUpdateArgs>(args: SelectSubset<T, BookUpdateArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "update", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Delete zero or more Books.
@@ -2836,7 +2829,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    updateManyAndReturn<T extends BookUpdateManyAndReturnArgs>(args: SelectSubset<T, BookUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+    updateManyAndReturn<T extends BookUpdateManyAndReturnArgs>(args: SelectSubset<T, BookUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "updateManyAndReturn", ClientOptions>>
 
     /**
      * Create or update one Book.
@@ -2855,7 +2848,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends BookUpsertArgs>(args: SelectSubset<T, BookUpsertArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends BookUpsertArgs>(args: SelectSubset<T, BookUpsertArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "upsert", ClientOptions>, never, ExtArgs, ClientOptions>
 
 
     /**
@@ -2995,10 +2988,10 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__BookClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__BookClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    chapters<T extends Book$chaptersArgs<ExtArgs> = {}>(args?: Subset<T, Book$chaptersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    version<T extends BibleVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BibleVersionDefaultArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    chapters<T extends Book$chaptersArgs<ExtArgs> = {}>(args?: Subset<T, Book$chaptersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findMany", ClientOptions> | Null>
+    version<T extends BibleVersionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BibleVersionDefaultArgs<ExtArgs>>): Prisma__BibleVersionClient<$Result.GetResult<Prisma.$BibleVersionPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions> | Null, Null, ExtArgs, ClientOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3026,7 +3019,7 @@ export namespace Prisma {
 
   /**
    * Fields of the Book model
-   */
+   */ 
   interface BookFieldRefs {
     readonly id: FieldRef<"Book", 'Int'>
     readonly name: FieldRef<"Book", 'String'>
@@ -3328,10 +3321,6 @@ export namespace Prisma {
      * Filter which Books to update
      */
     where?: BookWhereInput
-    /**
-     * Limit how many Books to update.
-     */
-    limit?: number
   }
 
   /**
@@ -3354,10 +3343,6 @@ export namespace Prisma {
      * Filter which Books to update
      */
     where?: BookWhereInput
-    /**
-     * Limit how many Books to update.
-     */
-    limit?: number
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -3424,10 +3409,6 @@ export namespace Prisma {
      * Filter which Books to delete
      */
     where?: BookWhereInput
-    /**
-     * Limit how many Books to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -3734,7 +3715,7 @@ export namespace Prisma {
       select?: ChapterCountAggregateInputType | true
     }
 
-  export interface ChapterDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface ChapterDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Chapter'], meta: { name: 'Chapter' } }
     /**
      * Find zero or one Chapter that matches the filter.
@@ -3747,7 +3728,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends ChapterFindUniqueArgs>(args: SelectSubset<T, ChapterFindUniqueArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends ChapterFindUniqueArgs>(args: SelectSubset<T, ChapterFindUniqueArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUnique", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find one Chapter that matches the filter or throw an error with `error.code='P2025'`
@@ -3761,7 +3742,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends ChapterFindUniqueOrThrowArgs>(args: SelectSubset<T, ChapterFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends ChapterFindUniqueOrThrowArgs>(args: SelectSubset<T, ChapterFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find the first Chapter that matches the filter.
@@ -3776,7 +3757,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends ChapterFindFirstArgs>(args?: SelectSubset<T, ChapterFindFirstArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends ChapterFindFirstArgs>(args?: SelectSubset<T, ChapterFindFirstArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findFirst", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find the first Chapter that matches the filter or
@@ -3792,7 +3773,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends ChapterFindFirstOrThrowArgs>(args?: SelectSubset<T, ChapterFindFirstOrThrowArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends ChapterFindFirstOrThrowArgs>(args?: SelectSubset<T, ChapterFindFirstOrThrowArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findFirstOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find zero or more Chapters that matches the filter.
@@ -3810,7 +3791,7 @@ export namespace Prisma {
      * const chapterWithIdOnly = await prisma.chapter.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends ChapterFindManyArgs>(args?: SelectSubset<T, ChapterFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends ChapterFindManyArgs>(args?: SelectSubset<T, ChapterFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findMany", ClientOptions>>
 
     /**
      * Create a Chapter.
@@ -3824,7 +3805,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends ChapterCreateArgs>(args: SelectSubset<T, ChapterCreateArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends ChapterCreateArgs>(args: SelectSubset<T, ChapterCreateArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "create", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Create many Chapters.
@@ -3862,7 +3843,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends ChapterCreateManyAndReturnArgs>(args?: SelectSubset<T, ChapterCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends ChapterCreateManyAndReturnArgs>(args?: SelectSubset<T, ChapterCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "createManyAndReturn", ClientOptions>>
 
     /**
      * Delete a Chapter.
@@ -3876,7 +3857,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends ChapterDeleteArgs>(args: SelectSubset<T, ChapterDeleteArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends ChapterDeleteArgs>(args: SelectSubset<T, ChapterDeleteArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "delete", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Update one Chapter.
@@ -3893,7 +3874,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends ChapterUpdateArgs>(args: SelectSubset<T, ChapterUpdateArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends ChapterUpdateArgs>(args: SelectSubset<T, ChapterUpdateArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "update", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Delete zero or more Chapters.
@@ -3956,7 +3937,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    updateManyAndReturn<T extends ChapterUpdateManyAndReturnArgs>(args: SelectSubset<T, ChapterUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+    updateManyAndReturn<T extends ChapterUpdateManyAndReturnArgs>(args: SelectSubset<T, ChapterUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "updateManyAndReturn", ClientOptions>>
 
     /**
      * Create or update one Chapter.
@@ -3975,7 +3956,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends ChapterUpsertArgs>(args: SelectSubset<T, ChapterUpsertArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends ChapterUpsertArgs>(args: SelectSubset<T, ChapterUpsertArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "upsert", ClientOptions>, never, ExtArgs, ClientOptions>
 
 
     /**
@@ -4115,10 +4096,10 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__ChapterClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__ChapterClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    book<T extends BookDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BookDefaultArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    verses<T extends Chapter$versesArgs<ExtArgs> = {}>(args?: Subset<T, Chapter$versesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    book<T extends BookDefaultArgs<ExtArgs> = {}>(args?: Subset<T, BookDefaultArgs<ExtArgs>>): Prisma__BookClient<$Result.GetResult<Prisma.$BookPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions> | Null, Null, ExtArgs, ClientOptions>
+    verses<T extends Chapter$versesArgs<ExtArgs> = {}>(args?: Subset<T, Chapter$versesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findMany", ClientOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4146,7 +4127,7 @@ export namespace Prisma {
 
   /**
    * Fields of the Chapter model
-   */
+   */ 
   interface ChapterFieldRefs {
     readonly id: FieldRef<"Chapter", 'Int'>
     readonly number: FieldRef<"Chapter", 'Int'>
@@ -4445,10 +4426,6 @@ export namespace Prisma {
      * Filter which Chapters to update
      */
     where?: ChapterWhereInput
-    /**
-     * Limit how many Chapters to update.
-     */
-    limit?: number
   }
 
   /**
@@ -4471,10 +4448,6 @@ export namespace Prisma {
      * Filter which Chapters to update
      */
     where?: ChapterWhereInput
-    /**
-     * Limit how many Chapters to update.
-     */
-    limit?: number
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -4541,10 +4514,6 @@ export namespace Prisma {
      * Filter which Chapters to delete
      */
     where?: ChapterWhereInput
-    /**
-     * Limit how many Chapters to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -4858,7 +4827,7 @@ export namespace Prisma {
       select?: VerseCountAggregateInputType | true
     }
 
-  export interface VerseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+  export interface VerseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> {
     [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Verse'], meta: { name: 'Verse' } }
     /**
      * Find zero or one Verse that matches the filter.
@@ -4871,7 +4840,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUnique<T extends VerseFindUniqueArgs>(args: SelectSubset<T, VerseFindUniqueArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findUnique<T extends VerseFindUniqueArgs>(args: SelectSubset<T, VerseFindUniqueArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findUnique", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find one Verse that matches the filter or throw an error with `error.code='P2025'`
@@ -4885,7 +4854,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findUniqueOrThrow<T extends VerseFindUniqueOrThrowArgs>(args: SelectSubset<T, VerseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findUniqueOrThrow<T extends VerseFindUniqueOrThrowArgs>(args: SelectSubset<T, VerseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find the first Verse that matches the filter.
@@ -4900,7 +4869,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirst<T extends VerseFindFirstArgs>(args?: SelectSubset<T, VerseFindFirstArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    findFirst<T extends VerseFindFirstArgs>(args?: SelectSubset<T, VerseFindFirstArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findFirst", ClientOptions> | null, null, ExtArgs, ClientOptions>
 
     /**
      * Find the first Verse that matches the filter or
@@ -4916,7 +4885,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    findFirstOrThrow<T extends VerseFindFirstOrThrowArgs>(args?: SelectSubset<T, VerseFindFirstOrThrowArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    findFirstOrThrow<T extends VerseFindFirstOrThrowArgs>(args?: SelectSubset<T, VerseFindFirstOrThrowArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findFirstOrThrow", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Find zero or more Verses that matches the filter.
@@ -4934,7 +4903,7 @@ export namespace Prisma {
      * const verseWithIdOnly = await prisma.verse.findMany({ select: { id: true } })
      * 
      */
-    findMany<T extends VerseFindManyArgs>(args?: SelectSubset<T, VerseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+    findMany<T extends VerseFindManyArgs>(args?: SelectSubset<T, VerseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "findMany", ClientOptions>>
 
     /**
      * Create a Verse.
@@ -4948,7 +4917,7 @@ export namespace Prisma {
      * })
      * 
      */
-    create<T extends VerseCreateArgs>(args: SelectSubset<T, VerseCreateArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    create<T extends VerseCreateArgs>(args: SelectSubset<T, VerseCreateArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "create", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Create many Verses.
@@ -4986,7 +4955,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    createManyAndReturn<T extends VerseCreateManyAndReturnArgs>(args?: SelectSubset<T, VerseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+    createManyAndReturn<T extends VerseCreateManyAndReturnArgs>(args?: SelectSubset<T, VerseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "createManyAndReturn", ClientOptions>>
 
     /**
      * Delete a Verse.
@@ -5000,7 +4969,7 @@ export namespace Prisma {
      * })
      * 
      */
-    delete<T extends VerseDeleteArgs>(args: SelectSubset<T, VerseDeleteArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    delete<T extends VerseDeleteArgs>(args: SelectSubset<T, VerseDeleteArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "delete", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Update one Verse.
@@ -5017,7 +4986,7 @@ export namespace Prisma {
      * })
      * 
      */
-    update<T extends VerseUpdateArgs>(args: SelectSubset<T, VerseUpdateArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    update<T extends VerseUpdateArgs>(args: SelectSubset<T, VerseUpdateArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "update", ClientOptions>, never, ExtArgs, ClientOptions>
 
     /**
      * Delete zero or more Verses.
@@ -5080,7 +5049,7 @@ export namespace Prisma {
      * Read more here: https://pris.ly/d/null-undefined
      * 
      */
-    updateManyAndReturn<T extends VerseUpdateManyAndReturnArgs>(args: SelectSubset<T, VerseUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+    updateManyAndReturn<T extends VerseUpdateManyAndReturnArgs>(args: SelectSubset<T, VerseUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "updateManyAndReturn", ClientOptions>>
 
     /**
      * Create or update one Verse.
@@ -5099,7 +5068,7 @@ export namespace Prisma {
      *   }
      * })
      */
-    upsert<T extends VerseUpsertArgs>(args: SelectSubset<T, VerseUpsertArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+    upsert<T extends VerseUpsertArgs>(args: SelectSubset<T, VerseUpsertArgs<ExtArgs>>): Prisma__VerseClient<$Result.GetResult<Prisma.$VersePayload<ExtArgs>, T, "upsert", ClientOptions>, never, ExtArgs, ClientOptions>
 
 
     /**
@@ -5239,9 +5208,9 @@ export namespace Prisma {
    * Because we want to prevent naming conflicts as mentioned in
    * https://github.com/prisma/prisma-client-js/issues/707
    */
-  export interface Prisma__VerseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+  export interface Prisma__VerseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, ClientOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    chapter<T extends ChapterDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ChapterDefaultArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    chapter<T extends ChapterDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ChapterDefaultArgs<ExtArgs>>): Prisma__ChapterClient<$Result.GetResult<Prisma.$ChapterPayload<ExtArgs>, T, "findUniqueOrThrow", ClientOptions> | Null, Null, ExtArgs, ClientOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5269,7 +5238,7 @@ export namespace Prisma {
 
   /**
    * Fields of the Verse model
-   */
+   */ 
   interface VerseFieldRefs {
     readonly id: FieldRef<"Verse", 'Int'>
     readonly number: FieldRef<"Verse", 'Int'>
@@ -5569,10 +5538,6 @@ export namespace Prisma {
      * Filter which Verses to update
      */
     where?: VerseWhereInput
-    /**
-     * Limit how many Verses to update.
-     */
-    limit?: number
   }
 
   /**
@@ -5595,10 +5560,6 @@ export namespace Prisma {
      * Filter which Verses to update
      */
     where?: VerseWhereInput
-    /**
-     * Limit how many Verses to update.
-     */
-    limit?: number
     /**
      * Choose, which related nodes to fetch as well
      */
@@ -5665,10 +5626,6 @@ export namespace Prisma {
      * Filter which Verses to delete
      */
     where?: VerseWhereInput
-    /**
-     * Limit how many Verses to delete.
-     */
-    limit?: number
   }
 
   /**
@@ -5797,7 +5754,7 @@ export namespace Prisma {
 
 
   /**
-   * Field references
+   * Field references 
    */
 
 
