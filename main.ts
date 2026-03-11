@@ -100,6 +100,31 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify({ error: "chapterId requerido" }), { status: 400, headers: corsHeaders });
       }
 
+    // NUEVA RUTA PARA COMPARAR (Añade esto a main.ts)
+    if (path === "/api/compare") {
+      const bookName = url.searchParams.get("bookName");
+      const chapterNum = url.searchParams.get("chapter");
+      const verseNum = url.searchParams.get("verse");
+
+      if (!bookName || !chapterNum || !verseNum) {
+        return new Response(JSON.stringify({ error: "Faltan parámetros" }), { status: 400, headers: corsHeaders });
+      }
+
+      const result = await client.queryObject(`
+        SELECT v.text, ver.name as version
+        FROM "Verse" v
+        JOIN "Chapter" c ON v."chapterId" = c.id
+        JOIN "Book" b ON c."bookId" = b.id
+        JOIN "BibleVersion" ver ON b."versionId" = ver.id
+        WHERE b.name ILIKE $1 
+          AND c.number = $2 
+          AND v.number = $3
+        ORDER BY ver.id ASC
+      `, [bookName, parseInt(chapterNum), parseInt(verseNum)]);
+
+      return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
+    }
+
       let query = `
         SELECT v.number, v.text, b.name as book, c.number as chapter
         FROM "Verse" v
