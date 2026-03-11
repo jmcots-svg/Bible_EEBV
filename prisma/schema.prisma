@@ -40,7 +40,7 @@ model Chapter {
   createdAt DateTime @default(now())
 
   @@unique([number, bookId]) // Evita duplicados como el que arreglamos
-  @@index([bookId])
+  @@index([bookId, number])
 }
 
 model Verse {
