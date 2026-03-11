@@ -186,3 +186,24 @@ themeToggle.addEventListener('click', () => {
     localStorage.setItem('theme', 'dark');
   }
 });
+
+// Lógica de Modo Noche con Checkbox
+const themeCheckbox = document.getElementById('themeCheckbox');
+
+// 1. Al cargar, aplicar preferencia guardada
+const savedTheme = localStorage.getItem('theme') || 'light';
+if (savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  themeCheckbox.checked = true;
+}
+
+// 2. Escuchar el cambio del interruptor
+themeCheckbox.addEventListener('change', () => {
+  if (themeCheckbox.checked) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+  }
+});
