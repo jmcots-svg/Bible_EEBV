@@ -4,58 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Biblia Multi-versión</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biblia Multi-versión</title>
-  
   <link rel="icon" type="image/jpeg" href="fabicon.jpg">
-  
-  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
-<header>
-  <div class="header-content">
-    <h1 id="mainTitle">📖 Biblia Digital</h1>
-    <label class="switch">
-      <input type="checkbox" id="themeCheckbox">
-      <span class="slider"></span>
-    </label>
-  </div>
-</header>
-
-    <div class="filters">
-      <div class="filter-group">
-        <label for="version">Versión</label>
-        <select id="version">
-          <option value="RV60" selected>Reina-Valera 1960</option>
-          <option value="LBLA">Biblia de las Américas</option>
-        </select>
+    <header>
+      <div class="header-content">
+        <h1 id="mainTitle">📖 Biblia Digital</h1>
+        <label class="switch">
+          <input type="checkbox" id="themeCheckbox">
+          <span class="slider"></span>
+        </label>
       </div>
+    </header>
 
-      <div class="filter-group">
-        <label for="book">Libro</label>
-        <select id="book" disabled>
-          <option value="">Cargando...</option>
-        </select>
+    <!-- TABS DE MODO -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="lectura">📖 Lectura</button>
+      <button class="mode-tab" data-mode="concordancia">🔍 Concordancia</button>
+    </div>
+
+    <!-- PANEL MODO LECTURA -->
+    <div id="panelLectura" class="panel-mode">
+      <div class="filters">
+        <div class="filter-group">
+          <label for="version">Versión</label>
+          <select id="version">
+            <option value="RV60" selected>Reina-Valera 1960</option>
+            <option value="LBLA">Biblia de las Américas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="book">Libro</label>
+          <select id="book" disabled>
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="chapter">Capítulo</label>
+          <select id="chapter" disabled>
+            <option value="">Selecciona libro</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="verse">Versículo (opcional)</label>
+          <select id="verse" disabled>
+            <option value="">Todo el capítulo</option>
+          </select>
+        </div>
+
+        <button id="searchBtn" class="btn-search" disabled>Buscar</button>
       </div>
+    </div>
 
-      <div class="filter-group">
-        <label for="chapter">Capítulo</label>
-        <select id="chapter" disabled>
-          <option value="">Selecciona libro</option>
-        </select>
+    <!-- PANEL MODO CONCORDANCIA -->
+    <div id="panelConcordancia" class="panel-mode" style="display:none;">
+      <div class="filters concordancia-filters">
+        <div class="filter-group">
+          <label for="concVersion">Versión</label>
+          <select id="concVersion">
+            <option value="RV60" selected>Reina-Valera 1960</option>
+            <option value="LBLA">Biblia de las Américas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="concTestament">Filtrar por</label>
+          <select id="concTestament">
+            <option value="ALL">Toda la Biblia</option>
+            <option value="OT">📜 Antiguo Testamento</option>
+            <option value="NT">✝️ Nuevo Testamento</option>
+          </select>
+        </div>
+
+        <div class="filter-group search-input-group">
+          <label for="concQuery">Buscar palabra o frase</label>
+          <div class="search-wrapper">
+            <input
+              type="text"
+              id="concQuery"
+              placeholder="Ej: amor, fe, esperanza..."
+              autocomplete="off"
+              maxlength="100"
+            >
+            <button id="concSearchBtn" class="btn-search btn-conc-search">🔎 Buscar</button>
+          </div>
+        </div>
       </div>
-
-      <div class="filter-group">
-        <label for="verse">Versículo (opcional)</label>
-        <select id="verse" disabled>
-          <option value="">Todo el capítulo</option>
-        </select>
-      </div>
-
-      <button id="searchBtn" class="btn-search" disabled>Buscar</button>
     </div>
 
     <div class="reference" id="reference"></div>
