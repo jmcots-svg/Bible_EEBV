@@ -1,8 +1,6 @@
 import { Pool } from "https://deno.land/x/postgres@v0.19.3/mod.ts";
 
-// Configuración de la base de datos
 const databaseUrl = Deno.env.get("DATABASE_URL");
-
 let pool: Pool | null = null;
 
 if (databaseUrl) {
@@ -16,12 +14,9 @@ if (databaseUrl) {
       database: url.pathname.slice(1),
       tls: { enabled: true, enforce: false },
     }, 3, true);
-    console.log("✅ Pool de BD configurado");
   } catch (e) {
     console.error("❌ Error configurando pool:", e);
   }
-} else {
-  console.log("⚠️ DATABASE_URL no configurada");
 }
 
 const corsHeaders = {
@@ -32,83 +27,65 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const url = new URL(req.url);
   const path = url.pathname;
 
-  // Health check
   if (path === "/" || path === "/health") {
-    return new Response(JSON.stringify({ 
-      status: "ok", 
-      database: pool ? "configurada" : "no configurada"
-    }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ status: "ok" }), { headers: corsHeaders });
   }
 
-  if (!pool) {
-    return new Response(JSON.stringify({ error: "Base de datos no configurada" }), { status: 500, headers: corsHeaders });
-  }
+  if (!pool) return new Response(JSON.stringify({ error: "Sin DB" }), { status: 500, headers: corsHeaders });
 
   let client;
-
   try {
     client = await pool.connect();
 
-    // 1. NUEVA RUTA: Listar versiones disponibles
+    // 1. RUTA: Versiones
     if (path === "/api/versions") {
-      const result = await client.queryObject(`
-        SELECT id, name, "fullName" FROM "BibleVersion" ORDER BY name
-      `);
+      const result = await client.queryObject(`SELECT id, name, "fullName" FROM "BibleVersion" ORDER BY id`);
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // 2. RUTA MODIFICADA: Listar libros filtrados por versión
-    // Ejemplo: /api/books?version=LBLA
+    // 2. RUTA: Libros por versión
     if (path === "/api/books") {
-      const versionName = url.searchParams.get("version") || "RV60";
+      const version = url.searchParams.get("version") || "RV60";
       const result = await client.queryObject(`
         SELECT b.id, b.name, b.testament, b."bookOrder" 
         FROM "Book" b
         JOIN "BibleVersion" v ON b."versionId" = v.id
-        WHERE v.name = $1
-        ORDER BY b."bookOrder"
-      `, [versionName]);
+        WHERE v.name = $1 ORDER BY b."bookOrder"
+      `, [version]);
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // GET /api/chapters?bookId=1
+    // 3. RUTA: Capítulos
     if (path === "/api/chapters") {
       const bookId = url.searchParams.get("bookId");
-      if (!bookId) {
-        return new Response(JSON.stringify({ error: "bookId requerido" }), { status: 400, headers: corsHeaders });
-      }
-      const result = await client.queryObject(
-        `SELECT id, number FROM "Chapter" WHERE "bookId" = $1 ORDER BY number`,
-        [bookId]
-      );
+      const result = await client.queryObject(`SELECT id, number FROM "Chapter" WHERE "bookId" = $1 ORDER BY number`, [bookId]);
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-    // GET /api/verses?chapterId=1&verse=16
+    // 4. RUTA: Versículos
     if (path === "/api/verses") {
-      const chapterId = url.searchParams.get("chapterId");
-      const verse = url.searchParams.get("verse");
-      
-      if (!chapterId) {
-        return new Response(JSON.stringify({ error: "chapterId requerido" }), { status: 400, headers: corsHeaders });
-      }
+      const chId = url.searchParams.get("chapterId");
+      const vNum = url.searchParams.get("verse");
+      let query = `SELECT number, text FROM "Verse" WHERE "chapterId" = $1`;
+      const params = [chId];
+      if (vNum) { query += ` AND number = $2`; params.push(parseInt(vNum)); }
+      query += ` ORDER BY number`;
+      const result = await client.queryObject(query, params);
+      return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
+    }
 
-    // NUEVA RUTA PARA COMPARAR (Añade esto a main.ts)
+    // 5. RUTA CLAVE: COMPARACIÓN (Aquí es donde fallaba)
     if (path === "/api/compare") {
       const bookName = url.searchParams.get("bookName");
-      const chapterNum = url.searchParams.get("chapter");
-      const verseNum = url.searchParams.get("verse");
+      const chapter = url.searchParams.get("chapter");
+      const verse = url.searchParams.get("verse");
 
-      if (!bookName || !chapterNum || !verseNum) {
-        return new Response(JSON.stringify({ error: "Faltan parámetros" }), { status: 400, headers: corsHeaders });
-      }
+      if (!bookName || !chapter || !verse) throw new Error("Faltan datos");
 
       const result = await client.queryObject(`
         SELECT v.text, ver.name as version
@@ -120,36 +97,15 @@ Deno.serve(async (req: Request) => {
           AND c.number = $2 
           AND v.number = $3
         ORDER BY ver.id ASC
-      `, [bookName, parseInt(chapterNum), parseInt(verseNum)]);
+      `, [bookName, parseInt(chapter), parseInt(verse)]);
 
       return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
     }
 
-      let query = `
-        SELECT v.number, v.text, b.name as book, c.number as chapter
-        FROM "Verse" v
-        JOIN "Chapter" c ON v."chapterId" = c.id
-        JOIN "Book" b ON c."bookId" = b.id
-        WHERE c.id = $1
-      `;
-      const params: (string | number)[] = [chapterId];
-
-      if (verse) {
-        query += ` AND v.number = $2`;
-        params.push(parseInt(verse));
-      }
-
-      query += ` ORDER BY v.number`;
-
-      const result = await client.queryObject(query, params);
-      return new Response(JSON.stringify(result.rows), { headers: corsHeaders });
-    }
-
-    return new Response(JSON.stringify({ error: "Ruta no encontrada" }), { status: 404, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "404" }), { status: 404, headers: corsHeaders });
 
   } catch (error) {
-    console.error("❌ Error:", error);
-    return new Response(JSON.stringify({ error: "Error de base de datos", details: String(error) }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   } finally {
     if (client) client.release();
   }
