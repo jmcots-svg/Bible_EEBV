@@ -1,4 +1,4 @@
-import { PrismaClient } from "./generated/client/deno/edge.ts";
+import { PrismaClient } from "./prisma/generated/client/deno/edge.ts";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
 // 1. Inicialización del Cliente con Accelerate
