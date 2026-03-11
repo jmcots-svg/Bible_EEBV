@@ -167,38 +167,32 @@ if (path === "/api/versions") {
 
     // RUTA: Precalentar caché completo
     
+    // RUTA: Precalentar caché completo
     if (path === "/api/warmup") {
       try {
         // 1. Todas las versiones
-        await prisma.bibleVersion.findMany({
+        const allVersions = await prisma.bibleVersion.findMany({
           orderBy: { id: "asc" },
           cacheStrategy: { ttl: 86400, swr: 300 },
         });
+        setCache("versions", allVersions);
 
-        const versions = await prisma.bibleVersion.findMany({
-  orderBy: { id: "asc" },
-  cacheStrategy: { ttl: 86400, swr: 300 },
-});
-setCache("versions", versions);
+        // 2. Libros POR versión
+        for (const v of ["RV60", "LBLA"]) {
+          const books = await prisma.book.findMany({
+            where: { version: { name: v } },
+            orderBy: { bookOrder: "asc" },
+            cacheStrategy: { ttl: 86400, swr: 300 },
+          });
+          setCache(`books-${v}`, books);
+        }
 
-                // 2. Libros POR versión (como los pide la app)
-        const versions = ["RV60", "LBLA"];
-for (const v of ["RV60", "LBLA"]) {
-  const books = await prisma.book.findMany({
-    where: { version: { name: v } },
-    orderBy: { bookOrder: "asc" },
-    cacheStrategy: { ttl: 86400, swr: 300 },
-  });
-  setCache(`books-${v}`, books);
-}
-        
-        // 2. TODOS los libros (sin filtrar por versión)
+        // 3. TODOS los libros + sus capítulos
         const allBooks = await prisma.book.findMany({
           orderBy: { bookOrder: "asc" },
           cacheStrategy: { ttl: 86400, swr: 300 },
         });
 
-        // 3. Capítulos de CADA libro
         for (const book of allBooks) {
           const chapters = await prisma.chapter.findMany({
             where: { bookId: book.id },
@@ -226,8 +220,7 @@ for (const v of ["RV60", "LBLA"]) {
     console.error("Error en petición:", error.message);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
-
-
+});
   // Cron: Precalentar caché cada 5 minutos
 Deno.cron("warmup-cache", "*/5 * * * *", async () => {
   try {
@@ -237,5 +230,4 @@ Deno.cron("warmup-cache", "*/5 * * * *", async () => {
   } catch (e) {
     console.error("❌ Warmup failed:", e.message);
   }
-});
 });
