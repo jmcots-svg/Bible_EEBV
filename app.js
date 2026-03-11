@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookSelect = document.getElementById('book');
     const chapterSelect = document.getElementById('chapter');
     const verseSelect = document.getElementById('verse');
-    const searchBtn = document.getElementById('searchBtn');
+    
     const content = document.getElementById('content');
     const reference = document.getElementById('reference');
     const mainTitle = document.getElementById('mainTitle');
@@ -200,22 +200,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isFetching) return;
         const chId = chapterSelect.value;
         resetSelects(['verse']);
-        if (!chId) return;
+        if (!chId) {
+            content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+            if (reference) reference.classList.remove('visible');
+            return;
+        }
 
-        searchBtn.disabled = true;
         const cacheKey = `${chId}-all`;
 
         if (cache.verses[cacheKey]) {
             renderVerseSelect(cache.verses[cacheKey]);
-            searchBtn.disabled = false;
+            onSearch(); // <-- Disparar búsqueda automática
             return;
         }
 
-        let originalBtnText;
         try {
             isFetching = true;
-            originalBtnText = searchBtn.textContent;
-            searchBtn.textContent = '⏱️...';
+            content.innerHTML = '<p class="loading">Cargando capítulo...</p>'; // Feedback visual
 
             if (versesAbort) versesAbort.abort();
             versesAbort = new AbortController();
@@ -226,16 +227,17 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             cache.verses[cacheKey] = verses;
             renderVerseSelect(verses);
+            onSearch(); // <-- Disparar búsqueda automática tras cargar
+            
         } catch (e) {
             if (e.name === "AbortError") return;
             showError('Error al cargar versículos');
             console.error(e);
         } finally {
-            if (originalBtnText) searchBtn.textContent = originalBtnText;
-            searchBtn.disabled = false;
             isFetching = false;
         }
     }
+
 
     function renderVerseSelect(verses) {
         verseSelect.innerHTML = '<option value="">Todo el capítulo</option>';
@@ -568,7 +570,8 @@ function highlightText(text, query) {
     versionSelect.addEventListener('change', onVersionChange);
     bookSelect.addEventListener('change', onBookChange);
     chapterSelect.addEventListener('change', onChapterChange);
-    searchBtn.addEventListener('click', onSearch);
+    verseSelect.addEventListener('change', onSearch); // <-- NUEVO: Buscar al cambiar el versículo
+
 
     // Modo Concordancia
     concSearchBtn.addEventListener('click', () => onConcordanciaSearch(1));
