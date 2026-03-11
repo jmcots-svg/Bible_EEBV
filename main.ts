@@ -26,6 +26,13 @@ const corsHeaders = {
 };
 
 function makeHeaders(cacheControl?: string) {
+  function jsonResponse(data: unknown, cacheControl?: string, extra?: Record<string, string>) {
+  const headers = new Headers(makeHeaders(cacheControl));
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) headers.set(k, v);
+  }
+  return new Response(JSON.stringify(data), { headers });
+}
   return {
     ...corsHeaders,
     ...(cacheControl ? { "Cache-Control": cacheControl } : {}),
@@ -92,29 +99,46 @@ Deno.serve(async (req: Request) => {
     }
 
     // 3. RUTA: Capítulos
-    if (path === "/api/chapters") {
-      const bookId = Number(url.searchParams.get("bookId"));
-      const cacheKey = `chapters-${bookId}`;
+if (path === "/api/chapters") {
+  const t0 = performance.now();
 
-      const cached = getCached(cacheKey);
-      if (cached) {
-        return new Response(JSON.stringify(cached), {
-          headers: makeHeaders("public, max-age=604800, stale-while-revalidate=600"),
-        });
-      }
+  const bookId = Number(url.searchParams.get("bookId"));
+  const cacheKey = `chapters-${bookId}`;
 
-      const chapters = await prisma.chapter.findMany({
-        where: { bookId: bookId },
-        orderBy: { number: "asc" },
-        select: { id: true, number: true },
-        cacheStrategy: { ttl: 604800, swr: 600 },
-      });
+  const cached = getCached(cacheKey);
+  if (cached) {
+    const t1 = performance.now();
+    return jsonResponse(
+      cached,
+      "public, max-age=604800, stale-while-revalidate=600",
+      {
+        "X-Cache": "HIT(serverCache)",
+        "Server-Timing": `total;dur=${(t1 - t0).toFixed(1)}`,
+      },
+    );
+  }
 
-      setCache(cacheKey, chapters);
-      return new Response(JSON.stringify(chapters), {
-        headers: makeHeaders("public, max-age=604800, stale-while-revalidate=600"),
-      });
-    }
+  const tDb0 = performance.now();
+  const chapters = await prisma.chapter.findMany({
+    where: { bookId: bookId },
+    orderBy: { number: "asc" },
+    select: { id: true, number: true },
+    cacheStrategy: { ttl: 604800, swr: 600 },
+  });
+  const tDb1 = performance.now();
+
+  setCache(cacheKey, chapters);
+
+  const t2 = performance.now();
+  return jsonResponse(
+    chapters,
+    "public, max-age=604800, stale-while-revalidate=600",
+    {
+      "X-Cache": "MISS(serverCache)",
+      "Server-Timing": `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(t2 - t0).toFixed(1)}`,
+    },
+  );
+}
 
     // 4. RUTA: Versículos
     if (path === "/api/verses") {
