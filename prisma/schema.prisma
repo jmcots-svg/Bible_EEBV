@@ -33,15 +33,15 @@ model Book {
 }
 
 model Chapter {
-  id        Int     @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   number    Int
   bookId    Int
+  book      Book     @relation(fields: [bookId], references: [id])
   verses    Verse[]
-  book      Book    @relation(fields: [bookId], references: [id])
   createdAt DateTime @default(now())
 
-  // CAMBIAMOS @@unique por @@index para que no falle por datos duplicados
-  @@index([number, bookId]) 
+  // CAMBIO CLAVE: de @@index a @@unique
+  @@unique([number, bookId]) 
   @@index([bookId]) 
 }
 
