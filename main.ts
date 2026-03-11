@@ -147,6 +147,7 @@ Deno.serve(async (req: Request) => {
 
     // 3) Chapters (con Server-Timing)
     if (path === "/api/chapters") {
+      const noMem = url.searchParams.get("nomem") === "1";
       const t0 = performance.now();
       const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
 
@@ -208,6 +209,7 @@ Deno.serve(async (req: Request) => {
 
     // 4) Verses (con Server-Timing)
     if (path === "/api/verses") {
+      const noMem = url.searchParams.get("nomem") === "1";
       const t0 = performance.now();
       const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
 
@@ -227,14 +229,28 @@ Deno.serve(async (req: Request) => {
       const memKey = `verses-${chId}-${vKey}`;
       const kvKey: Deno.KvKey = ["verses", chId, vKey];
 
-      if (!debug) {
-        const mem = getCached(memKey);
-        if (mem) {
-          const headers = makeHeaders(cacheControl);
-          headers.set("X-Cache", "HIT(mem)");
-          headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-          return new Response(JSON.stringify(mem), { headers });
-        }
+if (!debug) {
+  // 1) MEM (si noMem=1, lo saltamos)
+  if (!noMem) {
+    const mem = getCached(memKey);
+    if (mem) {
+      const headers = makeHeaders(cacheControl);
+      headers.set("X-Cache", "HIT(mem)");
+      headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+      return new Response(JSON.stringify(mem), { headers });
+    }
+  }
+
+  // 2) KV
+  const kvVal = await kvGet<any[]>(kvKey);
+  if (kvVal) {
+    setCache(memKey, kvVal); // sube a mem para la próxima
+    const headers = makeHeaders(cacheControl);
+    headers.set("X-Cache", "HIT(kv)");
+    headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+    return new Response(JSON.stringify(kvVal), { headers });
+  }
+}
 
         const kvVal = await kvGet<any[]>(kvKey);
         if (kvVal) {
