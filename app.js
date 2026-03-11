@@ -111,6 +111,18 @@ async function onBookChange() {
         localStorage.setItem(`chapters_${bookId}`, JSON.stringify(data));
         
         renderChapters(data);
+        if (data.length > 0) {
+  const firstChapterId = data[0].id;
+  const cacheKey = `${firstChapterId}-all`;
+  if (!cache.verses[cacheKey]) {
+    fetch(`${API_URL}/api/verses?chapterId=${firstChapterId}`)
+      .then(res => res.json())
+      .then(verses => {
+        cache.verses[cacheKey] = verses;
+      })
+      .catch(() => {});
+  }
+}
     } catch (e) { showError('Error al cargar capítulos'); }
 }
 
