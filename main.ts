@@ -1,6 +1,7 @@
-// Cambiamos /deno/edge.ts por /edge.js
-import { PrismaClient } from "./prisma/generated/client/edge.js";
+// @deno-types="./prisma/generated/client/edge.d.ts"
+import { PrismaClient } from "./prisma/generated/client/edge.mjs";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
+
 
 // 1. Inicialización del Cliente con Accelerate
 // Esto elimina la necesidad de gestionar un Pool manualmente
