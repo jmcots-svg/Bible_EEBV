@@ -1,5 +1,6 @@
-import { PrismaClient } from "https://esm.sh/@prisma/client/deno/edge.js";
-import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
+// Forzamos la versión 6.2.1 que es la que no da errores
+import { PrismaClient } from "https://esm.sh/@prisma/client@6.2.1/deno/edge.js";
+import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate@3.0.0";
 
 // 1. Inicialización
 const prisma = new PrismaClient({
