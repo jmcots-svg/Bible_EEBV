@@ -1,11 +1,25 @@
 // @deno-types="./prisma/generated/client/edge.d.ts"
-import PrismaPkg from "./prisma/generated/client/edge.mjs";
+import * as PrismaModule from "./prisma/generated/client/edge.mjs";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
-// Extraemos la clase del paquete para que Deno la reconozca correctamente
-const { PrismaClient } = PrismaPkg;
+// Buscamos PrismaClient donde sea que esté metido en el módulo
+const PrismaClient = PrismaModule.PrismaClient;
+
+if (!PrismaClient) {
+  throw new Error("No se pudo encontrar PrismaClient en el módulo generado.");
+}
+
 // 1. Inicialización del Cliente con Accelerate
-// Esto elimina la necesidad de gestionar un Pool manualmente
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: Deno.env.get("DATABASE_URL"),
+    },
+  },
+}).$extends(withAccelerate());
+
+// ... el resto de tu código (CORS, Deno.serve, etc) se queda igual
+
 const prisma = new PrismaClient({
   datasources: {
     db: {
