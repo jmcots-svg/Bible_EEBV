@@ -1,4 +1,4 @@
-/* 1. Definición de Variables */
+/* 1. VARIABLES DE COLOR (Aquí vive la magia del Modo Noche) */
 :root {
   --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --container-bg: #ffffff;
@@ -11,7 +11,6 @@
   --verse-num: #667eea;
 }
 
-/* 2. Colores Modo Noche */
 [data-theme="dark"] {
   --bg-gradient: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
   --container-bg: #1a202c;
@@ -24,63 +23,142 @@
   --verse-num: #a3bffa;
 }
 
-/* 3. Aplicar variables a tus clases existentes */
+/* 2. ESTILOS BASE */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   font-family: 'Georgia', serif;
-  background: var(--bg-gradient); /* Usar variable */
+  background: var(--bg-gradient);
   min-height: 100vh;
   padding: 20px;
+  color: var(--text-main);
   transition: all 0.3s ease;
 }
 
 .container {
   max-width: 800px;
   margin: 0 auto;
-  background: var(--container-bg); /* Usar variable */
+  background: var(--container-bg);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
+/* 3. HEADER Y TOGGLE */
 header {
-  background: var(--header-gradient); /* Usar variable */
+  background: var(--header-gradient);
   color: white;
   padding: 24px;
   text-align: center;
-  position: relative; /* Para posicionar el botón */
 }
 
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* El interruptor moderno */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.switch input { display: none; }
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255,255,255,0.3);
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "🌙";
+  height: 20px; width: 20px;
+  left: 3px; bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+input:checked + .slider { background-color: #4a90e2; }
+input:checked + .slider:before {
+  transform: translateX(24px);
+  content: "☀️";
+}
+
+/* 4. FILTROS Y CONTENIDO */
 .filters {
-  background: var(--filter-bg); /* Usar variable */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  padding: 24px;
+  background: var(--filter-bg);
   border-bottom: 1px solid var(--border-color);
 }
 
-.content {
-  color: var(--text-main); /* Usar variable */
+.filter-group label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.comparison-card {
-  background: var(--card-bg); /* Usar variable */
+select, .btn-search {
+  padding: 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--container-bg);
   color: var(--text-main);
-  border: 1px solid var(--border-color);
+  font-family: inherit;
+}
+
+.btn-search {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.content {
+  padding: 32px;
+  line-height: 1.8;
+  font-size: 1.1rem;
 }
 
 .verse-number {
-  color: var(--verse-num); /* Usar variable */
+  font-weight: bold;
+  color: var(--verse-num);
+  margin-right: 8px;
 }
 
-/* Estilo para el botón de cambio */
-.theme-btn {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255,255,255,0.2);
-  border: none;
-  padding: 8px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: white;
-  font-size: 1.2rem;
-  align-self: center;
+.comparison-card {
+  background: var(--card-bg);
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #4a90e2;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .header-content { flex-direction: column; gap: 10px; }
 }
