@@ -366,15 +366,15 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-        // --------------------
-    // /api/search (Concordancia Bíblica)
+    // --------------------
+    // /api/search (Concordancia Bíblica - accent insensitive)
     // --------------------
     if (path === "/api/search") {
       const t0 = performance.now();
       
       const query = url.searchParams.get("query")?.trim();
       const version = url.searchParams.get("version") || "RV60";
-      const testament = url.searchParams.get("testament") || "ALL"; // ALL, OT, NT
+      const testament = url.searchParams.get("testament") || "ALL";
       const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
       const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
       const offset = (page - 1) * limit;
@@ -393,7 +393,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Cache key
+      // Cache
       const cacheControl = "public, max-age=3600, stale-while-revalidate=300";
       const normalizedQuery = query.toLowerCase();
       const memKey = `search-${version}-${testament}-${normalizedQuery}-p${page}-l${limit}`;
@@ -418,61 +418,62 @@ Deno.serve(async (req: Request) => {
         return new Response(JSON.stringify(kvVal), { headers });
       }
 
-      // Build where clause
-      const whereClause: any = {
-        text: { contains: query, mode: "insensitive" },
-        chapter: {
-          book: {
-            version: { name: version },
-            ...(testament !== "ALL" ? { testament: testament } : {}),
-          },
-        },
-      };
-
       const tDb0 = performance.now();
 
-      // Count total results
-      const totalCount = await prisma.verse.count({
-        where: whereClause,
-      });
+      // Build testament filter
+      const testamentFilter = testament !== "ALL" 
+        ? `AND b."testament" = '${testament}'` 
+        : "";
 
-      // Get paginated results
-      const results = await prisma.verse.findMany({
-        where: whereClause,
-        select: {
-          number: true,
-          text: true,
-          chapter: {
-            select: {
-              number: true,
-              book: {
-                select: {
-                  name: true,
-                  testament: true,
-                  bookOrder: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: [
-          { chapter: { book: { bookOrder: "asc" } } },
-          { chapter: { number: "asc" } },
-          { number: "asc" },
-        ],
-        skip: offset,
-        take: limit,
-      });
+      // Sanitize query for LIKE (escape special chars)
+      const sanitizedQuery = normalizedQuery
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+
+      // COUNT query (accent-insensitive using unaccent)
+      const countResult = await prisma.$queryRawUnsafe<[{ count: bigint }]>(`
+        SELECT COUNT(*) as count
+        FROM "Verse" v
+        JOIN "Chapter" c ON v."chapterId" = c.id
+        JOIN "Book" b ON c."bookId" = b.id
+        JOIN "BibleVersion" bv ON b."versionId" = bv.id
+        WHERE bv."name" = \$1
+        ${testamentFilter}
+        AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower(\$2)) || '%'
+      `, version, sanitizedQuery);
+
+      const totalCount = Number(countResult[0].count);
+
+      // SEARCH query (accent-insensitive, paginated)
+      const results = await prisma.$queryRawUnsafe<any[]>(`
+        SELECT 
+          v."number" as verse_number,
+          v."text" as verse_text,
+          c."number" as chapter_number,
+          b."name" as book_name,
+          b."testament" as book_testament,
+          b."bookOrder" as book_order
+        FROM "Verse" v
+        JOIN "Chapter" c ON v."chapterId" = c.id
+        JOIN "Book" b ON c."bookId" = b.id
+        JOIN "BibleVersion" bv ON b."versionId" = bv.id
+        WHERE bv."name" = \$1
+        ${testamentFilter}
+        AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower(\$2)) || '%'
+        ORDER BY b."bookOrder" ASC, c."number" ASC, v."number" ASC
+        LIMIT \$3 OFFSET \$4
+      `, version, sanitizedQuery, limit, offset);
 
       const tDb1 = performance.now();
 
-      const formatted = results.map((v) => ({
-        book: v.chapter.book.name,
-        chapter: v.chapter.number,
-        verse: v.number,
-        text: v.text,
-        testament: v.chapter.book.testament,
-        bookOrder: v.chapter.book.bookOrder,
+      const formatted = results.map((r) => ({
+        book: r.book_name,
+        chapter: r.chapter_number,
+        verse: r.verse_number,
+        text: r.verse_text,
+        testament: r.book_testament,
+        bookOrder: r.book_order,
       }));
 
       const responseData = {
@@ -486,7 +487,7 @@ Deno.serve(async (req: Request) => {
         results: formatted,
       };
 
-      // Cache the response
+      // Cache
       setCache(memKey, responseData);
       await kvSet(kvKey, responseData, TTL_1D_MS);
 
