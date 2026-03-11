@@ -22,6 +22,8 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Expose-Headers": "Server-Timing, X-Cache",
+  "Timing-Allow-Origin": "*",
   "Content-Type": "application/json",
 };
 
@@ -150,33 +152,52 @@ if (path === "/api/chapters") {
 }
 
     // 4. RUTA: Versículos
-    if (path === "/api/verses") {
-      const chId = Number(url.searchParams.get("chapterId"));
-      const vNum = url.searchParams.get("verse");
-      const cacheKey = `verses-${chId}-${vNum || "all"}`;
+if (path === "/api/verses") {
+  const t0 = performance.now();
 
-      const cached = getCached(cacheKey);
-      if (cached) {
-        return new Response(JSON.stringify(cached), {
-          headers: makeHeaders("public, max-age=604800, stale-while-revalidate=600"),
-        });
-      }
+  const chIdParam = url.searchParams.get("chapterId");
+  const chId = Number(chIdParam);
+  const vNum = url.searchParams.get("verse");
+  const debug = url.searchParams.get("debug") === "1";
 
-      const verses = await prisma.verse.findMany({
-        where: {
-          chapterId: chId,
-          ...(vNum ? { number: Number(vNum) } : {}),
-        },
-        orderBy: { number: "asc" },
-        select: { number: true, text: true },
-        cacheStrategy: { ttl: 604800, swr: 600 },
-      });
+  if (!chIdParam || !Number.isFinite(chId)) {
+    return new Response(JSON.stringify({ error: "Parámetro chapterId inválido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      setCache(cacheKey, verses);
-      return new Response(JSON.stringify(verses), {
-        headers: makeHeaders("public, max-age=604800, stale-while-revalidate=600"),
-      });
-    }
+  const cacheKey = `verses-${chId}-${vNum || "all"}`;
+
+  const cached = getCached(cacheKey);
+  if (cached && !debug) {
+    const headers = makeHeaders("public, max-age=604800, stale-while-revalidate=600");
+    headers["X-Cache"] = "HIT(serverCache)";
+    headers["Server-Timing"] = `total;dur=${(performance.now() - t0).toFixed(1)}`;
+    return new Response(JSON.stringify(cached), { headers });
+  }
+
+  const tDb0 = performance.now();
+  const verses = await prisma.verse.findMany({
+    where: {
+      chapterId: chId,
+      ...(vNum ? { number: Number(vNum) } : {}),
+    },
+    orderBy: { number: "asc" },
+    select: { number: true, text: true },
+    cacheStrategy: debug ? undefined : { ttl: 604800, swr: 600 },
+  });
+  const tDb1 = performance.now();
+
+  if (!debug) setCache(cacheKey, verses);
+
+  const headers = makeHeaders(debug ? "no-store" : "public, max-age=604800, stale-while-revalidate=600");
+  headers["X-Cache"] = debug ? "BYPASS(debug=1)" : "MISS(serverCache)";
+  headers["Server-Timing"] =
+    `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`;
+
+  return new Response(JSON.stringify(verses), { headers });
+}
 
     // 5. RUTA: Comparación
     if (path === "/api/compare") {
