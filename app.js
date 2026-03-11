@@ -13,6 +13,23 @@ const mainTitle = document.getElementById('mainTitle');
 let books = [];
 
 document.addEventListener('DOMContentLoaded', () => {
+
+  const themeCheckbox = document.getElementById('themeCheckbox');
+  const savedTheme = localStorage.getItem('theme');
+
+  if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if(themeCheckbox) themeCheckbox.checked = true;
+  }
+
+  if (themeCheckbox) {
+    themeCheckbox.addEventListener('change', () => {
+      const isDark = themeCheckbox.checked;
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+  }
+  
   loadBooks(versionSelect.value);
   setupEventListeners();
 });
@@ -207,3 +224,25 @@ themeCheckbox.addEventListener('change', () => {
     localStorage.setItem('theme', 'light');
   }
 });
+
+const themeCheckbox = document.getElementById('themeCheckbox');
+
+// Función para cambiar el tema
+function switchTheme(isDark) {
+  if (isDark) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('theme', 'dark');
+    console.log("Modo Noche: ACTIVADO");
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+    console.log("Modo Noche: DESACTIVADO");
+  }
+}
+
+// Escuchar el click en el interruptor
+themeCheckbox.addEventListener('change', (e) => {
+  switchTheme(e.target.checked);
+});
+
+
