@@ -102,20 +102,25 @@ Deno.serve(async (req: Request) => {
 if (path === "/api/chapters") {
   const t0 = performance.now();
 
-  const bookId = Number(url.searchParams.get("bookId"));
+  const bookIdParam = url.searchParams.get("bookId");
+  const bookId = Number(bookIdParam);
+
+  // Evita 500 por parámetro inválido
+  if (!bookIdParam || !Number.isFinite(bookId)) {
+    return new Response(JSON.stringify({ error: "Parámetro bookId inválido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+
   const cacheKey = `chapters-${bookId}`;
 
   const cached = getCached(cacheKey);
   if (cached) {
-    const t1 = performance.now();
-    return jsonResponse(
-      cached,
-      "public, max-age=604800, stale-while-revalidate=600",
-      {
-        "X-Cache": "HIT(serverCache)",
-        "Server-Timing": `total;dur=${(t1 - t0).toFixed(1)}`,
-      },
-    );
+    const headers = makeHeaders("public, max-age=604800, stale-while-revalidate=600");
+    headers["X-Cache"] = "HIT(serverCache)";
+    headers["Server-Timing"] = `total;dur=${(performance.now() - t0).toFixed(1)}`;
+    return new Response(JSON.stringify(cached), { headers });
   }
 
   const tDb0 = performance.now();
@@ -129,15 +134,12 @@ if (path === "/api/chapters") {
 
   setCache(cacheKey, chapters);
 
-  const t2 = performance.now();
-  return jsonResponse(
-    chapters,
-    "public, max-age=604800, stale-while-revalidate=600",
-    {
-      "X-Cache": "MISS(serverCache)",
-      "Server-Timing": `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(t2 - t0).toFixed(1)}`,
-    },
-  );
+  const headers = makeHeaders("public, max-age=604800, stale-while-revalidate=600");
+  headers["X-Cache"] = "MISS(serverCache)";
+  headers["Server-Timing"] =
+    `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`;
+
+  return new Response(JSON.stringify(chapters), { headers });
 }
 
     // 4. RUTA: Versículos
