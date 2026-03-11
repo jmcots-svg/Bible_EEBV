@@ -16,7 +16,8 @@ jobs:
           node-version: 18
       
       - name: Install dependencies
-        run: npm install prisma
+# Forzamos la versión 6.2.1 que es la "joya" para Deno
+        run: npm install prisma@6.2.1
         
       - name: Generate Prisma Client
         run: npx prisma generate
