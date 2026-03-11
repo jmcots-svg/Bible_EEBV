@@ -118,6 +118,37 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify(formatted), { headers: corsHeaders });
     }
 
+        // RUTA: Precalentar caché
+    if (path === "/api/warmup") {
+      try {
+        // 1. Cargar versiones
+        await prisma.bibleVersion.findMany({
+          orderBy: { id: "asc" },
+          cacheStrategy: { ttl: 86400, swr: 300 },
+        });
+
+        // 2. Cargar libros de cada versión
+        const versions = ["RV60", "LBLA"];
+        for (const v of versions) {
+          await prisma.book.findMany({
+            where: { version: { name: v } },
+            orderBy: { bookOrder: "asc" },
+            cacheStrategy: { ttl: 86400, swr: 300 },
+          });
+        }
+
+        return new Response(
+          JSON.stringify({ status: "warmed up" }),
+          { headers: corsHeaders }
+        );
+      } catch (e) {
+        return new Response(
+          JSON.stringify({ error: e.message }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+    
     return new Response(JSON.stringify({ error: "404" }), { status: 404, headers: corsHeaders });
 
   } catch (error) {
