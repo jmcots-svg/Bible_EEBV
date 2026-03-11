@@ -1,21 +1,13 @@
-/* 1. CONFIGURACIÓN DE COLORES */
+/* Esto es para el modo normal */
 :root {
-  --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --bg-container: #ffffff;
-  --bg-filter: #f8f9fa;
-  --text-color: #2d3748;
-  --border: #dee2e6;
-  --card: #ffffff;
+  --text-main: #2d3748;
 }
 
-/* Cuando el HTML tiene el atributo data-theme="dark" */
-html[data-theme="dark"] {
-  --bg-body: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --bg-container: #1e293b;
-  --bg-filter: #334155;
-  --text-color: #f1f5f9;
-  --border: #475569;
-  --card: #334155;
+/* Esto se activa cuando pulsas el botón */
+[data-theme="dark"] {
+  --bg-container: #1a202c; /* Fondo oscuro */
+  --text-main: #ffffff;    /* Texto blanco */
 }
 
 /* 2. APLICACIÓN DE VARIABLES */
@@ -27,7 +19,6 @@ body {
 
 .container {
   background-color: var(--bg-container) !important;
-  color: var(--text-color);
 }
 
 .filters {
@@ -40,7 +31,6 @@ select {
   border-color: var(--border) !important;
 }
 
-.content, .verse, .comparison-card {
-  color: var(--text-color) !important;
-  background-color: var(--card) !important;
+.content, .verse, .comparison-card, .verse-text {
+  color: var(--text-main) !important;
 }
