@@ -1,15 +1,7 @@
-// @deno-types="./prisma/generated/client/edge.d.ts"
-import * as PrismaModule from "./prisma/generated/client/edge.mjs";
+import { PrismaClient } from "https://esm.sh/@prisma/client/deno/edge.js";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
-// Buscamos PrismaClient donde sea que esté metido en el módulo
-const PrismaClient = PrismaModule.PrismaClient;
-
-if (!PrismaClient) {
-  throw new Error("No se pudo encontrar PrismaClient en el módulo generado.");
-}
-
-// 1. Inicialización del Cliente con Accelerate
+// 1. Inicialización
 const prisma = new PrismaClient({
   datasources: {
     db: {
