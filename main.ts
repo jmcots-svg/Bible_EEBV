@@ -1,8 +1,8 @@
-// Forzamos la versión 6.2.1 que es la que no da errores
-import { PrismaClient } from "https://esm.sh/@prisma/client@6.2.1/deno/edge.js";
+// 1. Importación directa usando npm: (Esto no falla con error 500)
+import { PrismaClient } from "npm:@prisma/client@6.2.1/edge";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate@3.0.0";
 
-// 1. Inicialización
+// 2. Inicialización
 const prisma = new PrismaClient({
   datasources: {
     db: {
@@ -17,6 +17,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type",
   "Content-Type": "application/json",
 };
+
+// ... El resto de tu código Deno.serve sigue igual
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
