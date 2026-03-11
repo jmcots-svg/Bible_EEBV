@@ -1,8 +1,7 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"] // Cambiado de fullTextSearchPostgres a fullTextSearch
+  previewFeatures = ["fullTextSearch"]
 }
-
 
 datasource db {
   provider = "postgresql"
@@ -18,18 +17,18 @@ model BibleVersion {
 }
 
 model Book {
-  id          Int      @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   name        String
   testament   String
   abbr        String?
-  bookOrder       Int?     // <--- AÑADE EL SIGNO DE INTERROGACIÓN AQUÍ
+  bookOrder   Int?
   versionId   Int
   chapters    Chapter[]
   version     BibleVersion @relation(fields: [versionId], references: [id])
-  createdAt   DateTime @default(now())
+  createdAt   DateTime     @default(now())
 
   @@unique([name, versionId])
-  @@index([versionId]) 
+  @@index([versionId, bookOrder]) // Optimiza el listado ordenado de libros
 }
 
 model Chapter {
@@ -40,9 +39,8 @@ model Chapter {
   verses    Verse[]
   createdAt DateTime @default(now())
 
-  // CAMBIO CLAVE: de @@index a @@unique
-  @@unique([number, bookId]) 
-  @@index([bookId]) 
+  @@unique([number, bookId]) // Evita duplicados como el que arreglamos
+  @@index([bookId])
 }
 
 model Verse {
@@ -53,7 +51,6 @@ model Verse {
   chapter   Chapter  @relation(fields: [chapterId], references: [id])
   createdAt DateTime @default(now())
 
-  // CAMBIAMOS @@unique por @@index también aquí por si acaso
-  @@index([number, chapterId])
+  @@index([chapterId, number]) // Carga versículos en orden instantáneamente
   @@index([chapterId])
 }
