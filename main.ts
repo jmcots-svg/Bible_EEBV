@@ -1,8 +1,9 @@
 // @deno-types="./prisma/generated/client/edge.d.ts"
-import { PrismaClient } from "./prisma/generated/client/edge.mjs";
+import PrismaPkg from "./prisma/generated/client/edge.mjs";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
-
+// Extraemos la clase del paquete para que Deno la reconozca correctamente
+const { PrismaClient } = PrismaPkg;
 // 1. Inicialización del Cliente con Accelerate
 // Esto elimina la necesidad de gestionar un Pool manualmente
 const prisma = new PrismaClient({
