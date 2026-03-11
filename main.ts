@@ -3,15 +3,6 @@ import { withAccelerate } from "@prisma/extension-accelerate";
 
 const prisma = new PrismaClient().$extends(withAccelerate());
 
-// Inicialización
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: Deno.env.get("DATABASE_URL"),
-    },
-  },
-}).$extends(withAccelerate());
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
