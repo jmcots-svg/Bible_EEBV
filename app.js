@@ -486,12 +486,47 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function highlightText(text, query) {
-        if (!query) return escapeHtml(text);
-        const escaped = escapeRegExp(query);
-        const regex = new RegExp(`(${escaped})`, 'gi');
-        return escapeHtml(text).replace(regex, '<mark class="search-highlight">\$1</mark>');
+function removeAccents(str) {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function highlightText(text, query) {
+    if (!query) return escapeHtml(text);
+    
+    // Trabajar sobre el texto ORIGINAL (sin escapar) para posiciones correctas
+    const normalizedText = removeAccents(text.toLowerCase());
+    const normalizedQuery = removeAccents(query.toLowerCase());
+    
+    // Encontrar todas las posiciones en el texto original
+    const matches = [];
+    let searchFrom = 0;
+    
+    while (searchFrom < normalizedText.length) {
+        const index = normalizedText.indexOf(normalizedQuery, searchFrom);
+        if (index === -1) break;
+        matches.push({ start: index, end: index + normalizedQuery.length });
+        searchFrom = index + 1;
     }
+    
+    if (matches.length === 0) return escapeHtml(text);
+    
+    // Construir resultado escapando cada fragmento individualmente
+    let result = '';
+    let lastEnd = 0;
+    
+    for (const match of matches) {
+        // Escapar la parte antes del match
+        result += escapeHtml(text.substring(lastEnd, match.start));
+        // El match va dentro del <mark>, también escapado
+        result += `<mark class="search-highlight">${escapeHtml(text.substring(match.start, match.end))}</mark>`;
+        lastEnd = match.end;
+    }
+    
+    // Escapar lo que queda después del último match
+    result += escapeHtml(text.substring(lastEnd));
+    
+    return result;
+}
 
     function escapeHtml(str) {
         const div = document.createElement('div');
