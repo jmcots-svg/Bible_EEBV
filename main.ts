@@ -1,4 +1,5 @@
-import { PrismaClient } from "./prisma/generated/client/deno/edge.ts";
+// En Prisma 7, apuntamos al .js del edge que ya vemos en tu carpeta 'client'
+import { PrismaClient } from "./prisma/generated/client/edge.js";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
 // 1. Inicialización del Cliente con Accelerate
