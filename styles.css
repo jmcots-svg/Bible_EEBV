@@ -1,4 +1,4 @@
-/* 1. VARIABLES DE COLOR (Aquí vive la magia del Modo Noche) */
+/* 1. VARIABLES CORREGIDAS */
 :root {
   --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --container-bg: #ffffff;
@@ -7,7 +7,7 @@
   --text-main: #2d3748;
   --text-muted: #495057;
   --border-color: #dee2e6;
-  --card-bg: #ffffff;
+  --card-bg: #ffffff; /* Fondo tarjeta modo claro */
   --verse-num: #667eea;
 }
 
@@ -16,19 +16,15 @@
   --container-bg: #1a202c;
   --header-gradient: linear-gradient(135deg, #000000 0%, #1a202c 100%);
   --filter-bg: #2d3748;
-  --text-main: #e2e8f0;
+  --text-main: #f7fafc; /* Texto casi blanco para lectura */
   --text-muted: #cbd5e0;
   --border-color: #4a5568;
-  --card-bg: #2d3748;
+  --card-bg: #2d3748; /* Fondo tarjeta modo oscuro */
   --verse-num: #a3bffa;
 }
 
 /* 2. ESTILOS BASE */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
   font-family: 'Georgia', serif;
@@ -36,11 +32,11 @@ body {
   min-height: 100vh;
   padding: 20px;
   color: var(--text-main);
-  transition: all 0.3s ease;
+  transition: background 0.3s ease;
 }
 
 .container {
-  max-width: 800px;
+  max-width: 900px; /* Un poco más ancho para los filtros */
   margin: 0 auto;
   background: var(--container-bg);
   border-radius: 16px;
@@ -52,113 +48,122 @@ body {
 header {
   background: var(--header-gradient);
   color: white;
-  padding: 24px;
-  text-align: center;
+  padding: 30px 20px;
 }
 
 .header-content {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 15px;
 }
 
-/* El interruptor moderno */
 .switch {
   position: relative;
   display: inline-block;
   width: 50px;
   height: 26px;
 }
-
 .switch input { display: none; }
-
 .slider {
-  position: absolute;
-  cursor: pointer;
+  position: absolute; cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
   background-color: rgba(255,255,255,0.3);
-  transition: .4s;
-  border-radius: 34px;
+  transition: .4s; border-radius: 34px;
 }
-
 .slider:before {
-  position: absolute;
-  content: "🌙";
+  position: absolute; content: "🌙";
   height: 20px; width: 20px;
   left: 3px; bottom: 3px;
   background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
+  transition: .4s; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 12px;
 }
-
 input:checked + .slider { background-color: #4a90e2; }
-input:checked + .slider:before {
-  transform: translateX(24px);
-  content: "☀️";
-}
+input:checked + .slider:before { transform: translateX(24px); content: "☀️"; }
 
-/* 4. FILTROS Y CONTENIDO */
+/* 4. FILTROS (CORREGIDO EL TAMAÑO) */
 .filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  padding: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Filtros más anchos */
+  gap: 20px;
+  padding: 25px;
   background: var(--filter-bg);
   border-bottom: 1px solid var(--border-color);
 }
 
-.filter-group label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 6px;
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-select, .btn-search {
+.filter-group label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+select {
   padding: 12px;
   border: 2px solid var(--border-color);
   border-radius: 8px;
   background: var(--container-bg);
   color: var(--text-main);
-  font-family: inherit;
+  font-size: 1rem;
+  width: 100%;
 }
 
 .btn-search {
+  grid-column: 1 / -1; /* El botón ocupa todo el ancho abajo */
+  padding: 14px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
+  border-radius: 8px;
   font-weight: bold;
-  cursor: pointer;
-}
-
-.content {
-  padding: 32px;
-  line-height: 1.8;
   font-size: 1.1rem;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
-.verse-number {
-  font-weight: bold;
-  color: var(--verse-num);
-  margin-right: 8px;
+/* 5. CONTENIDO Y TARJETAS (CORREGIDO EL CONTRASTE) */
+.content {
+  padding: 30px;
+  line-height: 1.8;
 }
 
 .comparison-card {
   background: var(--card-bg);
-  padding: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  border-left: 5px solid #4a90e2;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.comparison-card p, .comparison-card span, .comparison-card small {
+  color: var(--text-main) !important; /* Forzamos el color de la variable */
+}
+
+.version-badge {
+  font-weight: bold;
+  color: #4a90e2 !important;
   margin-bottom: 10px;
+  display: block;
+}
+
+.back-btn {
+  background: #718096;
+  color: white;
+  border: none;
+  padding: 12px 25px;
   border-radius: 8px;
-  border-left: 4px solid #4a90e2;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  cursor: pointer;
+  margin-top: 20px;
 }
 
 /* Responsive */
 @media (max-width: 600px) {
-  .header-content { flex-direction: column; gap: 10px; }
+  .filters { grid-template-columns: 1fr; }
 }
