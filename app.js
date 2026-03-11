@@ -116,30 +116,60 @@ document.addEventListener('DOMContentLoaded', () => {
 let isFetching = false;
 
 async function onChapterChange() {
-    if (isFetching) return; // Si ya hay una carga en curso, no hagas nada
+    if (isFetching) return; 
     
     const chId = chapterSelect.value;
     resetSelects(['verse']);
     if (!chId) return;
 
+    // 1. Bloqueo preventivo: Mientras cargamos los versículos para el selector, 
+    // desactivamos el botón de búsqueda para evitar el "doble fetch".
+    searchBtn.disabled = true;
+
     // USAR CACHÉ PRIMERO
-    if (cache.verses[`${chId}-all`]) {
-        renderVerseSelect(cache.verses[`${chId}-all`]);
+    const cacheKey = `${chId}-all`;
+    if (cache.verses[cacheKey]) {
+        renderVerseSelect(cache.verses[cacheKey]);
+        searchBtn.disabled = false; // Rehabilitar si ya estaba en caché
         return;
     }
 
     try {
         isFetching = true;
+        // Cambiamos el texto del botón para dar feedback visual
+        const originalBtnText = searchBtn.textContent;
+        searchBtn.textContent = '⏱️...';
+
         const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}`);
         const verses = await res.json();
         
-        cache.verses[`${chId}-all`] = verses; // Guardar en caché
+        // Guardar en caché: Esto es vital para que cuando luego se pulse 'onSearch',
+        // no se dispare otro fetch, sino que use estos datos.
+        cache.verses[cacheKey] = verses; 
+        
         renderVerseSelect(verses);
+        
+        // Devolvemos el botón a su estado normal
+        searchBtn.textContent = originalBtnText;
+        searchBtn.disabled = false;
     } catch (e) {
         showError('Error al cargar versículos');
+        console.error(e);
     } finally {
         isFetching = false;
     }
+}
+
+// Función auxiliar para mantener el código limpio (asegúrate de tenerla)
+function renderVerseSelect(verses) {
+    verseSelect.innerHTML = '<option value="">Todo el capítulo</option>';
+    verses.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.number;
+        opt.textContent = `Versículo ${v.number}`;
+        verseSelect.appendChild(opt);
+    });
+    verseSelect.disabled = false;
 }
 
     async function onSearch() {
