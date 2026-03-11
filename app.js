@@ -66,24 +66,23 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadBooks(version);
     }
 
-const chaptersCache = {}; // Objeto para guardar capítulos ya descargados
+const chaptersCache = new Map();
 
 async function onBookChange() {
     const bookId = bookSelect.value;
-    resetSelects(['chapter', 'verse']);
     if (!bookId) return;
 
-    // Si ya los tenemos, no vamos al servidor
-    if (chaptersCache[bookId]) {
-        renderChapters(chaptersCache[bookId]);
+    // Si ya los descargamos antes, los usamos al instante
+    if (chaptersCache.has(bookId)) {
+        renderChapters(chaptersCache.get(bookId));
         return;
     }
 
     try {
         const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
-        const chapters = await res.json();
-        chaptersCache[bookId] = chapters; // Guardamos en caché
-        renderChapters(chapters);
+        const data = await res.json();
+        chaptersCache.set(bookId, data); // Guardamos para la próxima vez
+        renderChapters(data);
     } catch (e) { showError('Error al cargar capítulos'); }
 }
 
@@ -119,36 +118,56 @@ function renderChapters(chapters) {
         } catch (e) { showError('Error al cargar versículos'); }
     }
 
-    async function onSearch() {
-        const chId = chapterSelect.value;
-        const vNum = verseSelect.value;
-        try {
-            content.innerHTML = '<p class="loading">Cargando...</p>';
-            const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}${vNum ? '&verse='+vNum : ''}`);
-            const verses = await res.json();
-            
-            const bName = bookSelect.options[bookSelect.selectedIndex].text;
-            const chNum = chapterSelect.options[chapterSelect.selectedIndex].dataset.number;
-            
-            if(reference) {
-                reference.textContent = `${bName} ${chNum}${vNum ? ':' + vNum : ''}`;
-                reference.classList.add('visible');
-            }
-
-            content.innerHTML = verses.map(v => `
-                <p class="verse"><span class="verse-number">${v.number}</span>${v.text}</p>
-            `).join('');
-
-            if (vNum) {
-                const btn = document.createElement('button');
-                btn.textContent = '🔄 Comparar versiones';
-                btn.className = 'btn-search';
-                btn.style.marginTop = '20px';
-                btn.onclick = () => showComparison(bName, chNum, vNum);
-                content.appendChild(btn);
-            }
-        } catch (e) { showError('Error al buscar'); }
+async function onSearch() {
+    const chId = chapterSelect.value;
+    const vNum = verseSelect.value;
+    
+    // 1. LIMPIEZA INMEDIATA (Clave para evitar el lag visual)
+    content.innerHTML = '<p class="loading">Cargando contenido...</p>';
+    if (reference) {
+        reference.textContent = ''; 
+        reference.classList.remove('visible');
     }
+
+    if (!chId) return;
+
+    try {
+        // 2. PETICIÓN AL BACKEND
+        const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}${vNum ? '&verse='+vNum : ''}`);
+        const verses = await res.json();
+        
+        // 3. OBTENER DATOS PARA LA REFERENCIA
+        const bName = bookSelect.options[bookSelect.selectedIndex].text;
+        const chNum = chapterSelect.options[chapterSelect.selectedIndex].dataset.number;
+        
+        // 4. ACTUALIZAR REFERENCIA
+        if (reference) {
+            reference.textContent = `${bName} ${chNum}${vNum ? ':' + vNum : ''}`;
+            reference.classList.add('visible');
+        }
+
+        // 5. RENDERIZAR VERSÍCULOS
+        content.innerHTML = verses.map(v => `
+            <p class="verse"><span class="verse-number">${v.number}</span>${v.text}</p>
+        `).join('');
+
+        // 6. BOTÓN DE COMPARAR (Solo si es un versículo específico)
+        if (vNum) {
+            const btn = document.createElement('button');
+            btn.textContent = '🔄 Comparar versiones';
+            btn.className = 'btn-search';
+            btn.style.marginTop = '20px';
+            btn.onclick = () => showComparison(bName, chNum, vNum);
+            content.appendChild(btn);
+        }
+
+        // 7. AUTO-SCROLL AL INICIO (Para que el usuario no se quede a mitad de página)
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (e) { 
+        showError('Error al buscar el contenido'); 
+    }
+}
 
     async function showComparison(bookName, chapter, verse) {
         try {
