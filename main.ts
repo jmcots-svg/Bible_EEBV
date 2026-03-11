@@ -172,11 +172,12 @@ Deno.serve(async (req: Request) => {
                 // 2. Libros POR versión (como los pide la app)
         const versions = ["RV60", "LBLA"];
         for (const v of versions) {
-          await prisma.book.findMany({
+          const books = await prisma.book.findMany({
             where: { version: { name: v } },
             orderBy: { bookOrder: "asc" },
             cacheStrategy: { ttl: 86400, swr: 300 },
           });
+          setCache(`books-${v}`, books);
         }
         
         // 2. TODOS los libros (sin filtrar por versión)
@@ -187,11 +188,12 @@ Deno.serve(async (req: Request) => {
 
         // 3. Capítulos de CADA libro
         for (const book of allBooks) {
-          await prisma.chapter.findMany({
+          const chapters = await prisma.chapter.findMany({
             where: { bookId: book.id },
             orderBy: { number: "asc" },
             cacheStrategy: { ttl: 604800, swr: 600 },
           });
+          setCache(`chapters-${book.id}`, chapters);
         }
 
         return new Response(
