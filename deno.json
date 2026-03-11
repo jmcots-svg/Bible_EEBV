@@ -1,13 +1,14 @@
 {
+  "nodeModulesDir": "auto",
   "tasks": {
-    "prisma:generate": "npx prisma@6 generate --schema=prisma/schema.prisma",
-    "prisma:migrate": "npx prisma@6 migrate deploy --schema=prisma/schema.prisma",
+    "prisma:generate": "npx prisma@6.2.1 generate --schema=prisma/schema.prisma",
+    "prisma:migrate": "npx prisma@6.2.1 migrate deploy --schema=prisma/schema.prisma",
     "seed": "deno run --allow-net --allow-read --allow-env seed.ts",
-    "dev": "deno run --watch --allow-net --allow-read server.ts"
+    "dev": "deno run --watch --allow-net --allow-read main.ts"
   },
   "imports": {
-    "@prisma/client": "npm:@prisma/client@6",
-    "prisma": "npm:prisma@6",
+    "@prisma/client": "npm:@prisma/client@6.2.1",
+    "@prisma/extension-accelerate": "https://esm.sh/@prisma/extension-accelerate@3.0.0",
     "xml-js": "https://esm.sh/xml-js@1.6.1"
   }
 }
