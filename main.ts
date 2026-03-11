@@ -40,13 +40,19 @@ Deno.serve(async (req: Request) => {
 
   try {
     // 1. RUTA: Versiones (Caché de 1 día)
-    if (path === "/api/versions") {
-      const versions = await prisma.bibleVersion.findMany({
-        orderBy: { id: "asc" },
-        cacheStrategy: { ttl: 86400, swr: 300 }, 
-      });
-      return new Response(JSON.stringify(versions), { headers: corsHeaders });
-    }
+if (path === "/api/versions") {
+  const cached = getCached("versions");
+  if (cached) {
+    return new Response(JSON.stringify(cached), { headers: corsHeaders });
+  }
+  
+  const versions = await prisma.bibleVersion.findMany({
+    orderBy: { id: "asc" },
+    cacheStrategy: { ttl: 86400, swr: 300 },
+  });
+  setCache("versions", versions);
+  return new Response(JSON.stringify(versions), { headers: corsHeaders });
+}
 
     // 2. RUTA: Libros por versión
     if (path === "/api/books") {
@@ -169,16 +175,22 @@ Deno.serve(async (req: Request) => {
           cacheStrategy: { ttl: 86400, swr: 300 },
         });
 
+        const versions = await prisma.bibleVersion.findMany({
+  orderBy: { id: "asc" },
+  cacheStrategy: { ttl: 86400, swr: 300 },
+});
+setCache("versions", versions);
+
                 // 2. Libros POR versión (como los pide la app)
         const versions = ["RV60", "LBLA"];
-        for (const v of versions) {
-          const books = await prisma.book.findMany({
-            where: { version: { name: v } },
-            orderBy: { bookOrder: "asc" },
-            cacheStrategy: { ttl: 86400, swr: 300 },
-          });
-          setCache(`books-${v}`, books);
-        }
+for (const v of ["RV60", "LBLA"]) {
+  const books = await prisma.book.findMany({
+    where: { version: { name: v } },
+    orderBy: { bookOrder: "asc" },
+    cacheStrategy: { ttl: 86400, swr: 300 },
+  });
+  setCache(`books-${v}`, books);
+}
         
         // 2. TODOS los libros (sin filtrar por versión)
         const allBooks = await prisma.book.findMany({
