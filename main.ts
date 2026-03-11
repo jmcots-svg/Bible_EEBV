@@ -119,36 +119,42 @@ Deno.serve(async (req: Request) => {
     }
 
     // RUTA: Precalentar caché completo
+    
     if (path === "/api/warmup") {
       try {
-        const versions = ["RV60", "LBLA"];
-        
-        // 1. Cargar versiones
+        // 1. Todas las versiones
         await prisma.bibleVersion.findMany({
           orderBy: { id: "asc" },
           cacheStrategy: { ttl: 86400, swr: 300 },
         });
 
-        // 2. Cargar libros de cada versión
+                // 2. Libros POR versión (como los pide la app)
+        const versions = ["RV60", "LBLA"];
         for (const v of versions) {
-          const books = await prisma.book.findMany({
+          await prisma.book.findMany({
             where: { version: { name: v } },
             orderBy: { bookOrder: "asc" },
             cacheStrategy: { ttl: 86400, swr: 300 },
           });
+        }
+        
+        // 2. TODOS los libros (sin filtrar por versión)
+        const allBooks = await prisma.book.findMany({
+          orderBy: { bookOrder: "asc" },
+          cacheStrategy: { ttl: 86400, swr: 300 },
+        });
 
-          // 3. Cargar capítulos de cada libro
-          for (const book of books) {
-            await prisma.chapter.findMany({
-              where: { bookId: book.id },
-              orderBy: { number: "asc" },
-              cacheStrategy: { ttl: 604800, swr: 600 },
-            });
-          }
+        // 3. Capítulos de CADA libro
+        for (const book of allBooks) {
+          await prisma.chapter.findMany({
+            where: { bookId: book.id },
+            orderBy: { number: "asc" },
+            cacheStrategy: { ttl: 604800, swr: 600 },
+          });
         }
 
         return new Response(
-          JSON.stringify({ status: "✅ Cache warmed up" }),
+          JSON.stringify({ status: "✅ Cache warmed up", books: allBooks.length }),
           { headers: corsHeaders }
         );
       } catch (e) {
