@@ -13,7 +13,7 @@ if (databaseUrl) {
       password: url.password,
       database: url.pathname.slice(1),
       tls: { enabled: true, enforce: false },
-    }, 3, true);
+    }, 10, true);
   } catch (e) {
     console.error("❌ Error configurando pool:", e);
   }
