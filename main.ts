@@ -3,6 +3,21 @@ import { withAccelerate } from "npm:@prisma/extension-accelerate";
 
 const prisma = new PrismaClient().$extends(withAccelerate());
 
+const serverCache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_TTL = 3600000; // 1 hora en milisegundos
+
+function getCached(key: string) {
+  const entry = serverCache[key];
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.data;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  serverCache[key] = { data, timestamp: Date.now() };
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -36,22 +51,40 @@ Deno.serve(async (req: Request) => {
     // 2. RUTA: Libros por versión
     if (path === "/api/books") {
       const version = url.searchParams.get("version") || "RV60";
+      const cacheKey = `books-${version}`;
+      
+      const cached = getCached(cacheKey);
+      if (cached) {
+        return new Response(JSON.stringify(cached), { headers: corsHeaders });
+      }
+
       const books = await prisma.book.findMany({
         where: { version: { name: version } },
         orderBy: { bookOrder: "asc" },
         cacheStrategy: { ttl: 86400, swr: 300 },
       });
+      
+      setCache(cacheKey, books);
       return new Response(JSON.stringify(books), { headers: corsHeaders });
     }
 
     // 3. RUTA: Capítulos
     if (path === "/api/chapters") {
       const bookId = Number(url.searchParams.get("bookId"));
+      const cacheKey = `chapters-${bookId}`;
+      
+      const cached = getCached(cacheKey);
+      if (cached) {
+        return new Response(JSON.stringify(cached), { headers: corsHeaders });
+      }
+
       const chapters = await prisma.chapter.findMany({
         where: { bookId: bookId },
         orderBy: { number: "asc" },
-        cacheStrategy: { ttl: 86400, swr: 300 }, // 1 semana
+        cacheStrategy: { ttl: 604800, swr: 600 },
       });
+      
+      setCache(cacheKey, chapters);
       return new Response(JSON.stringify(chapters), { headers: corsHeaders });
     }
 
@@ -59,15 +92,23 @@ Deno.serve(async (req: Request) => {
     if (path === "/api/verses") {
       const chId = Number(url.searchParams.get("chapterId"));
       const vNum = url.searchParams.get("verse");
+      const cacheKey = `verses-${chId}-${vNum || "all"}`;
       
+      const cached = getCached(cacheKey);
+      if (cached) {
+        return new Response(JSON.stringify(cached), { headers: corsHeaders });
+      }
+
       const verses = await prisma.verse.findMany({
         where: {
           chapterId: chId,
           ...(vNum ? { number: Number(vNum) } : {}),
         },
         orderBy: { number: "asc" },
-        cacheStrategy: { ttl: 86400, swr: 300 },
+        cacheStrategy: { ttl: 604800, swr: 600 },
       });
+      
+      setCache(cacheKey, verses);
       return new Response(JSON.stringify(verses), { headers: corsHeaders });
     }
 
