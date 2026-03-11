@@ -628,27 +628,36 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowLeft') cambiarCapitulo('ant');
 });
 
-// --- Soporte para Gestos (Swipe) ---
+// --- Soporte para Gestos (Swipe) Mejorado ---
 let touchStartX = 0;
-let touchEndX = 0;
+let touchStartY = 0; // Añadimos Y para evitar conflictos con el scroll
 
-// Escuchamos el toque en el contenedor de la biblia
-const swipeArea = document.querySelector('.container');
+// Aplicamos el listener a todo el cuerpo o al contenedor principal
+const swipeArea = document.getElementById('content'); 
 
 swipeArea.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
-});
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
 
 swipeArea.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    handleSwipe();
-});
+    const touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
 
-function handleSwipe() {
-    const umbral = 70; // Sensibilidad: distancia mínima para que cuente como swipe
-    if (touchEndX < touchStartX - umbral) cambiarCapitulo('sig'); // Deslizar a la izquierda -> siguiente
-    if (touchEndX > touchStartX + umbral) cambiarCapitulo('ant'); // Deslizar a la derecha -> anterior
-}
+    const umbral = 80; // Píxeles mínimos para el swipe
+    
+    // Verificamos que el movimiento sea mayormente horizontal y no vertical
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > umbral) {
+        if (diffX < 0) {
+            cambiarCapitulo('sig'); // Deslizar a la izquierda
+        } else {
+            cambiarCapitulo('ant'); // Deslizar a la derecha
+        }
+    }
+}, { passive: true });
 
 
 });
