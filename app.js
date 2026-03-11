@@ -66,24 +66,39 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadBooks(version);
     }
 
-    async function onBookChange() {
-        const bookId = bookSelect.value;
-        resetSelects(['chapter', 'verse']);
-        if (!bookId) return;
-        try {
-            const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
-            const chapters = await res.json();
-            chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
-            chapters.forEach(ch => {
-                const opt = document.createElement('option');
-                opt.value = ch.id;
-                opt.textContent = `Capítulo ${ch.number}`;
-                opt.dataset.number = ch.number;
-                chapterSelect.appendChild(opt);
-            });
-            chapterSelect.disabled = false;
-        } catch (e) { showError('Error al cargar capítulos'); }
+const chaptersCache = {}; // Objeto para guardar capítulos ya descargados
+
+async function onBookChange() {
+    const bookId = bookSelect.value;
+    resetSelects(['chapter', 'verse']);
+    if (!bookId) return;
+
+    // Si ya los tenemos, no vamos al servidor
+    if (chaptersCache[bookId]) {
+        renderChapters(chaptersCache[bookId]);
+        return;
     }
+
+    try {
+        const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
+        const chapters = await res.json();
+        chaptersCache[bookId] = chapters; // Guardamos en caché
+        renderChapters(chapters);
+    } catch (e) { showError('Error al cargar capítulos'); }
+}
+
+// Saca la lógica de dibujado a una función aparte
+function renderChapters(chapters) {
+    chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    chapters.forEach(ch => {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = `Capítulo ${ch.number}`;
+        opt.dataset.number = ch.number;
+        chapterSelect.appendChild(opt);
+    });
+    chapterSelect.disabled = false;
+}
 
     async function onChapterChange() {
         const chId = chapterSelect.value;
