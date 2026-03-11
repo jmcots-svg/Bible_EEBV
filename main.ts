@@ -1,10 +1,13 @@
-// Importamos el cliente específico para Deno/Edge desde esm.sh
-// Usamos ?bundle para que esm.sh nos de TODO en un solo archivo y no falle
-import { PrismaClient as Client } from "https://esm.sh/@prisma/client@6.2.1/deno/edge.js?bundle";
-import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate@3.0.0";
+// Importamos el paquete completo
+import PrismaDefault from "@prisma/client";
+import { withAccelerate } from "@prisma/extension-accelerate";
+
+// Extraemos la clase manualmente del default o del objeto
+// Esto soluciona el "does not provide an export named 'PrismaClient'"
+const PrismaClient = (PrismaDefault as any).PrismaClient || PrismaDefault;
 
 // Inicialización
-const prisma = new Client({
+const prisma = new PrismaClient({
   datasources: {
     db: {
       url: Deno.env.get("DATABASE_URL"),
