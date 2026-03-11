@@ -366,6 +366,139 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+        // --------------------
+    // /api/search (Concordancia Bíblica)
+    // --------------------
+    if (path === "/api/search") {
+      const t0 = performance.now();
+      
+      const query = url.searchParams.get("query")?.trim();
+      const version = url.searchParams.get("version") || "RV60";
+      const testament = url.searchParams.get("testament") || "ALL"; // ALL, OT, NT
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+      const offset = (page - 1) * limit;
+
+      if (!query || query.length < 2) {
+        return new Response(
+          JSON.stringify({ error: "El término de búsqueda debe tener al menos 2 caracteres" }),
+          { status: 400, headers: makeHeaders("no-store") }
+        );
+      }
+
+      if (query.length > 100) {
+        return new Response(
+          JSON.stringify({ error: "El término de búsqueda es demasiado largo" }),
+          { status: 400, headers: makeHeaders("no-store") }
+        );
+      }
+
+      // Cache key
+      const cacheControl = "public, max-age=3600, stale-while-revalidate=300";
+      const normalizedQuery = query.toLowerCase();
+      const memKey = `search-${version}-${testament}-${normalizedQuery}-p${page}-l${limit}`;
+      const kvKey: Deno.KvKey = ["search", version, testament, normalizedQuery, page, limit];
+
+      // MEM cache
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(mem)");
+        headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+        return new Response(JSON.stringify(mem), { headers });
+      }
+
+      // KV cache
+      const kvVal = await kvGet<any>(kvKey);
+      if (kvVal) {
+        setCache(memKey, kvVal);
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(kv)");
+        headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+        return new Response(JSON.stringify(kvVal), { headers });
+      }
+
+      // Build where clause
+      const whereClause: any = {
+        text: { contains: query, mode: "insensitive" },
+        chapter: {
+          book: {
+            version: { name: version },
+            ...(testament !== "ALL" ? { testament: testament } : {}),
+          },
+        },
+      };
+
+      const tDb0 = performance.now();
+
+      // Count total results
+      const totalCount = await prisma.verse.count({
+        where: whereClause,
+      });
+
+      // Get paginated results
+      const results = await prisma.verse.findMany({
+        where: whereClause,
+        select: {
+          number: true,
+          text: true,
+          chapter: {
+            select: {
+              number: true,
+              book: {
+                select: {
+                  name: true,
+                  testament: true,
+                  bookOrder: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          { chapter: { book: { bookOrder: "asc" } } },
+          { chapter: { number: "asc" } },
+          { number: "asc" },
+        ],
+        skip: offset,
+        take: limit,
+      });
+
+      const tDb1 = performance.now();
+
+      const formatted = results.map((v) => ({
+        book: v.chapter.book.name,
+        chapter: v.chapter.number,
+        verse: v.number,
+        text: v.text,
+        testament: v.chapter.book.testament,
+        bookOrder: v.chapter.book.bookOrder,
+      }));
+
+      const responseData = {
+        query: query,
+        version: version,
+        testament: testament,
+        total: totalCount,
+        page: page,
+        limit: limit,
+        totalPages: Math.ceil(totalCount / limit),
+        results: formatted,
+      };
+
+      // Cache the response
+      setCache(memKey, responseData);
+      await kvSet(kvKey, responseData, TTL_1D_MS);
+
+      const headers = makeHeaders(cacheControl);
+      headers.set("X-Cache", "MISS");
+      headers.set(
+        "Server-Timing",
+        `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`
+      );
+      return new Response(JSON.stringify(responseData), { headers });
+    }
+    
     // 404
     return new Response(JSON.stringify({ error: "404" }), {
       status: 404,
