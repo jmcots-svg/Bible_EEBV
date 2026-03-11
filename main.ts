@@ -118,9 +118,11 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify(formatted), { headers: corsHeaders });
     }
 
-        // RUTA: Precalentar caché
+    // RUTA: Precalentar caché completo
     if (path === "/api/warmup") {
       try {
+        const versions = ["RV60", "LBLA"];
+        
         // 1. Cargar versiones
         await prisma.bibleVersion.findMany({
           orderBy: { id: "asc" },
@@ -128,17 +130,25 @@ Deno.serve(async (req: Request) => {
         });
 
         // 2. Cargar libros de cada versión
-        const versions = ["RV60", "LBLA"];
         for (const v of versions) {
-          await prisma.book.findMany({
+          const books = await prisma.book.findMany({
             where: { version: { name: v } },
             orderBy: { bookOrder: "asc" },
             cacheStrategy: { ttl: 86400, swr: 300 },
           });
+
+          // 3. Cargar capítulos de cada libro
+          for (const book of books) {
+            await prisma.chapter.findMany({
+              where: { bookId: book.id },
+              orderBy: { number: "asc" },
+              cacheStrategy: { ttl: 604800, swr: 600 },
+            });
+          }
         }
 
         return new Response(
-          JSON.stringify({ status: "warmed up" }),
+          JSON.stringify({ status: "✅ Cache warmed up" }),
           { headers: corsHeaders }
         );
       } catch (e) {
@@ -155,4 +165,16 @@ Deno.serve(async (req: Request) => {
     console.error("Error en petición:", error.message);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
+
+
+  // Cron: Precalentar caché cada 5 minutos
+Deno.cron("warmup-cache", "*/5 * * * *", async () => {
+  try {
+    const res = await fetch("https://bible-eebv.jmcots-svg.deno.net/api/warmup");
+    const data = await res.json();
+    console.log("🔥 Warmup:", data.status);
+  } catch (e) {
+    console.error("❌ Warmup failed:", e.message);
+  }
+});
 });
