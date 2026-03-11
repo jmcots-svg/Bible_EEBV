@@ -22,11 +22,13 @@ jobs:
           # Creamos un package.json básico para que Prisma genere módulos ESM
           echo '{"type": "module"}' > package.json
         
-      - name: Generate Prisma Client
-        run: npx prisma generate
+- name: Generate Prisma Client
+        run: |
+          npx prisma generate
+          # 💡 EL TRUCO: Renombramos edge.js a edge.mjs para que Deno lo acepte
+          mv prisma/generated/client/edge.js prisma/generated/client/edge.mjs
         env:
-          # 👈 Le pasamos el secreto para que Prisma no se queje
-          DATABASE_URL: ${{ secrets.DATABASE_URL }} 
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
           
       - name: Commit generated client
         run: |
