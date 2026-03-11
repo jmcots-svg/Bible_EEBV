@@ -1,7 +1,12 @@
 // ⚠️ URL de tu backend
 const API_URL = 'https://bible-eebv.jmcots-svg.deno.net';
 
-let books = [];
+// Almacenes de caché para evitar peticiones repetidas a la red
+const cache = {
+    books: {},     // { 'RV60': [...] }
+    chapters: {},  // { 'bookId': [...] }
+    verses: {}     // { 'chapterId-verseNum': [...] }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. SELECCIÓN DE ELEMENTOS
@@ -15,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainTitle = document.getElementById('mainTitle');
     const themeCheckbox = document.getElementById('themeCheckbox');
 
-    // 2. LÓGICA MODO NOCHE (Inmediata)
+    // 2. LÓGICA MODO NOCHE
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
@@ -30,32 +35,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 3. FUNCIONES DE LA BIBLIA
+    // 3. FUNCIONES DE CARGA Y RENDERIZADO
     async function loadBooks(version) {
+        // Si ya están en caché, los cargamos al instante
+        if (cache.books[version]) {
+            renderBooks(cache.books[version]);
+            return;
+        }
+
         try {
             const res = await fetch(`${API_URL}/api/books?version=${version}`);
-            books = await res.json();
-            
-            bookSelect.innerHTML = '<option value="">-- Selecciona libro --</option>';
-            const ot = books.filter(b => b.testament === 'OT');
-            const nt = books.filter(b => b.testament === 'NT');
-            
-            const createGroup = (label, list) => {
-                const group = document.createElement('optgroup');
-                group.label = label;
-                list.forEach(b => {
-                    const opt = document.createElement('option');
-                    opt.value = b.id;
-                    opt.textContent = b.name;
-                    group.appendChild(opt);
-                });
-                return group;
-            };
-
-            bookSelect.appendChild(createGroup('📜 Antiguo Testamento', ot));
-            bookSelect.appendChild(createGroup('✝️ Nuevo Testamento', nt));
-            bookSelect.disabled = false;
+            const data = await res.json();
+            cache.books[version] = data; // Guardamos en caché
+            renderBooks(data);
         } catch (e) { showError('Error al cargar libros'); }
+    }
+
+    function renderBooks(booksList) {
+        bookSelect.innerHTML = '<option value="">-- Selecciona libro --</option>';
+        const ot = booksList.filter(b => b.testament === 'OT');
+        const nt = booksList.filter(b => b.testament === 'NT');
+
+        const createGroup = (label, list) => {
+            const group = document.createElement('optgroup');
+            group.label = label;
+            list.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                group.appendChild(opt);
+            });
+            return group;
+        };
+
+        bookSelect.appendChild(createGroup('📜 Antiguo Testamento', ot));
+        bookSelect.appendChild(createGroup('✝️ Nuevo Testamento', nt));
+        bookSelect.disabled = false;
     }
 
     async function onVersionChange() {
@@ -66,43 +81,42 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadBooks(version);
     }
 
-const chaptersCache = new Map();
+    async function onBookChange() {
+        const bookId = bookSelect.value;
+        resetSelects(['chapter', 'verse']);
+        if (!bookId) return;
 
-async function onBookChange() {
-    const bookId = bookSelect.value;
-    if (!bookId) return;
+        // Uso de caché para capítulos
+        if (cache.chapters[bookId]) {
+            renderChapters(cache.chapters[bookId]);
+            return;
+        }
 
-    // Si ya los descargamos antes, los usamos al instante
-    if (chaptersCache.has(bookId)) {
-        renderChapters(chaptersCache.get(bookId));
-        return;
+        try {
+            const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
+            const data = await res.json();
+            cache.chapters[bookId] = data; 
+            renderChapters(data);
+        } catch (e) { showError('Error al cargar capítulos'); }
     }
 
-    try {
-        const res = await fetch(`${API_URL}/api/chapters?bookId=${bookId}`);
-        const data = await res.json();
-        chaptersCache.set(bookId, data); // Guardamos para la próxima vez
-        renderChapters(data);
-    } catch (e) { showError('Error al cargar capítulos'); }
-}
-
-// Saca la lógica de dibujado a una función aparte
-function renderChapters(chapters) {
-    chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
-    chapters.forEach(ch => {
-        const opt = document.createElement('option');
-        opt.value = ch.id;
-        opt.textContent = `Capítulo ${ch.number}`;
-        opt.dataset.number = ch.number;
-        chapterSelect.appendChild(opt);
-    });
-    chapterSelect.disabled = false;
-}
+    function renderChapters(chapters) {
+        chapterSelect.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+        chapters.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch.id;
+            opt.textContent = `Capítulo ${ch.number}`;
+            opt.dataset.number = ch.number;
+            chapterSelect.appendChild(opt);
+        });
+        chapterSelect.disabled = false;
+    }
 
     async function onChapterChange() {
         const chId = chapterSelect.value;
         resetSelects(['verse']);
         if (!chId) return;
+
         try {
             const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}`);
             const verses = await res.json();
@@ -118,40 +132,49 @@ function renderChapters(chapters) {
         } catch (e) { showError('Error al cargar versículos'); }
     }
 
-async function onSearch() {
-    const chId = chapterSelect.value;
-    const vNum = verseSelect.value;
-    
-    // 1. LIMPIEZA INMEDIATA (Clave para evitar el lag visual)
-    content.innerHTML = '<p class="loading">Cargando contenido...</p>';
-    if (reference) {
-        reference.textContent = ''; 
-        reference.classList.remove('visible');
+    async function onSearch() {
+        const chId = chapterSelect.value;
+        const vNum = verseSelect.value;
+        if (!chId) return;
+
+        // LIMPIEZA INMEDIATA para evitar el efecto "Nahum 3"
+        content.innerHTML = '<p class="loading">Cargando contenido...</p>';
+        if (reference) {
+            reference.textContent = ''; 
+            reference.classList.remove('visible');
+        }
+
+        const cacheKey = `${chId}-${vNum || 'all'}`;
+
+        // Uso de caché para versículos
+        if (cache.verses[cacheKey]) {
+            renderVerses(cache.verses[cacheKey], vNum);
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}${vNum ? '&verse='+vNum : ''}`);
+            const data = await res.json();
+            cache.verses[cacheKey] = data;
+            renderVerses(data, vNum);
+        } catch (e) { 
+            showError('Error al buscar el contenido'); 
+        }
     }
 
-    if (!chId) return;
-
-    try {
-        // 2. PETICIÓN AL BACKEND
-        const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}${vNum ? '&verse='+vNum : ''}`);
-        const verses = await res.json();
-        
-        // 3. OBTENER DATOS PARA LA REFERENCIA
+    function renderVerses(verses, vNum) {
         const bName = bookSelect.options[bookSelect.selectedIndex].text;
         const chNum = chapterSelect.options[chapterSelect.selectedIndex].dataset.number;
         
-        // 4. ACTUALIZAR REFERENCIA
         if (reference) {
             reference.textContent = `${bName} ${chNum}${vNum ? ':' + vNum : ''}`;
             reference.classList.add('visible');
         }
 
-        // 5. RENDERIZAR VERSÍCULOS
         content.innerHTML = verses.map(v => `
             <p class="verse"><span class="verse-number">${v.number}</span>${v.text}</p>
         `).join('');
 
-        // 6. BOTÓN DE COMPARAR (Solo si es un versículo específico)
         if (vNum) {
             const btn = document.createElement('button');
             btn.textContent = '🔄 Comparar versiones';
@@ -161,13 +184,8 @@ async function onSearch() {
             content.appendChild(btn);
         }
 
-        // 7. AUTO-SCROLL AL INICIO (Para que el usuario no se quede a mitad de página)
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    } catch (e) { 
-        showError('Error al buscar el contenido'); 
     }
-}
 
     async function showComparison(bookName, chapter, verse) {
         try {
