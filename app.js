@@ -112,25 +112,35 @@ document.addEventListener('DOMContentLoaded', () => {
         chapterSelect.disabled = false;
     }
 
-    async function onChapterChange() {
-        const chId = chapterSelect.value;
-        resetSelects(['verse']);
-        if (!chId) return;
+// Variable para evitar colisiones
+let isFetching = false;
 
-        try {
-            const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}`);
-            const verses = await res.json();
-            verseSelect.innerHTML = '<option value="">Todo el capítulo</option>';
-            verses.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.number;
-                opt.textContent = `Versículo ${v.number}`;
-                verseSelect.appendChild(opt);
-            });
-            verseSelect.disabled = false;
-            searchBtn.disabled = false;
-        } catch (e) { showError('Error al cargar versículos'); }
+async function onChapterChange() {
+    if (isFetching) return; // Si ya hay una carga en curso, no hagas nada
+    
+    const chId = chapterSelect.value;
+    resetSelects(['verse']);
+    if (!chId) return;
+
+    // USAR CACHÉ PRIMERO
+    if (cache.verses[`${chId}-all`]) {
+        renderVerseSelect(cache.verses[`${chId}-all`]);
+        return;
     }
+
+    try {
+        isFetching = true;
+        const res = await fetch(`${API_URL}/api/verses?chapterId=${chId}`);
+        const verses = await res.json();
+        
+        cache.verses[`${chId}-all`] = verses; // Guardar en caché
+        renderVerseSelect(verses);
+    } catch (e) {
+        showError('Error al cargar versículos');
+    } finally {
+        isFetching = false;
+    }
+}
 
     async function onSearch() {
         const chId = chapterSelect.value;
