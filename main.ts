@@ -1,5 +1,5 @@
-// En Prisma 7, apuntamos al .js del edge que ya vemos en tu carpeta 'client'
-import { PrismaClient } from "./prisma/generated/client/edge.js";
+// Esta ruta volverá a existir en cuanto el bot de GitHub use la versión 6.2.1
+import { PrismaClient } from "./prisma/generated/client/deno/edge.ts";
 import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate";
 
 // 1. Inicialización del Cliente con Accelerate
