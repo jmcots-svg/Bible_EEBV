@@ -601,5 +601,54 @@ function highlightText(text, query) {
     if (versionSelect.value) {
         loadBooks(versionSelect.value);
     }
+    
+    // =====================
+// NAVEGACIÓN ENTRE CAPÍTULOS
+// =====================
+
+function cambiarCapitulo(direccion) {
+    const opciones = Array.from(chapterSelect.options).filter(opt => opt.value !== "");
+    const indexActual = opciones.findIndex(opt => opt.value === chapterSelect.value);
+
+    if (direccion === 'sig' && indexActual < opciones.length - 1) {
+        chapterSelect.value = opciones[indexActual + 1].value;
+        onChapterChange();
+    } else if (direccion === 'ant' && indexActual > 0) {
+        chapterSelect.value = opciones[indexActual - 1].value;
+        onChapterChange();
+    }
+}
+
+// --- Soporte para Teclado (Flechas) ---
+document.addEventListener('keydown', (e) => {
+    // Solo si no estamos escribiendo en el buscador de concordancia
+    if (document.activeElement.tagName === 'INPUT') return;
+
+    if (e.key === 'ArrowRight') cambiarCapitulo('sig');
+    if (e.key === 'ArrowLeft') cambiarCapitulo('ant');
+});
+
+// --- Soporte para Gestos (Swipe) ---
+let touchStartX = 0;
+let touchEndX = 0;
+
+// Escuchamos el toque en el contenedor de la biblia
+const swipeArea = document.querySelector('.container');
+
+swipeArea.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+});
+
+swipeArea.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    handleSwipe();
+});
+
+function handleSwipe() {
+    const umbral = 70; // Sensibilidad: distancia mínima para que cuente como swipe
+    if (touchEndX < touchStartX - umbral) cambiarCapitulo('sig'); // Deslizar a la izquierda -> siguiente
+    if (touchEndX > touchStartX + umbral) cambiarCapitulo('ant'); // Deslizar a la derecha -> anterior
+}
+
 
 });
