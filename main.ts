@@ -1,8 +1,7 @@
-// 1. Importación directa usando npm: (Esto no falla con error 500)
-import { PrismaClient } from "npm:@prisma/client@6.2.1/edge";
-import { withAccelerate } from "https://esm.sh/@prisma/extension-accelerate@3.0.0";
+import { PrismaClient } from "@prisma/client";
+import { withAccelerate } from "@prisma/extension-accelerate";
 
-// 2. Inicialización
+// Inicialización
 const prisma = new PrismaClient({
   datasources: {
     db: {
