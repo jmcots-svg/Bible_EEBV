@@ -1,6 +1,8 @@
 // Importamos el paquete completo
-import { PrismaClient } from "./prisma/generated/client/index.js";
+import PrismaModule from "./prisma/generated/client/index.js";
 import { withAccelerate } from "@prisma/extension-accelerate";
+
+const { PrismaClient } = PrismaModule;
 
 // Inicialización
 const prisma = new PrismaClient({
