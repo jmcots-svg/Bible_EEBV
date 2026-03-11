@@ -1,6 +1,7 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["deno"]
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+  engineType = "dataproxy"
 }
 
 datasource db {
