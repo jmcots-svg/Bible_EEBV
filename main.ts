@@ -28,7 +28,7 @@ Deno.serve(async (req: Request) => {
     if (path === "/api/versions") {
       const versions = await prisma.bibleVersion.findMany({
         orderBy: { id: "asc" },
-        cacheStrategy: { ttl: 86400 }, 
+        cacheStrategy: { ttl: 86400, swr: 300 }, 
       });
       return new Response(JSON.stringify(versions), { headers: corsHeaders });
     }
@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
       const books = await prisma.book.findMany({
         where: { version: { name: version } },
         orderBy: { bookOrder: "asc" },
-        cacheStrategy: { ttl: 86400 },
+        cacheStrategy: { ttl: 86400, swr: 300 },
       });
       return new Response(JSON.stringify(books), { headers: corsHeaders });
     }
@@ -50,7 +50,7 @@ Deno.serve(async (req: Request) => {
       const chapters = await prisma.chapter.findMany({
         where: { bookId: bookId },
         orderBy: { number: "asc" },
-        cacheStrategy: { ttl: 604800 }, // 1 semana
+        cacheStrategy: { ttl: 86400, swr: 300 }, // 1 semana
       });
       return new Response(JSON.stringify(chapters), { headers: corsHeaders });
     }
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
           ...(vNum ? { number: Number(vNum) } : {}),
         },
         orderBy: { number: "asc" },
-        cacheStrategy: { ttl: 604800 },
+        cacheStrategy: { ttl: 86400, swr: 300 },
       });
       return new Response(JSON.stringify(verses), { headers: corsHeaders });
     }
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
             }
           }
         },
-        cacheStrategy: { ttl: 604800 }
+        cacheStrategy: { ttl: 86400, swr: 300 }
       });
 
       // Mapeo para mantener el mismo formato JSON que tenías antes
