@@ -146,121 +146,147 @@ Deno.serve(async (req: Request) => {
     }
 
     // 3) Chapters (con Server-Timing)
-    if (path === "/api/chapters") {
-      const noMem = url.searchParams.get("nomem") === "1";
-      const t0 = performance.now();
-      const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
+if (path === "/api/chapters") {
+  const t0 = performance.now();
+  const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
 
-      const bookIdParam = url.searchParams.get("bookId");
-      const bookId = Number(bookIdParam);
-      const debug = url.searchParams.get("debug") === "1";
+  const bookIdParam = url.searchParams.get("bookId");
+  const bookId = Number(bookIdParam);
+  const debug = url.searchParams.get("debug") === "1";
+  const noMem = url.searchParams.get("nomem") === "1";
 
-      if (!bookIdParam || !Number.isFinite(bookId)) {
-        return new Response(JSON.stringify({ error: "Parámetro bookId inválido" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
+  if (!bookIdParam || !Number.isFinite(bookId)) {
+    return new Response(JSON.stringify({ error: "Parámetro bookId inválido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+
+  const memKey = `chapters-${bookId}`;
+  const kvKey: Deno.KvKey = ["chapters", bookId];
+
+  // Cache (si NO es debug)
+  if (!debug) {
+    // 1) MEM (solo si noMem!=1)
+    if (!noMem) {
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(mem)");
+        headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+        return new Response(JSON.stringify(mem), { headers });
       }
-
-      const memKey = `chapters-${bookId}`;
-      const kvKey: Deno.KvKey = ["chapters", bookId];
-
-      if (!debug) {
-        const mem = getCached(memKey);
-        if (mem) {
-          const headers = makeHeaders(cacheControl);
-          headers.set("X-Cache", "HIT(mem)");
-          headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-          return new Response(JSON.stringify(mem), { headers });
-        }
-
-        const kvVal = await kvGet<any[]>(kvKey);
-        if (kvVal) {
-          setCache(memKey, kvVal);
-          const headers = makeHeaders(cacheControl);
-          headers.set("X-Cache", "HIT(kv)");
-          headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-          return new Response(JSON.stringify(kvVal), { headers });
-        }
-      }
-
-      const tDb0 = performance.now();
-      const chapters = await prisma.chapter.findMany({
-        where: { bookId },
-        orderBy: { number: "asc" },
-        select: { id: true, number: true },
-        cacheStrategy: { ttl: 604800, swr: 600 },
-      });
-      const tDb1 = performance.now();
-
-      if (!debug) {
-        setCache(memKey, chapters);
-        await kvSet(kvKey, chapters, TTL_7D_MS);
-      }
-
-      const headers = makeHeaders(debug ? "no-store" : cacheControl);
-      headers.set("X-Cache", debug ? "BYPASS(debug=1)" : "MISS");
-      headers.set(
-        "Server-Timing",
-        `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`,
-      );
-      return new Response(JSON.stringify(chapters), { headers });
     }
 
-    // 4) Verses (con Server-Timing)
-    if (path === "/api/verses") {
-      const noMem = url.searchParams.get("nomem") === "1";
-      const t0 = performance.now();
-      const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
-
-      const chIdParam = url.searchParams.get("chapterId");
-      const chId = Number(chIdParam);
-      const vNum = url.searchParams.get("verse");
-      const debug = url.searchParams.get("debug") === "1";
-
-      if (!chIdParam || !Number.isFinite(chId)) {
-        return new Response(JSON.stringify({ error: "Parámetro chapterId inválido" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
-      }
-
-      const vKey = vNum ? Number(vNum) : "all";
-      const memKey = `verses-${chId}-${vKey}`;
-      const kvKey: Deno.KvKey = ["verses", chId, vKey];
-
-if (!debug) {
-  // 1) MEM (si noMem=1, lo saltamos)
-  if (!noMem) {
-    const mem = getCached(memKey);
-    if (mem) {
+    // 2) KV
+    const kvVal = await kvGet<any[]>(kvKey);
+    if (kvVal) {
+      setCache(memKey, kvVal);
       const headers = makeHeaders(cacheControl);
-      headers.set("X-Cache", "HIT(mem)");
+      headers.set("X-Cache", "HIT(kv)");
       headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-      return new Response(JSON.stringify(mem), { headers });
+      return new Response(JSON.stringify(kvVal), { headers });
     }
   }
 
-  // 2) KV
-  const kvVal = await kvGet<any[]>(kvKey);
-  if (kvVal) {
-    setCache(memKey, kvVal); // sube a mem para la próxima
-    const headers = makeHeaders(cacheControl);
-    headers.set("X-Cache", "HIT(kv)");
-    headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-    return new Response(JSON.stringify(kvVal), { headers });
+  // DB
+  const tDb0 = performance.now();
+  const chapters = await prisma.chapter.findMany({
+    where: { bookId },
+    orderBy: { number: "asc" },
+    select: { id: true, number: true },
+    cacheStrategy: { ttl: 604800, swr: 600 },
+  });
+  const tDb1 = performance.now();
+
+  // Guardar caches
+  if (!debug) {
+    setCache(memKey, chapters);
+    await kvSet(kvKey, chapters, TTL_7D_MS);
   }
+
+  const headers = makeHeaders(debug ? "no-store" : cacheControl);
+  headers.set("X-Cache", debug ? "BYPASS(debug=1)" : "MISS");
+  headers.set(
+    "Server-Timing",
+    `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`,
+  );
+  return new Response(JSON.stringify(chapters), { headers });
 }
 
-        const kvVal = await kvGet<any[]>(kvKey);
-        if (kvVal) {
-          setCache(memKey, kvVal);
-          const headers = makeHeaders(cacheControl);
-          headers.set("X-Cache", "HIT(kv)");
-          headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
-          return new Response(JSON.stringify(kvVal), { headers });
-        }
+    // 4) Verses (con Server-Timing)
+if (path === "/api/verses") {
+  const t0 = performance.now();
+  const cacheControl = "public, max-age=604800, stale-while-revalidate=600";
+
+  const chIdParam = url.searchParams.get("chapterId");
+  const chId = Number(chIdParam);
+  const vNum = url.searchParams.get("verse");
+  const debug = url.searchParams.get("debug") === "1";
+  const noMem = url.searchParams.get("nomem") === "1";
+
+  if (!chIdParam || !Number.isFinite(chId)) {
+    return new Response(JSON.stringify({ error: "Parámetro chapterId inválido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+
+  const vKey = vNum ? Number(vNum) : "all";
+  const memKey = `verses-${chId}-${vKey}`;
+  const kvKey: Deno.KvKey = ["verses", chId, vKey];
+
+  // Cache (si NO es debug)
+  if (!debug) {
+    // 1) MEM (solo si noMem!=1)
+    if (!noMem) {
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(mem)");
+        headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+        return new Response(JSON.stringify(mem), { headers });
       }
+    }
+
+    // 2) KV
+    const kvVal = await kvGet<any[]>(kvKey);
+    if (kvVal) {
+      setCache(memKey, kvVal);
+      const headers = makeHeaders(cacheControl);
+      headers.set("X-Cache", "HIT(kv)");
+      headers.set("Server-Timing", `total;dur=${(performance.now() - t0).toFixed(1)}`);
+      return new Response(JSON.stringify(kvVal), { headers });
+    }
+  }
+
+  // DB
+  const tDb0 = performance.now();
+  const verses = await prisma.verse.findMany({
+    where: {
+      chapterId: chId,
+      ...(vNum ? { number: Number(vNum) } : {}),
+    },
+    orderBy: { number: "asc" },
+    select: { number: true, text: true },
+    cacheStrategy: debug ? undefined : { ttl: 604800, swr: 600 },
+  });
+  const tDb1 = performance.now();
+
+  // Guardar caches
+  if (!debug) {
+    setCache(memKey, verses);
+    await kvSet(kvKey, verses, TTL_7D_MS);
+  }
+
+  const headers = makeHeaders(debug ? "no-store" : cacheControl);
+  headers.set("X-Cache", debug ? "BYPASS(debug=1)" : "MISS");
+  headers.set(
+    "Server-Timing",
+    `db;dur=${(tDb1 - tDb0).toFixed(1)}, total;dur=${(performance.now() - t0).toFixed(1)}`,
+  );
+  return new Response(JSON.stringify(verses), { headers });
+}
 
       const tDb0 = performance.now();
       const verses = await prisma.verse.findMany({
