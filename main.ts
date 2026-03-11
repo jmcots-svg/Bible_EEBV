@@ -14,6 +14,18 @@ if (databaseUrl) {
       database: url.pathname.slice(1),
       tls: { enabled: true, enforce: false },
     }, 10, true);
+  setInterval(async () => {
+      if (pool) {
+        try {
+          const client = await pool.connect();
+          await client.queryObject`SELECT 1`;
+          client.release();
+          console.log("✅ Ping DB OK - Conexión mantenida");
+        } catch (e) {
+          console.error("❌ Ping DB Falló:", e.message);
+        }
+      }
+    }, 1000 * 60 * 2); // Ejecuta cada 2 minutos 
   } catch (e) {
     console.error("❌ Error configurando pool:", e);
   }
