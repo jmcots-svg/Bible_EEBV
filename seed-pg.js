@@ -1,5 +1,7 @@
 const { Client } = require('pg');
 const xml2js = require('xml2js');
+const fs = require('fs');
+const path = require('path');
 
 const client = new Client({ 
   // Intentamos añadir el parámetro sslmode directamente si no lo tiene la URL
@@ -12,8 +14,9 @@ const client = new Client({
   connectionTimeoutMillis: 10000, 
 });
 
-// CONFIGURACIÓN PARA LBLA
-const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml'; 
+// CONFIGURACIÓN PARA BEC
+//const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
+const XML_PATH = path.join(__dirname, '..', 'data', 'CatalanBECBible.xml');
 const VERSION_SHORT = 'BEC';
 const VERSION_FULL = 'Bíblia Evangèlica Catalana 2000';
 
@@ -56,11 +59,14 @@ async function seed() {
   );
   const versionId = rv.rows[0].id;
 
-  console.log(`Descargando y parseando XML de LBLA...`);
-  const res = await fetch(XMLURL);
-  let xml = await res.text();
-  xml = xml.replace(/^\uFEFF/, '').trimStart();
+  //console.log(`Descargando y parseando XML de LBLA...`);
+  //const res = await fetch(XMLURL);
+  //let xml = await res.text();
+  //xml = xml.replace(/^\uFEFF/, '').trimStart();
 
+  console.log('📥 Leyendo XML local...');                                        
+  let xml = fs.readFileSync(XML_PATH, 'utf-8').replace(/^\uFEFF/, '').trimStart();
+  
   const parser = new xml2js.Parser({ 
     explicitArray: false, 
     trim: true,
