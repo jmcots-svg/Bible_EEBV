@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const concTestament = document.getElementById('concTestament');
     const concQuery = document.getElementById('concQuery');
     const concSearchBtn = document.getElementById('concSearchBtn');
+    const concExact = document.getElementById('concExact');
 
     // Tabs
     const modeTabs = document.querySelectorAll('.mode-tab');
@@ -385,18 +386,15 @@ modeTabs.forEach(tab => {
 
         currentSearchPage = page;
 
-        // Show loading
         content.innerHTML = '<p class="loading">🔍 Buscando en toda la Biblia...</p>';
         if (reference) {
             reference.textContent = '';
             reference.classList.remove('visible');
         }
 
-        // Disable button
         concSearchBtn.disabled = true;
         concSearchBtn.textContent = '⏱️...';
 
-        // Cache key
         const cacheKey = `${version}-${testament}-${query.toLowerCase()}-p${page}`;
 
         if (cache.search[cacheKey]) {
@@ -418,7 +416,7 @@ modeTabs.forEach(tab => {
 
             cache.search[cacheKey] = data;
             currentSearchData = data;
-            renderSearchResults(data);
+            renderSearchResults(data);  // ✅ Sin nada extra aquí
 
         } catch (e) {
             if (e.name === "AbortError") return;
@@ -430,105 +428,179 @@ modeTabs.forEach(tab => {
         }
     }
 
-    function renderSearchResults(data) {
-        if (reference) {
-            reference.textContent = `Resultados para "${data.query}"`;
-            reference.classList.add('visible');
-        }
+    function isExactWordMatch(text, query) {
+        const normalized = removeAccents(text.toLowerCase());
+        const normalizedQ = removeAccents(query.toLowerCase().trim());
+        const escaped = escapeRegExp(normalizedQ);
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+        return regex.test(normalized);
+    }
 
-        if (data.total === 0) {
-            content.innerHTML = `
-                <div class="search-no-results">
-                    <p class="search-icon">🔍</p>
-                    <h3>No se encontraron resultados</h3>
-                    <p>No hay coincidencias para "<strong>${escapeHtml(data.query)}</strong>" 
-                    en ${data.testament === 'ALL' ? 'toda la Biblia' : data.testament === 'OT' ? 'el Antiguo Testamento' : 'el Nuevo Testamento'}
-                    (${data.version})</p>
-                </div>
-            `;
-            return;
-        }
+function renderSearchResults(data) {
+    const exactMode = concExact && concExact.checked;
+    let results = data.results;
 
-        // Stats bar
-        const startResult = (data.page - 1) * data.limit + 1;
-        const endResult = Math.min(data.page * data.limit, data.total);
+    // ✅ Filtrar por palabra exacta si está activado
+    if (exactMode) {
+        results = results.filter(r => isExactWordMatch(r.text, data.query));
+    }
 
-        let html = `
-            <div class="search-stats">
-                <span class="search-total">📊 ${data.total.toLocaleString()} resultado${data.total !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"</span>
-                <span class="search-range">Mostrando ${startResult}-${endResult}</span>
+    if (reference) {
+        reference.textContent = `Resultados para "${data.query}"`;
+        reference.classList.add('visible');
+    }
+
+    // Si no hay resultados (ni antes ni después de filtrar)
+    if (data.total === 0 || (exactMode && results.length === 0 && data.results.length === 0)) {
+        content.innerHTML = `
+            <div class="search-no-results">
+                <p class="search-icon">🔍</p>
+                <h3>No se encontraron resultados</h3>
+                <p>No hay coincidencias para "<strong>${escapeHtml(data.query)}</strong>" 
+                en ${data.testament === 'ALL' ? 'toda la Biblia' : data.testament === 'OT' ? 'el Antiguo Testamento' : 'el Nuevo Testamento'}
+                (${data.version})</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Si se filtró todo en esta página pero hay más páginas
+    if (exactMode && results.length === 0) {
+        content.innerHTML = `
+            <div class="search-no-results">
+                <p class="search-icon">🔎</p>
+                <h3>Sin coincidencias exactas en esta página</h3>
+                <p>Los ${data.results.length} resultados de esta página contienen "<strong>${escapeHtml(data.query)}</strong>" 
+                como parte de otra palabra. Prueba en las siguientes páginas.</p>
             </div>
         `;
 
-        // Results
-
-        data.results.forEach(r => {
-            const highlightedText = highlightText(r.text, data.query);
-            const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
-        
-            html += `
-                <div class="search-result-card">
-                    <div class="search-result-header">
-                        <a href="#" class="search-result-ref search-nav-link"
-                           data-book="${escapeHtml(r.book)}"
-                           data-chapter="${r.chapter}"
-                           data-verse="${r.verse}">
-                            ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
-                        </a>
-                    </div>
-                    <p class="search-result-text">${highlightedText}</p>
-                </div>
-            `;
-        });
-
-        // Pagination
+        // Aún mostrar paginación
         if (data.totalPages > 1) {
-            html += `<div class="search-pagination">`;
-
-            // Previous
+            let pagHtml = `<div class="search-pagination">`;
             if (data.page > 1) {
-                html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
+                pagHtml += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
             }
-
-            // Page numbers
-            html += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
-
-            // Next
+            pagHtml += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
             if (data.page < data.totalPages) {
-                html += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
+                pagHtml += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
             }
+            pagHtml += `</div>`;
+            content.innerHTML += pagHtml;
 
-            html += `</div>`;
+            content.querySelectorAll('.pagination-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    onConcordanciaSearch(parseInt(btn.dataset.page));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
         }
-
-        content.innerHTML = html;
-
-        // Bind pagination events
-        content.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const page = parseInt(btn.dataset.page);
-                onConcordanciaSearch(page);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
-        });
-
-        // Bind navigation events (enlaces a Lectura)
-        content.querySelectorAll('.search-nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                navigateToVerse(
-                    link.dataset.book,
-                    link.dataset.chapter,
-                    link.dataset.verse
-                );
-            });
-        });
+        return;
     }
+
+    // Stats bar
+    const startResult = (data.page - 1) * data.limit + 1;
+    const endResult = Math.min(data.page * data.limit, data.total);
+
+    let html = `
+        <div class="search-stats">
+            <span class="search-total">📊 ${data.total.toLocaleString()} resultado${data.total !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"
+                ${exactMode ? `<span class="search-exact-badge">Palabra exacta: ${results.length} en esta página</span>` : ''}
+            </span>
+            <span class="search-range">Mostrando ${startResult}-${endResult}</span>
+        </div>
+    `;
+
+    // Results (usar 'results' filtrado)
+    results.forEach(r => {
+        const highlightedText = exactMode
+            ? highlightExactWord(r.text, data.query)
+            : highlightText(r.text, data.query);
+        const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
+
+        html += `
+            <div class="search-result-card">
+                <div class="search-result-header">
+                    <a href="#" class="search-result-ref search-nav-link"
+                       data-book="${escapeHtml(r.book)}"
+                       data-chapter="${r.chapter}"
+                       data-verse="${r.verse}">
+                        ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
+                    </a>
+                </div>
+                <p class="search-result-text">${highlightedText}</p>
+            </div>
+        `;
+    });
+
+    // Pagination
+    if (data.totalPages > 1) {
+        html += `<div class="search-pagination">`;
+        if (data.page > 1) {
+            html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
+        }
+        html += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
+        if (data.page < data.totalPages) {
+            html += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
+        }
+        html += `</div>`;
+    }
+
+    content.innerHTML = html;
+
+    // Bind pagination events
+    content.querySelectorAll('.pagination-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            onConcordanciaSearch(parseInt(btn.dataset.page));
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
+    // Bind navigation events
+    content.querySelectorAll('.search-nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            navigateToVerse(link.dataset.book, link.dataset.chapter, link.dataset.verse);
+        });
+    });
+}
+
+    
 
 function removeAccents(str) {
     return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
+function highlightExactWord(text, query) {
+    if (!query) return escapeHtml(text);
+
+    const normalizedText = removeAccents(text.toLowerCase());
+    const normalizedQuery = removeAccents(query.toLowerCase().trim());
+
+    // Buscar solo coincidencias de palabra completa
+    const regex = new RegExp(`\\b${escapeRegExp(normalizedQuery)}\\b`, 'gi');
+    const matches = [];
+    let match;
+
+    while ((match = regex.exec(normalizedText)) !== null) {
+        matches.push({ start: match.index, end: match.index + normalizedQuery.length });
+    }
+
+    if (matches.length === 0) return escapeHtml(text);
+
+    let result = '';
+    let lastEnd = 0;
+
+    for (const m of matches) {
+        result += escapeHtml(text.substring(lastEnd, m.start));
+        result += `<mark class="search-highlight">${escapeHtml(text.substring(m.start, m.end))}</mark>`;
+        lastEnd = m.end;
+    }
+
+    result += escapeHtml(text.substring(lastEnd));
+    return result;
+}
+    
 function highlightText(text, query) {
     if (!query) return escapeHtml(text);
     
