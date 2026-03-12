@@ -235,6 +235,38 @@ input[type="text"]:focus {
   color: var(--accent);
 }
 
+/* Enlaces navegables en resultados de concordancia */
+.search-nav-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  border-bottom: 2px dashed transparent;
+  padding-bottom: 1px;
+}
+
+.search-nav-link:hover {
+  color: #b8860b;
+  border-bottom-color: #b8860b;
+}
+
+.search-nav-link:active {
+  transform: scale(0.97);
+}
+
+[data-theme="dark"] .search-nav-link {
+  color: var(--accent);
+}
+
+[data-theme="dark"] .search-nav-link:hover {
+  color: #ffd700;
+  border-bottom-color: #ffd700;
+}
+
+
 .search-result-text {
   font-size: 1rem;
   line-height: 1.7;
