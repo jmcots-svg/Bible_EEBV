@@ -66,57 +66,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // =====================
+// =====================
 // 2b. TAMAÑO DE TEXTO
 // =====================
-const fontSizes = [0.85, 0.95, 1.05, 1.15, 1.25, 1.4, 1.6]; // rem
-const fontLabels = ['XS', 'S', 'M', 'A', 'L', 'XL', 'XXL'];
-let fontIndex = 3; // índice por defecto → "A" = 1.15rem
+const fontSizes  = ['0.95rem', '1.1rem', '1.35rem']; // pequeño / normal / grande
+const fontLabels = ['a', 'A', 'A'];                   // texto del knob
 
-const fontDecrease = document.getElementById('fontDecrease');
-const fontIncrease = document.getElementById('fontIncrease');
-const fontLabel    = document.getElementById('fontLabel');
+const fontSwitch = document.getElementById('fontSwitch');
+const fontKnob   = document.getElementById('fontKnob');
 
-// Cargar preferencia guardada
-const savedFont = localStorage.getItem('fontIndex');
-if (savedFont !== null) {
-    fontIndex = parseInt(savedFont);
-}
-applyFontSize();
+// Cargar posición guardada (default: 1 = normal)
+let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
+applyFontPos(fontPos);
 
-function applyFontSize() {
-    // Solo afecta al contenido, no a filtros ni pestañas
-    document.getElementById('content').style.setProperty(
-        '--font-content',
-        fontSizes[fontIndex] + 'rem'
-    );
+function applyFontPos(pos) {
+    fontPos = pos;
 
-    // Actualizar label e indicador visual
-    fontLabel.textContent = fontLabels[fontIndex];
+    // ── Mover knob y cambiar color de pista ──
+    fontKnob.dataset.pos  = pos;
+    fontSwitch.dataset.pos = pos;
+    fontKnob.textContent  = fontLabels[pos];
 
-    // Deshabilitar botones en los extremos
-    fontDecrease.disabled = fontIndex === 0;
-    fontIncrease.disabled = fontIndex === fontSizes.length - 1;
+    // ── Aplicar tamaño SOLO al contenido ──
+    document.getElementById('content').style.fontSize = fontSizes[pos];
 
-    // Opacidad para indicar deshabilitado
-    fontDecrease.style.opacity = fontIndex === 0 ? '0.3' : '1';
-    fontIncrease.style.opacity = fontIndex === fontSizes.length - 1 ? '0.3' : '1';
+    // Guardar preferencia
+    localStorage.setItem('fontPos', pos);
 }
 
-fontDecrease.addEventListener('click', () => {
-    if (fontIndex > 0) {
-        fontIndex--;
-        localStorage.setItem('fontIndex', fontIndex);
-        applyFontSize();
-    }
-});
-
-fontIncrease.addEventListener('click', () => {
-    if (fontIndex < fontSizes.length - 1) {
-        fontIndex++;
-        localStorage.setItem('fontIndex', fontIndex);
-        applyFontSize();
-    }
+// Al hacer click avanza cíclicamente: 0 → 1 → 2 → 0
+fontSwitch.addEventListener('click', () => {
+    applyFontPos((fontPos + 1) % 3);
 });
 
 // =====================
