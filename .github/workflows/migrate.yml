@@ -1,4 +1,4 @@
-name: Prisma DB Push
+name: DB Push
 on: [push]
 
 jobs:
