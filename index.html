@@ -15,7 +15,13 @@
     <h1 id="mainTitle">📖 Biblia Digital</h1>
 
     <!-- Control tamaño texto — 3 posiciones ← NUEVO -->
-    <div class="font-switch-wrap" title="Tamaño de texto">
+      <label class="font-switch" title="Tamaño de texto">
+        <input type="checkbox" id="fontSwitch" style="display:none">
+        <span class="font-track">
+          <span class="font-knob" id="fontKnob">A</span>
+        </span>
+        <span class="font-label-right">A</span>
+      </label>
       <span class="font-switch-label small">A</span>
       <div class="font-switch" id="fontSwitch">
         <div class="font-knob" id="fontKnob"></div>
