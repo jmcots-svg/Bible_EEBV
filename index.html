@@ -10,23 +10,27 @@
 <body>
   <div class="container">
     
-    <header>
-      <div class="header-content">
-        <h1 id="mainTitle">📖 Biblia Digital</h1>        
-        <div class="header-controls">             
-        <!-- Switch modo noche -->
-        <label class="switch">
-          <input type="checkbox" id="themeCheckbox">
-          <span class="slider"></span>
-        </label>
-        <!-- Selector tamaño texto -->
-        <div class="font-size-control">
-          <button class="font-btn" id="fontDecrease" title="Texto más pequeño">A−</button>
-          <span class="font-label" id="fontLabel">A</span>
-          <button class="font-btn" id="fontIncrease" title="Texto más grande">A+</button>
-        </div>      
+<header>
+  <div class="header-content">
+    <h1 id="mainTitle">📖 Biblia Digital</h1>
+
+    <!-- Control tamaño texto — 3 posiciones ← NUEVO -->
+    <div class="font-switch-wrap" title="Tamaño de texto">
+      <span class="font-switch-label small">A</span>
+      <div class="font-switch" id="fontSwitch">
+        <div class="font-knob" id="fontKnob"></div>
       </div>
-    </header>
+      <span class="font-switch-label large">A</span>
+    </div>
+
+    <!-- Switch modo noche — IGUAL QUE ANTES -->
+    <label class="switch">
+      <input type="checkbox" id="themeCheckbox">
+      <span class="slider"></span>
+    </label>
+
+  </div>
+</header>
 
   <!-- TABS DE MODO -->
   <div class="mode-tabs">
