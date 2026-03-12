@@ -179,7 +179,7 @@ input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
   display: flex; 
   flex-direction: column; 
   gap: 6px; 
-  min-width: 0; /* ← AÑADE ESTO: Es vital para que el Grid deje encoger la caja */
+  min-width: 0; 
 }
 .filter-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
 
@@ -233,11 +233,14 @@ input[type="text"]:focus {
 .search-wrapper input[type="text"] {
   flex: 1;
   min-width: 0;
+  width: auto;
 }
 
 .btn-conc-search {
   white-space: nowrap;
   padding: 12px 24px;
+  flex-shrink: 0;
+  width: auto; 
 }
 
 /* Search Stats */
@@ -532,6 +535,7 @@ input[type="text"]:focus {
 }
 
 /* 9. RESPONSIVE */
+
 @media (max-width: 600px) {
   .filters { grid-template-columns: 1fr; }
   .concordancia-filters { grid-template-columns: 1fr; }
