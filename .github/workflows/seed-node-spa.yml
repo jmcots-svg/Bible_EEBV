@@ -17,6 +17,6 @@ jobs:
         run: npm install pg xml2js node-fetch
 
       - name: Run Seed
-        run: node seed-node.js
+        run: node seed-spa.js
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
