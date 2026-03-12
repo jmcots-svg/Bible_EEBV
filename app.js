@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeTabs = document.querySelectorAll('.mode-tab');
     const panelLectura = document.getElementById('panelLectura');
     const panelConcordancia = document.getElementById('panelConcordancia');
+    const panelComparacion = document.getElementById('panelComparacion');
 
     let currentMode = 'lectura';
 
@@ -113,6 +114,17 @@ modeTabs.forEach(tab => {
                 }
             }
         }
+        } else if (mode === 'comparacion') {
+                panelLectura.style.display = 'none';
+                panelConcordancia.style.display = 'none';
+                panelComparacion.style.display = '';
+            
+                if (reference) {
+                    reference.textContent = '';
+                    reference.classList.remove('visible');
+                }
+                content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
+}
     });
 });
 
@@ -880,18 +892,23 @@ const compChapter   = document.getElementById('compChapter');
 const compVerse     = document.getElementById('compVerse');
 
 // Poblar selectores de versión al cargar versiones
-async function loadVersionsForComp(versions) {
-    [compVersionA, compVersionB].forEach((sel, i) => {
-        sel.innerHTML = '';
-        versions.forEach((v, j) => {
-            const opt = document.createElement('option');
-            opt.value = v.name;
-            opt.textContent = v.fullName;
-            // A = primera versión, B = segunda versión por defecto
-            if (j === i) opt.selected = true;
-            sel.appendChild(opt);
+async function loadVersions() {
+    try {
+        const versions = await fetchJSON(`${API_URL}/api/versions`);
+        
+        [versionSelect, concVersion].forEach(sel => {
+            // ... código existente ...
         });
-    });
+
+        // ← AÑADIR ESTA LÍNEA
+        await loadVersionsForComp(versions);
+
+        if (versionSelect.value) {
+            loadBooks(versionSelect.value);
+        }
+    } catch (e) {
+        console.error('Error cargando versiones:', e);
+    }
 }
 
 // Cargar libros cuando cambia versión A (los libros son iguales en todas)
