@@ -1,8 +1,11 @@
 name: Prisma DB Push
 on: [push]
+
 jobs:
   push:
     runs-on: ubuntu-latest
+    timeout-minutes: 10  # ← NUEVO: cancela si tarda >10min
+    
     steps:
       - uses: actions/checkout@v3
 
@@ -12,14 +15,17 @@ jobs:
           node-version: 20
 
       - name: Push Schema to DB
-        run: |
-          # INSTALAMOS LA VERSIÓN 5 (Estable y compatible con tu esquema)
-          npm install prisma@5 -g
-          
-          # Borramos el config de Deno para que no confunda al CLI de Node
-          rm -f prisma.config.ts
-          
-          # Ejecutamos el push con la versión 5
-          prisma db push --schema=./prisma/schema.prisma --accept-data-loss
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          # INSTALAMOS LA VERSIÓN 5
+          npm install prisma@5 -g
+          
+          # Borramos config de Deno
+          rm -f prisma.config.ts
+          
+          # PUSH con flags para que NO pida confirmación
+          prisma db push \
+            --schema=./prisma/schema.prisma \
+            --accept-data-loss \
+            --skip-generate
