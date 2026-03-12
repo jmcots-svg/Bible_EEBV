@@ -962,7 +962,41 @@ async function renderComparison() {
         const chapterNum = chapterSelect.options[chapterSelect.selectedIndex]?.dataset.number;
         const versionName = versionSelect.options[versionSelect.selectedIndex]?.text;
 
-        let textToCopy = `Versículos de ${bookName} ${chapterNum} (${versionName}):\n\n`;
+        // Determinar el rango de versículos seleccionados
+        let versesRange = '';
+        if (selectedVerses.length === 1) {
+            versesRange = selectedVerses[0]; // Si es solo un versículo
+        } else if (selectedVerses.length > 1) {
+            // Asegúrate de que los versículos estén ordenados
+            const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+            const firstVerse = sortedVerses[0];
+            const lastVerse = sortedVerses[sortedVerses.length - 1];
+
+            // Comprueba si la selección es consecutiva
+            let isConsecutive = true;
+            for (let i = 0; i < sortedVerses.length - 1; i++) {
+                if (sortedVerses[i+1] !== sortedVerses[i] + 1) {
+                    isConsecutive = false;
+                    break;
+                }
+            }
+
+            if (isConsecutive) {
+                versesRange = `${firstVerse}-${lastVerse}`; // Si es un rango consecutivo
+            } else {
+                // Si no es consecutivo, listar los versículos separados por comas
+                versesRange = sortedVerses.join(', ');
+            }
+        }
+
+        // Formato de la cabecera: "Levítico 4:1-3 (LBLA)"
+        let headerText = `${bookName} ${chapterNum}`;
+        if (versesRange) {
+            headerText += `:${versesRange}`;
+        }
+        headerText += ` (${versionName}):\n\n`; // Nueva línea doble al final
+
+        let textToCopy = headerText;
 
         selectedVerses.forEach(vNum => {
             const verse = currentVersesData.find(v => v.number === vNum);
@@ -972,8 +1006,8 @@ async function renderComparison() {
         });
 
         selectedVersesTextarea.value = textToCopy.trim();
-        copyFeedback.textContent = ''; // Limpiar feedback anterior
-        copyModal.style.display = 'flex'; // Mostrar el modal
+        copyFeedback.textContent = '';
+        copyModal.style.display = 'flex';
     }
 
     function hideCopyModal() {
