@@ -18,7 +18,7 @@ const client = new Client({
 //const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
 const XML_PATH = path.join(__dirname, 'data', 'SpanishRevisedRVR1960Bible.xml');
 const VERSION_SHORT = 'RVR60';
-const VERSION_FULL = 'Reina Valera 1960.xml;
+const VERSION_FULL = 'Reina Valera 1960.xml';
 
 // Mapeo de nombres de libros por número (Basado en el canon estándar)
 const bookNames = {
