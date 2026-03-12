@@ -84,20 +84,21 @@ Deno.serve(async (req: Request) => {
       const memKey = "versions";
       const kvKey: Deno.KvKey = ["versions"];
 
-      const mem = getCached(memKey);
-      if (mem) {
-        const headers = makeHeaders(cacheControl);
-        headers.set("X-Cache", "HIT(mem)");
-        return new Response(JSON.stringify(mem), { headers });
-      }
+  // 👇 COMENTA ESTAS DOS COMPROBACIONES
+  // const mem = getCached(memKey);
+  // if (mem) {
+  //   const headers = makeHeaders(cacheControl);
+  //   headers.set("X-Cache", "HIT(mem)");
+  //   return new Response(JSON.stringify(mem), { headers });
+  // }
 
-      const kvVal = await kvGet<any[]>(kvKey);
-      if (kvVal) {
-        setCache(memKey, kvVal);
-        const headers = makeHeaders(cacheControl);
-        headers.set("X-Cache", "HIT(kv)");
-        return new Response(JSON.stringify(kvVal), { headers });
-      }
+  // const kvVal = await kvGet<any[]>(kvKey);
+  // if (kvVal) {
+  //   setCache(memKey, kvVal);
+  //   const headers = makeHeaders(cacheControl);
+  //   headers.set("X-Cache", "HIT(kv)");
+  //   return new Response(JSON.stringify(kvVal), { headers });
+  // }
 
       const { rows } = await pool.query(
         `SELECT id, name, "fullName"
