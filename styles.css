@@ -552,95 +552,85 @@ input[type="text"]:focus {
 /* ===================== */
 /* 10. FONT SIZE SWITCH  */
 /* ===================== */
-.font-switch-wrap {
+.font-switch {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 5px;
-  flex-shrink: 0;           /* ← no se comprime */
+  flex-shrink: 0;
   cursor: pointer;
 }
 
-/* A pequeña a la izquierda */
-.font-switch-label.small {
-  font-size: 0.7rem;
-  color: rgba(255,255,255,0.75);
-  font-family: 'Georgia', serif;
+/* La letra A grande a la derecha */
+.font-label-right {
+  font-size: 1.1rem;
   font-weight: 700;
+  font-family: 'Georgia', serif;
+  color: rgba(255,255,255,0.8);
   user-select: none;
   line-height: 1;
-  flex-shrink: 0;
 }
 
-/* A grande a la derecha */
-.font-switch-label.large {
-  font-size: 1rem;
-  color: rgba(255,255,255,0.75);
-  font-family: 'Georgia', serif;
-  font-weight: 700;
-  user-select: none;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-/* La pista — mismo alto que el toggle de noche */
-.font-switch {
+/* La pista — igual que .slider del toggle noche pero más ancha */
+.font-track {
   position: relative;
+  display: inline-block;
   width: 68px;
   height: 26px;
-  background: rgba(255,255,255,0.3);
+  background-color: rgba(255,255,255,0.3);
   border-radius: 34px;
-  transition: background 0.4s;
+  transition: background-color 0.4s;
   flex-shrink: 0;
 }
 
-/* La bolita */
+/* La bolita — igual que .slider:before del toggle noche */
 .font-knob {
   position: absolute;
   top: 3px;
   left: 3px;
   width: 20px;
   height: 20px;
+  background-color: white;
   border-radius: 50%;
-  background: white;
   transition: transform 0.3s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
   font-weight: 700;
-  color: #1e3a5f;
   font-family: 'Georgia', serif;
+  color: #1e3a5f;
   box-shadow: 0 1px 4px rgba(0,0,0,0.3);
   user-select: none;
 }
 
-.font-knob[data-pos="0"] { transform: translateX(0px);  }
-.font-knob[data-pos="1"] { transform: translateX(23px); }
-.font-knob[data-pos="2"] { transform: translateX(46px); }
+/* Las 3 posiciones de la bolita */
+.font-knob[data-pos="0"] { 
+  transform: translateX(0px); 
+}
+.font-knob[data-pos="1"] { 
+  transform: translateX(23px); 
+}
+.font-knob[data-pos="2"] { 
+  transform: translateX(46px); 
+}
 
-.font-switch[data-pos="0"] { background: rgba(255,255,255,0.2); }
-.font-switch[data-pos="1"] { background: rgba(255,255,255,0.3); }
-.font-switch[data-pos="2"] { background: #4a90e2; }
+/* Color de la pista según posición */
+.font-track[data-pos="0"] { background-color: rgba(255,255,255,0.2); }
+.font-track[data-pos="1"] { background-color: rgba(255,255,255,0.3); }
+.font-track[data-pos="2"] { background-color: #4a90e2; }
 
-/* ── Tamaño de texto: afecta a TODO el contenido ── */
-.content,
-.content .verse,
-.content .comp-cell,
-.content .search-result-text,
-.content .search-result-card p {
+/* Tamaño de texto: afecta a todo el contenido */
+#content,
+#content .verse,
+#content .comp-cell,
+#content .search-result-text,
+#content p {
   font-size: var(--font-reading, 1.1rem) !important;
 }
 
-/* Solo el número de versículo se escala proporcionalmente */
-.content .verse-number {
+#content .verse-number {
   font-size: calc(var(--font-reading, 1.1rem) * 0.82) !important;
-}
-
-/* Responsive header */
-@media (max-width: 400px) {
-  .header-content { gap: 10px; }
-  .font-switch { width: 56px; }
-  .font-knob[data-pos="2"] { transform: translateX(34px); }
 }
   
 }
