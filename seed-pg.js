@@ -3,9 +3,9 @@ const xml2js = require('xml2js');
 
 const client = new Client({ 
   // Intentamos añadir el parámetro sslmode directamente si no lo tiene la URL
-  connectionString: process.env.DIRECT_URL.includes('sslmode') 
-    ? process.env.DIRECT_URL 
-    : `${process.env.DIRECT_URL}?sslmode=require`,
+  connectionString: process.env.DATABASE_URL.includes('sslmode') 
+    ? process.env.DATABASE_URL 
+    : `${process.env.DATABASE_URL}?sslmode=require`,
   ssl: {
     rejectUnauthorized: false
   },
