@@ -789,8 +789,40 @@ async function navigateToVerse(bookName, chapterNum, verseNum) {
     if (versionSelect.value) {
         loadBooks(versionSelect.value);
     }
+
+// =====================
+// 8. CARGA INICIAL - Versiones dinámicas
+// =====================
+async function loadVersions() {
+    try {
+        const versions = await fetchJSON(`${API_URL}/api/versions`);
+        
+        // Limpiar y rellenar ambos selects
+        [versionSelect, concVersion].forEach(sel => {
+            sel.innerHTML = '';
+            versions.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = v.name;          // 'RV60', 'LBLA', 'BEC'...
+                opt.textContent = v.fullName; // nombre completo
+                if (i === 0) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        });
+
+        // Cargar libros de la versión por defecto
+        if (versionSelect.value) {
+            loadBooks(versionSelect.value);
+        }
+
+    } catch (e) {
+        console.error('Error cargando versiones:', e);
+        // Fallback: si falla la API, dejamos las opciones hardcodeadas
+    }
+}
+
+loadVersions();
     
-    // =====================
+// =====================
 // NAVEGACIÓN ENTRE CAPÍTULOS
 // =====================
 
