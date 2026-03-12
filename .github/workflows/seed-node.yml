@@ -1,4 +1,4 @@
-name: 🌿 Seed Bible RV60
+name: 🌿 Seed Bible
 
 on:
   workflow_dispatch:
