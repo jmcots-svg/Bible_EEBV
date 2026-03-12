@@ -61,37 +61,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // =====================
-    // 3. TABS - CAMBIO DE MODO
-    // =====================
-    modeTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const mode = tab.dataset.mode;
-            if (mode === currentMode) return;
+// =====================
+// 3. TABS - CAMBIO DE MODO
+// =====================
+modeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const mode = tab.dataset.mode;
+        if (mode === currentMode) return;
 
-            currentMode = mode;
+        currentMode = mode;
 
-            // Actualizar tabs activos
-            modeTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+        // Actualizar tabs activos
+        modeTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
 
-            // Mostrar/ocultar paneles
-            if (mode === 'lectura') {
-                panelLectura.style.display = '';
-                panelConcordancia.style.display = 'none';
-                content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
+        // Mostrar/ocultar paneles
+        if (mode === 'lectura') {
+            panelLectura.style.display = '';
+            panelConcordancia.style.display = 'none';
+
+            // ✅ Restaurar contenido de Lectura desde caché
+            if (chapterSelect.value) {
+                onSearch(); // Re-renderiza capítulo/versículo actual desde caché
+            } else if (bookSelect.value) {
+                content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+                if (reference) {
+                    reference.textContent = '';
+                    reference.classList.remove('visible');
+                }
             } else {
-                panelLectura.style.display = 'none';
-                panelConcordancia.style.display = '';
-                content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
+                content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
+                if (reference) {
+                    reference.textContent = '';
+                    reference.classList.remove('visible');
+                }
             }
 
-            if (reference) {
-                reference.textContent = '';
-                reference.classList.remove('visible');
+        } else if (mode === 'concordancia') {
+            panelLectura.style.display = 'none';
+            panelConcordancia.style.display = '';
+
+            // ✅ Restaurar resultados de Concordancia desde caché
+            if (currentSearchData) {
+                renderSearchResults(currentSearchData);
+            } else {
+                content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
+                if (reference) {
+                    reference.textContent = '';
+                    reference.classList.remove('visible');
+                }
             }
-        });
+        }
     });
+});
 
     // =====================
     // 4. FUNCIONES MODO LECTURA
