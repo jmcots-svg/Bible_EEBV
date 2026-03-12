@@ -106,8 +106,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } else if (mode === 'comparacion') {
                 panelComparacion.style.display = '';
-                content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                if (currentCompData) {
+                    const { versesA, versesB, versionA, versionB, bookName, chNum, vNum } = currentCompData;
+                    renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
+                } else {
+                    content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                }
             }
         });
     });
@@ -277,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchAbort = null;
     let currentSearchPage = 1;
     let currentSearchData = null;
+    let currentCompData = null;
 
     async function onConcordanciaSearch(page = 1) {
         const query = concQuery.value.trim();
@@ -588,6 +594,9 @@ document.addEventListener('DOMContentLoaded', () => {
             reference.textContent = `${bookName} ${chNum}${vNum ? ':' + vNum : ''}`;
             reference.classList.add('visible');
         }
+        
+        currentCompData = { versesA, versesB, versionA, versionB, bookName, chNum, vNum };
+        
         const rowsHtml = versesA.map(vA => {
             const vB = versesB.find(v => v.number === vA.number);
             return `<div class="comp-row">
