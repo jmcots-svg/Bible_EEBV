@@ -64,8 +64,11 @@ async function seed() {
   //let xml = await res.text();
   //xml = xml.replace(/^\uFEFF/, '').trimStart();
 
-  console.log('📥 Leyendo XML local...');                                        
-  let xml = fs.readFileSync(XML_PATH, 'utf-8').replace(/^\uFEFF/, '').trimStart();
+console.log('📥 Leyendo XML local...');
+console.log('🔍 Path:', XML_PATH);           // ← AÑADIR
+console.log('🔍 __dirname:', __dirname);      // ← AÑADIR
+console.log('🔍 Existe:', fs.existsSync(XML_PATH)); // ← AÑADIR
+let xml = fs.readFileSync(XML_PATH, 'utf-8').replace(/^\uFEFF/, '').trimStart();
   
   const parser = new xml2js.Parser({ 
     explicitArray: false, 
