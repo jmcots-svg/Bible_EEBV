@@ -1,102 +1,144 @@
-// seed-node.js - COMPLETO y FIJO para RV60 XML + Prisma
-const { PrismaClient } = require('@prisma/client');
+const { Client } = require('pg');
 const xml2js = require('xml2js');
+const fs = require('fs');
+const path = require('path');
 
-const prisma = new PrismaClient();
-const VERSION_NAME = 'RV60';
-const VERSION_FULL = 'Reina-Valera 1960';
-const XML_URL = 'https://raw.githubusercontent.com/jmcots-svg/Bible_EEBV/gh-pages/data/RV60.xml';
+const client = new Client({ 
+  // Intentamos añadir el parámetro sslmode directamente si no lo tiene la URL
+  connectionString: process.env.DATABASE_URL.includes('sslmode') 
+    ? process.env.DATABASE_URL 
+    : `${process.env.DATABASE_URL}?sslmode=require`,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  connectionTimeoutMillis: 10000, 
+});
+
+// CONFIGURACIÓN PARA BEC
+//const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
+const XML_PATH = path.join(__dirname, 'data', 'SpanishLBLABible.xml');
+const VERSION_SHORT = 'BEC';
+const VERSION_FULL = 'Bíblia Evangèlica Catalana 2000';
+
+// Mapeo de nombres de libros por número (Basado en el canon estándar)
+const bookNames = {
+  // ANTIGUO TESTAMENTO
+  1: "Génesis", 2: "Éxodo", 3: "Levítico", 4: "Números", 5: "Deuteronomio",
+  6: "Josué", 7: "Jueces", 8: "Rut", 9: "1 Samuel", 10: "2 Samuel",
+  11: "1 Reyes", 12: "2 Reyes", 13: "1 Crónicas", 14: "2 Crónicas", 15: "Esdras",
+  16: "Nehemías", 17: "Ester", 18: "Job", 19: "Salmos", 20: "Proverbios",
+  21: "Eclesiastés", 22: "Cantares", 23: "Isaías", 24: "Jeremías",
+  25: "Lamentaciones", 26: "Ezequiel", 27: "Daniel", 28: "Oseas", 29: "Joel",
+  30: "Amós", 31: "Abdías", 32: "Jonás", 33: "Miqueas", 34: "Nahúm",
+  35: "Habacuc", 36: "Sofonías", 37: "Hageo", 38: "Zacarías", 39: "Malaquías",
+  // NUEVO TESTAMENTO
+  40: "Mateo", 41: "Marcos", 42: "Lucas", 43: "Juan", 44: "Hechos",
+  45: "Romanos", 46: "1 Corintios", 47: "2 Corintios", 48: "Gálatas",
+  49: "Efesios", 50: "Filipenses", 51: "Colosenses", 52: "1 Tesalonicenses",
+  53: "2 Tesalonicenses", 54: "1 Timoteo", 55: "2 Timoteo", 56: "Tito",
+  57: "Filemón", 58: "Hebreos", 59: "Santiago", 60: "1 Pedro", 61: "2 Pedro",
+  62: "1 Juan", 63: "2 Juan", 64: "3 Juan", 65: "Judas", 66: "Apocalipsis"
+};
 
 async function seed() {
-  console.log('🧹 Limpiando DB...');
-  await prisma.verse.deleteMany({});
-  await prisma.chapter.deleteMany({});
-  await prisma.book.deleteMany({});
-  await prisma.bibleVersion.deleteMany({});
+  await client.connect();
+  console.log('Conectado a la DB para cargar Biblia');
 
-  const version = await prisma.bibleVersion.create({
-    data: { name: VERSION_NAME, fullName: VERSION_FULL }
-  });
-  console.log(`✅ Versión ${VERSION_FULL} creada (ID: ${version.id})`);
+  // Verificar si la versión ya existe para no duplicar
+  const checkVersion = await client.query('SELECT id FROM "BibleVersion" WHERE name = $1', [VERSION_SHORT]);
+  if (checkVersion.rows.length > 0) {
+    console.error(`❌ La versión ${VERSION_SHORT} ya existe. Abortando.`);
+    await client.end();
+    return;
+  }
 
-  console.log('📥 Descargando XML...');
-  const response = await fetch(XML_URL);
-  if (!response.ok) throw new Error(`Fetch fail: ${response.status}`);
-  const xmlContent = await response.text();
+  // Insertar la versión
+  const rv = await client.query(
+    `INSERT INTO "BibleVersion" (name, "fullName") VALUES ($1, $2) RETURNING id`,
+    [VERSION_SHORT, VERSION_FULL]
+  );
+  const versionId = rv.rows[0].id;
 
-  console.log('📋 Parseando XML...');
-  const parser = new xml2js.Parser({
-    explicitArray: false,
+  //console.log(`Descargando y parseando XML de LBLA...`);
+  //const res = await fetch(XMLURL);
+  //let xml = await res.text();
+  //xml = xml.replace(/^\uFEFF/, '').trimStart();
+
+console.log('📥 Leyendo XML local...');
+console.log('🔍 Path:', XML_PATH);           // ← AÑADIR
+console.log('🔍 __dirname:', __dirname);      // ← AÑADIR
+console.log('🔍 Existe:', fs.existsSync(XML_PATH)); // ← AÑADIR
+let xml = fs.readFileSync(XML_PATH, 'utf-8').replace(/^\uFEFF/, '').trimStart();
+  
+  const parser = new xml2js.Parser({ 
+    explicitArray: false, 
     trim: true,
-    normalizeTags: true,
-    normalize: true
+    mergeAttrs: true 
   });
-  const data = await parser.parseStringPromise(xmlContent);
-  console.log('✅ Parse OK');
+  
+  const data = await parser.parseStringPromise(xml);
+  
+  // Navegamos por: testament -> book -> chapter -> verse
+  let testaments = data.bible.testament;
+  if (!Array.isArray(testaments)) testaments = [testaments];
 
-  const xmlbible = data.xmlbible || data.XMLBIBLE || data;
-  let bibleBooks = xmlbible.biblebook || xmlbible.BibleBook || [];
-  if (!Array.isArray(bibleBooks)) bibleBooks = [bibleBooks];
+  let totalV = 0;
 
-  console.log(`📚 Encontrados ${bibleBooks.length} libros`);
+  for (const t of testaments) {
+    const tName = t.name === 'Old' ? 'OT' : 'NT';
+    let books = t.book || [];
+    if (!Array.isArray(books)) books = [books];
 
-  const otBooks = ['GÉNESIS','ÉXODO','LEVÍTICO','NÚMEROS','DEUTERONOMIO','JOSUÉ','JUECES','RUT','1 SAMUEL','2 SAMUEL','1 REYES','2 REYES','1 CRÓNICAS','2 CRÓNICAS','ESDRAS','NEHEMÍAS','ESTER','JOB','SALMOS','PROVERBIOS','ECLESIASTÉS','SANTIAGO','ISAÍAS','JEREMÍAS','LAMENTACIONES','EZEQUIEL','DANIEL','OSEAS','JOEL','AMÓS','OBADÍAS','JONÁS','MICAÍAS','NAHÚM','HABACUC','SOFONÍAS','HAGEO','ZACARÍAS','MALAQUÍAS'];
-  let bookOrder = 1;
-  let totalVerses = 0;
+    for (const b of books) {
+      const bNumber = parseInt(b.number);
+      const bName = bookNames[bNumber] || `Libro ${bNumber}`;
+      const abbr = bName.slice(0, 3).toUpperCase();
 
-  for (const bookNode of bibleBooks) {
-    if (!bookNode) continue;
-    const bookName = (bookNode.bookname || bookNode.BookName || bookNode._attributes?.n || 'DESCONOCIDO').toUpperCase().trim();
-    const osisId = bookNode._attributes?.osisid || bookNode._attributes?.osisID || '';
-    const testament = otBooks.includes(bookName) ? 'OT' : 'NT';
-    const abbr = osisId.split('.')[0] || bookName.slice(0,3);
+      console.log(`Cargando: ${bName}...`);
 
-    const book = await prisma.book.create({
-      data: {
-        name: bookName,
-        testament,
-        abbr,
-        order: bookOrder++,
-        versionId: version.id
-      }
-    });
-    console.log(`📖 Libro ${bookOrder-1}: ${bookName} (${testament})`);
+      const rb = await client.query(
+        `INSERT INTO "Book" (name, testament, abbr, "bookOrder", "versionId") VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+        [bName, tName, abbr, bNumber, versionId]
+      );
+      const bookId = rb.rows[0].id;
 
-    // Capítulos
-    let chapters = bookNode.chapter || bookNode.Chapter || [];
-    if (!Array.isArray(chapters)) chapters = [chapters];
+      let chapters = b.chapter || [];
+      if (!Array.isArray(chapters)) chapters = [chapters];
 
-    for (const chNode of chapters) {
-      const chNum = parseInt(chNode._attributes?.osisid?.split('.')?.[1] || chNode.chapternumber || chNode.ChapterNumber || 1);
-      const chapter = await prisma.chapter.create({
-        data: { number: chNum, bookId: book.id }
-      });
+      for (const ch of chapters) {
+        const chNum = parseInt(ch.number);
+        const rc = await client.query(
+          `INSERT INTO "Chapter" (number, "bookId") VALUES ($1,$2) RETURNING id`,
+          [chNum, bookId]
+        );
+        const chId = rc.rows[0].id;
 
-      // Versos
-      let verses = chNode.verse || chNode.Verse || [];
-      if (!Array.isArray(verses)) verses = [verses];
+        let verses = ch.verse || [];
+        if (!Array.isArray(verses)) verses = [verses];
 
-      let verseCount = 0;
-      for (const vNode of verses) {
-        const vNum = parseInt(vNode._attributes?.osisid?.split('.')?.[2] || vNode.versenumber || vNode.VerseNumber || 1);
-        const vText = (vNode.versetext || vNode.VerseText || '').trim();
-        if (vText && vText.length > 0) {
-          await prisma.verse.create({
-            data: { number: vNum, text: vText, chapterId: chapter.id }
-          });
-          verseCount++;
-          totalVerses++;
+        for (const v of verses) {
+          const vNum = parseInt(v.number);
+          // En xml2js con mergeAttrs, si hay texto y atributos, el texto va a "_" o es el valor directo si es string
+          const vText = (typeof v === 'string') ? v : (v._ || "");
+          
+          if (vText) {
+            await client.query(
+              `INSERT INTO "Verse" (number, text, "chapterId") VALUES ($1,$2,$3)`,
+              [vNum, vText.toString().trim(), chId]
+            );
+            totalV++;
+          }
         }
       }
-      console.log(`  Cap. ${chNum}: ${verseCount} versos`);
     }
   }
 
-  console.log(`🎉 ¡SEED TERMINADO! Libros: ${bookOrder-1} | Versos totales: ${totalVerses}`);
-  process.exit(0);
+  console.log(`\n🎉 ¡LBLA Cargada con éxito!`);
+  console.log(`Total versículos insertados: ${totalV}`);
+  await client.end();
 }
 
-seed().catch((e) => {
-  console.error('💥 ERROR:', e);
-  process.exit(1);
+seed().catch(e => { 
+  console.error('Error durante el seed:', e); 
+  process.exit(1); 
 });
