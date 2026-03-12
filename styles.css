@@ -441,6 +441,43 @@ input[type="text"]:focus {
   color: #e53e3e;
 }
 
+/* Comparación lado a lado */
+.comp-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.comp-version-badge {
+    background: var(--accent);
+    color: white;
+    text-align: center;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.comp-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.comp-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.comp-cell {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
 /* 9. RESPONSIVE */
 @media (max-width: 600px) {
   .filters { grid-template-columns: 1fr; }
@@ -451,4 +488,10 @@ input[type="text"]:focus {
   .search-stats { flex-direction: column; text-align: center; }
   .search-pagination { flex-direction: column; }
   .reference { padding: 0 20px; }
+      .comp-row {
+        grid-template-columns: 1fr;
+    }
+    .comp-header {
+        grid-template-columns: 1fr;
+    }
 }
