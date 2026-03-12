@@ -560,9 +560,19 @@ input[type="text"]:focus {
 
 @media (max-width: 600px) {
 
+    /* Establece HTML y BODY para que ocupen el 100% de la altura disponible */
+  html, body {
+    height: 100%; /* Importante para que el flexbox en body funcione correctamente */
+    margin: 0; /* Asegura que no hay márgenes por defecto */
+    padding: 0; /* Asegura que no hay padding por defecto */
+  }
+
     /* Novedades para el diseño de pantalla completa en móvil */
   body {
-    padding: 0; /* Elimina el espacio a los lados, dejando que el contenedor ocupe todo el ancho */
+    padding: 0; /* Elimina el padding del body en móvil */
+    display: flex;             /* Convierte el body en un contenedor flexible */
+    flex-direction: column;    /* Organiza los hijos del body en columna */
+    min-height: 100vh;         /* Asegura que el body siempre ocupe al menos la altura de la ventana */
   }
 
   .container {
@@ -570,7 +580,27 @@ input[type="text"]:focus {
     margin: 0;       /* Elimina los márgenes automáticos que lo centran */
     border-radius: 0; /* Elimina los bordes redondeados para que sea un bloque continuo */
     box-shadow: none; /* Elimina la sombra para un aspecto más plano y de pantalla completa */
+    flex-grow: 1;              /* Permite que el .container crezca y llene la altura del body */
+    display: flex;             /* Convierte el .container en un contenedor flexible */
+    flex-direction: column;    /* Organiza sus hijos en columna */
   }
+   /* Asegura que los elementos fijos dentro del .container no se encojan */
+  header,
+  .mode-tabs,
+  #panelLectura,
+  #panelComparacion,
+  #panelConcordancia,
+  .reference {
+    flex-shrink: 0; /* Evita que estos elementos se encojan */
+  }
+
+  /* Hace que el área de contenido (`#content`) se estire para llenar el espacio restante */
+  .content {
+    flex-grow: 1;              /* Permite que el .content crezca y llene el espacio disponible */
+    overflow-y: auto;          /* Añade una barra de desplazamiento si el contenido es demasiado largo */
+    /* (ya tienes un padding: 20px; en .content en este media query, que está bien) */
+  }
+
   
   .filters { grid-template-columns: 1fr; }
   .concordancia-filters { grid-template-columns: 1fr; }
