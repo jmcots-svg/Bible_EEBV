@@ -69,32 +69,31 @@ document.addEventListener('DOMContentLoaded', () => {
 // =====================
 // 2b. TAMAÑO DE TEXTO
 // =====================
-const fontSizes  = ['0.95rem', '1.1rem', '1.35rem']; // pequeño / normal / grande
-const fontLabels = ['a', 'A', 'A'];                   // texto del knob
+const fontSizes  = ['0.9rem', '1.1rem', '1.35rem'];
+const fontLabels = ['a', 'A', 'A'];
 
 const fontSwitch = document.getElementById('fontSwitch');
 const fontKnob   = document.getElementById('fontKnob');
 
-// Cargar posición guardada (default: 1 = normal)
 let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
 applyFontPos(fontPos);
 
 function applyFontPos(pos) {
     fontPos = pos;
-
-    // ── Mover knob y cambiar color de pista ──
-    fontKnob.dataset.pos  = pos;
+    fontKnob.dataset.pos   = pos;
     fontSwitch.dataset.pos = pos;
-    fontKnob.textContent  = fontLabels[pos];
+    fontKnob.textContent   = fontLabels[pos];
 
-    // ── Aplicar tamaño SOLO al contenido ──
-    document.getElementById('content').style.fontSize = fontSizes[pos];
+    // ── Aplica la variable CSS en el contenedor raíz ──
+    // Así afecta a TODOS los textos dentro de .content
+    // sin importar qué panel esté activo
+    document.getElementById('content').style.setProperty(
+        '--font-reading', fontSizes[pos]
+    );
 
-    // Guardar preferencia
     localStorage.setItem('fontPos', pos);
 }
 
-// Al hacer click avanza cíclicamente: 0 → 1 → 2 → 0
 fontSwitch.addEventListener('click', () => {
     applyFontPos((fontPos + 1) % 3);
 });
