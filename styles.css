@@ -65,11 +65,9 @@ header {
 
 .header-content {
   display: flex;
-  flex-direction: row;        /* ← forzar horizontal siempre */
-  justify-content: center;
   align-items: center;
+  justify-content: space-between;   /* ← clave */
   gap: 16px;
-  flex-wrap: nowrap;          /* ← nunca romper en dos líneas */
 }
 
 #mainTitle {
@@ -77,6 +75,8 @@ header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+    flex: 1;                 /* ← el título absorbe el espacio */
+  text-align: center;
 }
 
 .switch {
@@ -548,7 +548,7 @@ input[type="text"]:focus {
   .tab-icon {
     font-size: 1.4rem;        /* ← icono más grande para compensar */
   }
-
+}
 /* ===================== */
 /* 10. FONT SIZE SWITCH  */
 /* ===================== */
@@ -636,15 +636,13 @@ input[type="text"]:focus {
 /* FONT SIZE SWITCHER */
 .font-track {
   position: relative;
-  display: block;                 /* ← importante */
   width: 68px;
   height: 26px;
-  min-width: 68px;                /* ← evita colapso */
-  min-height: 26px;               /* ← evita colapso */
-  background: rgba(255,255,255,0.35) !important; /* ← blindado */
+  min-width: 68px;         /* ← evita colapso */
+  flex-shrink: 0;          /* ← NO permitir que se comprima */
+  background: rgba(255,255,255,0.35);
   border-radius: 34px;
   cursor: pointer;
-  flex: 0 0 68px;                 /* ← evita que flex lo comprima */
 }
 
 .font-knob {
