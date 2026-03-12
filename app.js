@@ -327,15 +327,6 @@ modeTabs.forEach(tab => {
             </p>
         `).join('');
 
-        if (vNum) {
-            const btn = document.createElement('button');
-            btn.textContent = '🔄 Comparar versiones';
-            btn.className = 'btn-search';
-            btn.style.marginTop = '20px';
-            btn.onclick = () => showComparison(bName, chNum, vNum);
-            content.appendChild(btn);
-        }
-
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
