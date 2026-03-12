@@ -750,37 +750,31 @@ input[type="text"]:focus {
 /* ===================== */
 /* 12. MOBILE OVERRIDES  */
 /* ===================== */
+
 @media (max-width: 600px) {
 
-  /* Pestañas — solo icono, más compactas */
+  /* Pestañas compactas — solo icono */
   .mode-tabs {
     padding: 0 8px;
-    gap: 4px;
+    gap: 3px;
   }
 
   .mode-tab {
-    padding: 10px 6px;
+    padding: 10px 4px;
     font-size: 0.8rem;
   }
 
-  .tab-text {
-    display: none;
-  }
-
-  .tab-icon {
-    font-size: 1.4rem;
-  }
+  .tab-text { display: none; }
+  .tab-icon { font-size: 1.4rem; }
 
   /* Mostrar botón toggle */
-  .filters-toggle {
-    display: flex;
-  }
+  .filters-toggle { display: flex; }
 
-  /* Filtros en 2 columnas cuando visibles */
+  /* Filtros en 2 columnas */
   .filters {
     grid-template-columns: 1fr 1fr;
-    padding: 16px;
-    gap: 12px;
+    padding: 12px;
+    gap: 10px;
   }
 
   /* Versículo ocupa todo el ancho */
@@ -788,43 +782,30 @@ input[type="text"]:focus {
     grid-column: 1 / -1;
   }
 
-  /* Concordancia: filtros en 2 columnas */
-  .concordancia-filters {
-    grid-template-columns: 1fr 1fr;
-  }
+  /* Concordancia */
+  .concordancia-filters { grid-template-columns: 1fr 1fr; }
+  .search-input-group   { grid-column: 1 / -1; }
 
-  .search-input-group {
-    grid-column: 1 / -1;
-  }
-
-  /* Selects más compactos */
-  select,
-  input[type="text"] {
+  /* Selects compactos */
+  select, input[type="text"] {
     padding: 8px 10px;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
   }
 
-  .filter-group label {
-    font-size: 0.78rem;
-  }
+  .filter-group label { font-size: 0.78rem; }
 
-  /* Contenido más compacto */
-  .content {
-    padding: 16px;
-  }
+  /* Contenido */
+  .content   { padding: 16px; }
+  .reference { padding: 0 16px; }
 
-  .reference {
-    padding: 0 16px;
-  }
+  /* Búsqueda */
+  .search-wrapper     { flex-direction: column; }
+  .search-stats       { flex-direction: column; text-align: center; }
+  .search-pagination  { flex-direction: column; }
 
   /* Comparación apilada */
-  .comp-row {
-    grid-template-columns: 1fr;
-  }
-
-  .comp-header {
-    grid-template-columns: 1fr 1fr;
-  }
+  .comp-row    { grid-template-columns: 1fr; }
+  .comp-header { grid-template-columns: 1fr 1fr; }
 }
 
 }
