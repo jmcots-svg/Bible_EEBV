@@ -66,56 +66,188 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // =====================
-    // 3. TABS - CAMBIO DE MODO
-    // =====================
-    modeTabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const mode = tab.dataset.mode;
-            if (mode === currentMode) return;
+// =====================
+// 3. TABS - CAMBIO DE MODO
+// =====================
+modeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        const mode = tab.dataset.mode;
+        if (mode === currentMode) return;
 
-            currentMode = mode;
-            modeTabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+        const prevMode = currentMode; // ← guardamos el modo anterior
+        currentMode = mode;
+        modeTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
 
-            // Ocultar todos los paneles primero
-            panelLectura.style.display      = 'none';
-            panelConcordancia.style.display = 'none';
-            panelComparacion.style.display  = 'none';
+        // Ocultar todos los paneles primero
+        panelLectura.style.display      = 'none';
+        panelConcordancia.style.display = 'none';
+        panelComparacion.style.display  = 'none';
 
-            if (mode === 'lectura') {
-                panelLectura.style.display = '';
-                if (chapterSelect.value) {
-                    onSearch();
-                } else if (bookSelect.value) {
-                    content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
-                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-                } else {
-                    content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
-                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-                }
+        if (mode === 'lectura') {
+            panelLectura.style.display = '';
 
-            } else if (mode === 'concordancia') {
-                panelConcordancia.style.display = '';
-                if (currentSearchData) {
-                    renderSearchResults(currentSearchData);
-                } else {
-                    content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
-                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-                }
-
-            } else if (mode === 'comparacion') {
-                panelComparacion.style.display = '';
-                if (currentCompData) {
-                    const { versesA, versesB, versionA, versionB, bookName, chNum, vNum } = currentCompData;
-                    renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
-                } else {
-                    content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
-                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-                }
+            // ── Sincronizar desde Comparación → Lectura ──────────────────
+            if (prevMode === 'comparacion' && compBook.value && compChapter.value) {
+                syncCompToReading();
+                return; // syncCompToReading se encarga de renderizar
             }
-        });
+            // ─────────────────────────────────────────────────────────────
+
+            if (chapterSelect.value) {
+                onSearch();
+            } else if (bookSelect.value) {
+                content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            } else {
+                content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            }
+
+        } else if (mode === 'concordancia') {
+            panelConcordancia.style.display = '';
+            if (currentSearchData) {
+                renderSearchResults(currentSearchData);
+            } else {
+                content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            }
+
+        } else if (mode === 'comparacion') {
+            panelComparacion.style.display = '';
+
+            // ── Sincronizar desde Lectura → Comparación ───────────────────
+            if (prevMode === 'lectura' && bookSelect.value && chapterSelect.value) {
+                syncReadingToComp();
+                return; // syncReadingToComp se encarga de renderizar
+            }
+            // ─────────────────────────────────────────────────────────────
+
+            if (currentCompData) {
+                const { versesA, versesB, versionA, versionB, bookName, chNum, vNum } = currentCompData;
+                renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
+            } else {
+                content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            }
+        }
     });
+});
+
+// =====================
+// 3b. SYNC: Lectura → Comparación
+// =====================
+async function syncReadingToComp() {
+    const bookId   = bookSelect.value;
+    const bookName = bookSelect.options[bookSelect.selectedIndex]?.text;
+    const chapterId = chapterSelect.value;
+    const chNum    = chapterSelect.options[chapterSelect.selectedIndex]?.dataset.number;
+    const vNum     = verseSelect.value; // puede ser "" (todo el capítulo)
+
+    if (!bookId || !chapterId) return;
+
+    content.innerHTML = '<p class="loading">⚖️ Cargando comparación...</p>';
+
+    try {
+        // 1. Cargar libros en compBook (usa la versión A actual)
+        await loadCompBooks();
+
+        // 2. Seleccionar el mismo libro
+        compBook.value = bookId;
+        compBook.disabled = false;
+
+        // 3. Cargar capítulos del libro
+        await loadCompChapters();
+
+        // 4. Seleccionar el mismo capítulo
+        //    compChapter tiene ids que corresponden a la misma versión (A)
+        compChapter.value = chapterId;
+        compChapter.disabled = false;
+
+        // 5. Cargar versículos del capítulo
+        const cacheKey = `${chapterId}-all`;
+        let verses = cache.verses[cacheKey];
+        if (!verses) {
+            verses = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapterId}`);
+            cache.verses[cacheKey] = verses;
+        }
+        compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        verses.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.number;
+            opt.textContent = `Versículo ${v.number}`;
+            compVerse.appendChild(opt);
+        });
+        compVerse.disabled = false;
+
+        // 6. Seleccionar el mismo versículo
+        compVerse.value = vNum;
+
+        // 7. Renderizar comparación
+        renderComparison();
+
+    } catch (e) {
+        content.innerHTML = `<p class="error">❌ Error al sincronizar: ${e.message}</p>`;
+    }
+}
+
+// =====================
+// 3c. SYNC: Comparación → Lectura
+// =====================
+async function syncCompToReading() {
+    const bookId    = compBook.value;
+    const bookName  = compBook.options[compBook.selectedIndex]?.text;
+    const chapterId = compChapter.value;
+    const chNum     = compChapter.options[compChapter.selectedIndex]?.dataset.number;
+    const vNum      = compVerse.value; // puede ser "" (todo el capítulo)
+
+    if (!bookId || !chapterId) return;
+
+    content.innerHTML = '<p class="loading">📖 Cargando lectura...</p>';
+
+    try {
+        // 1. Aseguramos libros cargados en panel lectura
+        const version = versionSelect.value;
+        if (!cache.books[version]) {
+            const data = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+            cache.books[version] = data;
+        }
+        renderBooks(cache.books[version]);
+
+        // 2. Seleccionar el mismo libro
+        bookSelect.value = bookId;
+        bookSelect.disabled = false;
+
+        // 3. Cargar capítulos
+        if (!cache.chapters[bookId]) {
+            const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
+            cache.chapters[bookId] = chaptersData;
+            localStorage.setItem(`chapters_${bookId}`, JSON.stringify(chaptersData));
+        }
+        renderChapters(cache.chapters[bookId]);
+
+        // 4. Seleccionar el mismo capítulo
+        chapterSelect.value = chapterId;
+        chapterSelect.disabled = false;
+
+        // 5. Cargar y mostrar versículos
+        const cacheKey = `${chapterId}-all`;
+        if (!cache.verses[cacheKey]) {
+            const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapterId}`);
+            cache.verses[cacheKey] = versesData;
+        }
+        renderVerseSelect(cache.verses[cacheKey]);
+
+        // 6. Seleccionar el mismo versículo
+        verseSelect.value = vNum;
+
+        // 7. Renderizar lectura
+        onSearch();
+
+    } catch (e) {
+        content.innerHTML = `<p class="error">❌ Error al sincronizar: ${e.message}</p>`;
+    }
+}
 
     // =====================
     // 4. FUNCIONES MODO LECTURA
