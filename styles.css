@@ -645,6 +645,20 @@ input[type="text"]:focus {
   .orientation-hint {
       display: flex; /* Se muestra en pantallas estrechas (ahora flex, antes none) */
   }
+  
+  /* Responsive para el modal y botón de copiar en móvil */
+  .modal-content {
+      width: 95%;
+      padding: 15px;
+      border-radius: 0; /* Para que ocupe más en móvil */
+  }
+  .floating-action-button {
+      bottom: 15px;
+      right: 15px;
+      padding: 10px 18px;
+      font-size: 0.9rem;
+  }
+  
 }
 
 
@@ -906,6 +920,122 @@ input[type="text"]:focus {
   /* Comparación apilada */
   .comp-row    { grid-template-columns: 1fr; }
   .comp-header { grid-template-columns: 1fr 1fr; }
+}
+
+/* 13. SELECCIÓN DE VERSÍCULOS Y COPIADO */
+
+/* Estilo para el número de versículo cuando está seleccionado */
+.verse-number.selected {
+    background-color: var(--accent); /* O un color que resalte */
+    color: white;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer; /* Indicar que es clickeable */
+}
+
+/* Estilo para el botón flotante (si lo añades) */
+.floating-action-button {
+    display: flex; /* Para que el icono y el texto estén en línea */
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1000;
+}
+
+.floating-action-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+}
+
+.floating-action-button:active {
+    transform: translateY(0);
+}
+
+
+/* Estilos para el Modal */
+.modal {
+    display: none; /* Oculto por defecto, JS lo muestra con 'flex' */
+    position: fixed;
+    z-index: 1001;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.6);
+    display: flex; /* JS lo cambia a flex para centrar */
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: var(--bg-container);
+    margin: auto;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+    position: relative;
+    color: var(--text-main);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text-main);
+}
+
+.modal-content textarea {
+    width: 100%;
+    height: 200px;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    resize: vertical;
+    background-color: var(--bg-filters);
+    color: var(--text-main);
+}
+
+.close-button {
+    color: var(--text-muted);
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: var(--accent);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.copy-feedback {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--accent);
+    text-align: center;
 }
 
 }
