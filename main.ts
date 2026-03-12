@@ -344,7 +344,7 @@ Deno.serve(async (req: Request) => {
         setCache("versions", allVersions);
         await kvSet(["versions"], allVersions, TTL_1D_MS);
 
-        for (const v of ["RV60", "LBLA"]) {
+        for (const v of ["RV60", "LBLA", "BEC"]) {
           const books = await prisma.book.findMany({
             where: { version: { name: v } },
             orderBy: { bookOrder: "asc" },
