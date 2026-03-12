@@ -44,8 +44,8 @@ const TTL_7D_MS = 7 * 24 * 60 * 60 * 1000;
 // Headers / CORS
 // --------------------
 const corsHeaders: Record<string, string> = {
-  "Access-Corol-Allow-Origin": "*",
-  "Access-Corol-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Expose-Headers": "Server-Timing, X-Cache",
   "Timing-Allow-Origin": "*",
