@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const compBook     = document.getElementById('compBook');
     const compChapter  = document.getElementById('compChapter');
     const compVerse    = document.getElementById('compVerse');
+    const compOrientationHint = document.getElementById('compOrientationHint');
 
     // Tabs y paneles
     const modeTabs         = document.querySelectorAll('.mode-tab');
@@ -138,6 +139,7 @@ modeTabs.forEach(tab => {
 
         } else if (mode === 'comparacion') {
             panelComparacion.style.display = '';
+            updateComparisonOrientationHint();
 
             // ── Sincronizar desde Lectura → Comparación ───────────────────
             if (prevMode === 'lectura' && bookSelect.value && chapterSelect.value) {
@@ -154,6 +156,7 @@ modeTabs.forEach(tab => {
                 if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
             }
         }
+        updateComparisonOrientationHint();
     });
 });
 
@@ -861,6 +864,7 @@ async function renderComparison() {
                 <div class="comp-version-badge">${versionB}</div>
             </div>
             <div class="comp-container">${rowsHtml}</div>`;
+        updateComparisonOrientationHint();
     }
 
     // =====================
@@ -880,6 +884,19 @@ async function renderComparison() {
     function showError(msg) {
         content.innerHTML = `<p class="error">❌ ${msg}</p>`;
         if (reference) reference.classList.remove('visible');
+    }
+    function updateComparisonOrientationHint() {
+        if (!compOrientationHint) return;
+    
+        const isComparisonMode = currentMode === 'comparacion';
+        const isNarrowScreen = window.innerWidth <= 600; // Define 'estrecha' como <= 600px (como en tus media queries)
+    
+        // La pista solo se muestra si estamos en modo comparación y la pantalla es estrecha
+        if (isComparisonMode && isNarrowScreen) {
+            compOrientationHint.style.display = 'flex';
+        } else {
+            compOrientationHint.style.display = 'none';
+        }
     }
 
     // =====================
@@ -971,5 +988,9 @@ async function renderComparison() {
             diffX < 0 ? cambiarCapitulo('sig') : cambiarCapitulo('ant');
         }
     }, { passive: true });
+
+    updateComparisonOrientationHint(); // Llamada inicial al cargar la página.
+    window.addEventListener('resize', updateComparisonOrientationHint); // Escucha cambios de tamaño/orientación.
+
 
 }); // ← fin DOMContentLoaded
