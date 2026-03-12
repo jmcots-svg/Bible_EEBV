@@ -464,14 +464,20 @@ modeTabs.forEach(tab => {
         `;
 
         // Results
+
         data.results.forEach(r => {
             const highlightedText = highlightText(r.text, data.query);
             const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
-
+        
             html += `
                 <div class="search-result-card">
                     <div class="search-result-header">
-                        <span class="search-result-ref">${testamentIcon} ${r.book} ${r.chapter}:${r.verse}</span>
+                        <a href="#" class="search-result-ref search-nav-link"
+                           data-book="${escapeHtml(r.book)}"
+                           data-chapter="${r.chapter}"
+                           data-verse="${r.verse}">
+                            ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
+                        </a>
                     </div>
                     <p class="search-result-text">${highlightedText}</p>
                 </div>
@@ -506,6 +512,18 @@ modeTabs.forEach(tab => {
                 const page = parseInt(btn.dataset.page);
                 onConcordanciaSearch(page);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+
+        // Bind navigation events (enlaces a Lectura)
+        content.querySelectorAll('.search-nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateToVerse(
+                    link.dataset.book,
+                    link.dataset.chapter,
+                    link.dataset.verse
+                );
             });
         });
     }
@@ -561,6 +579,88 @@ function highlightText(text, query) {
     function escapeRegExp(string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
+
+
+    // =====================
+// 5b. NAVEGACIÓN DESDE CONCORDANCIA A LECTURA
+// =====================
+async function navigateToVerse(bookName, chapterNum, verseNum) {
+    const version = concVersion.value || versionSelect.value;
+
+    // Feedback visual
+    content.innerHTML = '<p class="loading">📖 Abriendo en modo lectura...</p>';
+
+    try {
+        // 1. Asegurar versión correcta en Lectura
+        versionSelect.value = version;
+        if (mainTitle && versionSelect.selectedIndex >= 0) {
+            mainTitle.textContent = `📖 Biblia ${versionSelect.options[versionSelect.selectedIndex].text}`;
+        }
+
+        // 2. Cargar libros si no están en caché
+        if (!cache.books[version]) {
+            const data = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+            cache.books[version] = data;
+        }
+        renderBooks(cache.books[version]);
+
+        // 3. Encontrar el libro por nombre
+        const book = cache.books[version].find(b => b.name === bookName);
+        if (!book) {
+            showError(`No se encontró el libro "${bookName}"`);
+            return;
+        }
+        bookSelect.value = book.id;
+
+        // 4. Cargar capítulos si no están en caché
+        if (!cache.chapters[book.id]) {
+            const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${book.id}`);
+            cache.chapters[book.id] = chaptersData;
+            localStorage.setItem(`chapters_${book.id}`, JSON.stringify(chaptersData));
+        }
+        renderChapters(cache.chapters[book.id]);
+
+        // 5. Encontrar el capítulo por número
+        const chapter = cache.chapters[book.id].find(
+            ch => String(ch.number) === String(chapterNum)
+        );
+        if (!chapter) {
+            showError(`No se encontró el capítulo ${chapterNum}`);
+            return;
+        }
+        chapterSelect.value = chapter.id;
+
+        // 6. Cargar versículos si no están en caché
+        const cacheKey = `${chapter.id}-all`;
+        if (!cache.verses[cacheKey]) {
+            const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapter.id}`);
+            cache.verses[cacheKey] = versesData;
+        }
+        renderVerseSelect(cache.verses[cacheKey]);
+
+        // 7. Seleccionar el versículo
+        verseSelect.value = String(verseNum);
+
+        // 8. Cambiar a pestaña Lectura (visual)
+        currentMode = 'lectura';
+        modeTabs.forEach(t => {
+            if (t.dataset.mode === 'lectura') {
+                t.classList.add('active');
+            } else {
+                t.classList.remove('active');
+            }
+        });
+        panelLectura.style.display = '';
+        panelConcordancia.style.display = 'none';
+
+        // 9. Renderizar el contenido
+        onSearch();
+
+    } catch (e) {
+        showError('Error al navegar al versículo');
+        console.error(e);
+    }
+}
 
     // =====================
     // 6. UTILIDADES COMPARTIDAS
