@@ -870,5 +870,227 @@ swipeArea.addEventListener('touchend', e => {
     }
 }, { passive: true });
 
+// =====================
+// PANEL COMPARACIÓN
+// =====================
+const compVersionA  = document.getElementById('compVersionA');
+const compVersionB  = document.getElementById('compVersionB');
+const compBook      = document.getElementById('compBook');
+const compChapter   = document.getElementById('compChapter');
+const compVerse     = document.getElementById('compVerse');
+
+// Poblar selectores de versión al cargar versiones
+async function loadVersionsForComp(versions) {
+    [compVersionA, compVersionB].forEach((sel, i) => {
+        sel.innerHTML = '';
+        versions.forEach((v, j) => {
+            const opt = document.createElement('option');
+            opt.value = v.name;
+            opt.textContent = v.fullName;
+            // A = primera versión, B = segunda versión por defecto
+            if (j === i) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    });
+}
+
+// Cargar libros cuando cambia versión A (los libros son iguales en todas)
+async function loadCompBooks() {
+    const version = compVersionA.value;
+    if (!version) return;
+
+    let books = cache.books[version];
+    if (!books) {
+        books = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+        cache.books[version] = books;
+    }
+
+    compBook.innerHTML = '<option value="">-- Selecciona libro --</option>';
+    const ot = books.filter(b => b.testament === 'OT');
+    const nt = books.filter(b => b.testament === 'NT');
+
+    const createGroup = (label, list) => {
+        const group = document.createElement('optgroup');
+        group.label = label;
+        list.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.textContent = b.name;
+            group.appendChild(opt);
+        });
+        return group;
+    };
+
+    compBook.appendChild(createGroup('📜 Antiguo Testamento', ot));
+    compBook.appendChild(createGroup('✝️ Nuevo Testamento', nt));
+    compBook.disabled = false;
+
+    // Reset capítulos y versículos
+    compChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    compChapter.disabled = true;
+    compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    compVerse.disabled = true;
+}
+
+// Cargar capítulos al seleccionar libro
+async function loadCompChapters() {
+    const bookId = compBook.value;
+    if (!bookId) return;
+
+    let chapters = cache.chapters[bookId];
+    if (!chapters) {
+        chapters = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
+        cache.chapters[bookId] = chapters;
+    }
+
+    compChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    chapters.forEach(ch => {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = `Capítulo ${ch.number}`;
+        opt.dataset.number = ch.number;
+        compChapter.appendChild(opt);
+    });
+    compChapter.disabled = false;
+
+    compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    compVerse.disabled = true;
+}
+
+// Cargar versículos al seleccionar capítulo
+async function loadCompVerses() {
+    const chId = compChapter.value;
+    if (!chId) return;
+
+    const cacheKey = `${chId}-all`;
+    let verses = cache.verses[cacheKey];
+    if (!verses) {
+        verses = await fetchJSON(`${API_URL}/api/verses?chapterId=${chId}`);
+        cache.verses[cacheKey] = verses;
+    }
+
+    compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    verses.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.number;
+        opt.textContent = `Versículo ${v.number}`;
+        compVerse.appendChild(opt);
+    });
+    compVerse.disabled = false;
+
+    // Renderizar automáticamente
+    renderComparison();
+}
+
+// Renderizar comparación
+async function renderComparison() {
+    const versionA = compVersionA.value;
+    const versionB = compVersionB.value;
+    const chIdA    = compChapter.value;
+    const vNum     = compVerse.value;
+
+    if (!versionA || !versionB || !chIdA) return;
+    if (versionA === versionB) {
+        content.innerHTML = '<p class="error">❌ Selecciona dos versiones diferentes</p>';
+        return;
+    }
+
+    content.innerHTML = '<p class="loading">⚖️ Comparando versiones...</p>';
+
+    try {
+        // Obtener capítulo equivalente en versión B
+        const bookName = compBook.options[compBook.selectedIndex]?.text;
+        const chNum = compChapter.options[compChapter.selectedIndex]?.dataset.number;
+
+        // Buscar bookId de versión B
+        let booksB = cache.books[versionB];
+        if (!booksB) {
+            booksB = await fetchJSON(`${API_URL}/api/books?version=${versionB}`);
+            cache.books[versionB] = booksB;
+        }
+        const bookB = booksB.find(b => b.name === bookName);
+        if (!bookB) throw new Error(`No se encontró "${bookName}" en ${versionB}`);
+
+        let chaptersB = cache.chapters[bookB.id];
+        if (!chaptersB) {
+            chaptersB = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookB.id}`);
+            cache.chapters[bookB.id] = chaptersB;
+        }
+        const chapterB = chaptersB.find(ch => String(ch.number) === String(chNum));
+        if (!chapterB) throw new Error(`No se encontró capítulo ${chNum} en ${versionB}`);
+
+        // Obtener versículos de ambas versiones
+        const cacheKeyA = `${chIdA}-all`;
+        const cacheKeyB = `${chapterB.id}-all`;
+
+        let versesA = cache.verses[cacheKeyA];
+        if (!versesA) {
+            versesA = await fetchJSON(`${API_URL}/api/verses?chapterId=${chIdA}`);
+            cache.verses[cacheKeyA] = versesA;
+        }
+
+        let versesB = cache.verses[cacheKeyB];
+        if (!versesB) {
+            versesB = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapterB.id}`);
+            cache.verses[cacheKeyB] = versesB;
+        }
+
+        // Filtrar versículo si se seleccionó uno
+        if (vNum) {
+            versesA = versesA.filter(v => String(v.number) === String(vNum));
+            versesB = versesB.filter(v => String(v.number) === String(vNum));
+        }
+
+        // Renderizar lado a lado
+        renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
+
+    } catch (e) {
+        content.innerHTML = `<p class="error">❌ ${e.message}</p>`;
+        console.error(e);
+    }
+}
+
+function renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum) {
+    if (reference) {
+        reference.textContent = `${bookName} ${chNum}${vNum ? ':' + vNum : ''}`;
+        reference.classList.add('visible');
+    }
+
+    const rowsHtml = versesA.map(vA => {
+        const vB = versesB.find(v => v.number === vA.number);
+        return `
+            <div class="comp-row">
+                <div class="comp-cell">
+                    <span class="verse-number">${vA.number}</span>${vA.text}
+                </div>
+                <div class="comp-cell">
+                    <span class="verse-number">${vB?.number ?? vA.number}</span>${vB?.text ?? '<em>No disponible</em>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    content.innerHTML = `
+        <div class="comp-header">
+            <div class="comp-version-badge">${versionA}</div>
+            <div class="comp-version-badge">${versionB}</div>
+        </div>
+        <div class="comp-container">
+            ${rowsHtml}
+        </div>
+    `;
+}
+
+// Eventos comparación
+compVersionA.addEventListener('change', () => {
+    loadCompBooks();
+    if (compChapter.value) renderComparison();
+});
+compVersionB.addEventListener('change', () => {
+    if (compChapter.value) renderComparison();
+});
+compBook.addEventListener('change', loadCompChapters);
+compChapter.addEventListener('change', loadCompVerses);
+compVerse.addEventListener('change', renderComparison);
 
 });
