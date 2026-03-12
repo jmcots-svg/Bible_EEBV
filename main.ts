@@ -1,4 +1,4 @@
-import { PrismaClient } from "npm:@prisma/client";
+import { PrismaClient } from "npm:@prisma/client/edge";
 const prisma = new PrismaClient();
 
 // KV (Deno Deploy) - requiere deno.json con: "unstable": ["kv"]
