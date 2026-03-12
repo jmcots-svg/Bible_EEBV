@@ -17,8 +17,8 @@ const client = new Client({
 // CONFIGURACIÓN PARA BEC
 //const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
 const XML_PATH = path.join(__dirname, 'data', 'SpanishLBLABible.xml');
-const VERSION_SHORT = 'BEC';
-const VERSION_FULL = 'Bíblia Evangèlica Catalana 2000';
+const VERSION_SHORT = 'LBLA';
+const VERSION_FULL = 'La Biblia de las Américas';
 
 // Mapeo de nombres de libros por número (Basado en el canon estándar)
 const bookNames = {
