@@ -19,4 +19,4 @@ jobs:
       - name: Run Seed
         run: node seed-pg.js
         env:
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DIRECT_URL: ${{ secrets.DATABASE_URL }}
