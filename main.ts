@@ -44,8 +44,8 @@ const TTL_7D_MS = 7 * 24 * 60 * 60 * 1000;
 // Headers / CORS
 // --------------------
 const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Corol-Allow-Origin": "*",
+  "Access-Corol-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Expose-Headers": "Server-Timing, X-Cache",
   "Timing-Allow-Origin": "*",
@@ -252,10 +252,14 @@ if (path === "/api/compare") {
     // =====================================================
     // /api/search
     // =====================================================
+    
 if (path === "/api/search") {
   const queryText = url.searchParams.get("query")?.trim();
   const version = url.searchParams.get("version") || "RV60";
   const testament = url.searchParams.get("testament") || "ALL";
+
+  console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
+
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
   const offset = (page - 1) * limit;
