@@ -1,4 +1,4 @@
-name: 🌿 Seed Bible
+name: 🌿 Seed Bible 1
 
 on:
   workflow_dispatch:
@@ -17,6 +17,6 @@ jobs:
         run: npm install pg xml2js node-fetch
 
       - name: Run Seed
-        run: node seed-pg.js
+        run: node seed1.js
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
