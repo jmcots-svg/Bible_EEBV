@@ -559,6 +559,19 @@ input[type="text"]:focus {
 /* 9. RESPONSIVE */
 
 @media (max-width: 600px) {
+
+    /* Novedades para el diseño de pantalla completa en móvil */
+  body {
+    padding: 0; /* Elimina el espacio a los lados, dejando que el contenedor ocupe todo el ancho */
+  }
+
+  .container {
+    max-width: 100%; /* Asegura que el contenedor ocupe todo el ancho disponible */
+    margin: 0;       /* Elimina los márgenes automáticos que lo centran */
+    border-radius: 0; /* Elimina los bordes redondeados para que sea un bloque continuo */
+    box-shadow: none; /* Elimina la sombra para un aspecto más plano y de pantalla completa */
+  }
+  
   .filters { grid-template-columns: 1fr; }
   .concordancia-filters { grid-template-columns: 1fr; }
   .content { padding: 20px; }
