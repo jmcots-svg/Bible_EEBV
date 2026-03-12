@@ -217,38 +217,37 @@ Deno.serve(async (req: Request) => {
         headers: makeHeaders("public, max-age=604800"),
       });
     }
+// =====================================================
+// /api/compare
+// =====================================================
+if (path === "/api/compare") {
+  const bookOrder = Number(url.searchParams.get("bookOrder")); // ← cambia bookName por bookOrder
+  const chapter = Number(url.searchParams.get("chapter"));
+  const verse = Number(url.searchParams.get("verse"));
 
-    // =====================================================
-    // /api/compare
-    // =====================================================
-    if (path === "/api/compare") {
-      const bookName = url.searchParams.get("bookName");
-      const chapter = Number(url.searchParams.get("chapter"));
-      const verse = Number(url.searchParams.get("verse"));
+  if (!bookOrder || isNaN(chapter) || isNaN(verse)) {
+    return new Response(JSON.stringify({ error: "Datos inválidos" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      if (!bookName || isNaN(chapter) || isNaN(verse)) {
-        return new Response(JSON.stringify({ error: "Datos inválidos" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
-      }
+  const { rows } = await pool.query(
+    `SELECT v.text, bv.name as version, b.name as bookName
+     FROM "Verse" v
+     JOIN "Chapter" c ON v."chapterId" = c.id
+     JOIN "Book" b ON c."bookId" = b.id
+     JOIN "BibleVersion" bv ON b."versionId" = bv.id
+     WHERE v.number = \$1
+       AND c.number = \$2
+       AND b."bookOrder" = \$3`,  // ← busca por orden en vez de nombre
+    [verse, chapter, bookOrder]
+  );
 
-      const { rows } = await pool.query(
-        `SELECT v.text, bv.name as version
-         FROM "Verse" v
-         JOIN "Chapter" c ON v."chapterId" = c.id
-         JOIN "Book" b ON c."bookId" = b.id
-         JOIN "BibleVersion" bv ON b."versionId" = bv.id
-         WHERE v.number = \$1
-           AND c.number = \$2
-           AND LOWER(b.name) = LOWER(\$3)`,
-        [verse, chapter, bookName]
-      );
-
-      return new Response(JSON.stringify(rows), {
-        headers: makeHeaders("public, max-age=86400"),
-      });
-    }
+  return new Response(JSON.stringify(rows), {
+    headers: makeHeaders("public, max-age=86400"),
+  });
+}
 
     // =====================================================
     // /api/search
