@@ -1,5 +1,8 @@
 import { PrismaClient } from "npm:@prisma/client/edge";
-const prisma = new PrismaClient();
+
+const prisma = new PrismaClient({
+  datasourceUrl: Deno.env.get("DATABASE_URL"),
+});
 
 // KV (Deno Deploy) - requiere deno.json con: "unstable": ["kv"]
 const kv = await Deno.openKv();
