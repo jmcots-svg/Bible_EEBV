@@ -88,46 +88,6 @@ fontTrack.addEventListener('click', () => {
     applyFontPos((fontPos + 1) % 3);
 });
 
-// =====================
-// 2b. TAMAÑO DE TEXTO
-// =====================
-const fontSizes  = ['0.9rem', '1.1rem', '1.35rem'];
-const fontLabels = ['a', 'A', 'A'];
-
-const fontKnob  = document.getElementById('fontKnob');
-const fontTrack = fontKnob ? fontKnob.parentElement : null;
-const fontSwitchLabel = document.querySelector('.font-switch');
-
-let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
-applyFontPos(fontPos);
-
-function applyFontPos(pos) {
-    fontPos = pos;
-
-    if (fontKnob)  { 
-        fontKnob.dataset.pos  = pos; 
-        fontKnob.textContent  = fontLabels[pos]; 
-    }
-    if (fontTrack) { 
-        fontTrack.dataset.pos = pos; 
-    }
-
-    // Aplica la variable en #content → afecta a todos los paneles
-    const contentEl = document.getElementById('content');
-    if (contentEl) {
-        contentEl.style.setProperty('--font-reading', fontSizes[pos]);
-    }
-
-    localStorage.setItem('fontPos', pos);
-}
-
-// Click en cualquier parte del label avanza la posición
-if (fontSwitchLabel) {
-    fontSwitchLabel.addEventListener('click', (e) => {
-        e.preventDefault();
-        applyFontPos((fontPos + 1) % 3);
-    });
-}
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
