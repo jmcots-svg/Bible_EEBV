@@ -1,7 +1,5 @@
-import { PrismaClient } from "npm:@prisma/client/edge";
-import { withAccelerate } from "npm:@prisma/extension-accelerate";
-
-const prisma = new PrismaClient().$extends(withAccelerate());
+import { PrismaClient } from "npm:@prisma/client";
+const prisma = new PrismaClient();
 
 // KV (Deno Deploy) - requiere deno.json con: "unstable": ["kv"]
 const kv = await Deno.openKv();
@@ -96,7 +94,6 @@ Deno.serve(async (req: Request) => {
 
       const versions = await prisma.bibleVersion.findMany({
         orderBy: { id: "asc" },
-        cacheStrategy: { ttl: 86400, swr: 300 },
       });
 
       setCache(memKey, versions);
@@ -136,7 +133,6 @@ Deno.serve(async (req: Request) => {
         where: { version: { name: version } },
         orderBy: { bookOrder: "asc" },
         select: { id: true, name: true, testament: true, bookOrder: true },
-        cacheStrategy: { ttl: 86400, swr: 300 },
       });
 
       setCache(memKey, books);
@@ -197,7 +193,6 @@ Deno.serve(async (req: Request) => {
         where: { bookId },
         orderBy: { number: "asc" },
         select: { id: true, number: true },
-        cacheStrategy: { ttl: 604800, swr: 600 },
       });
       const tDb1 = performance.now();
 
@@ -270,7 +265,6 @@ Deno.serve(async (req: Request) => {
         },
         orderBy: { number: "asc" },
         select: { number: true, text: true },
-        cacheStrategy: debug ? undefined : { ttl: 604800, swr: 600 },
       });
       const tDb1 = performance.now();
 
@@ -320,7 +314,6 @@ Deno.serve(async (req: Request) => {
             },
           },
         },
-        cacheStrategy: { ttl: 86400, swr: 300 },
       });
 
       const formatted = results.map((v) => ({
@@ -339,7 +332,6 @@ Deno.serve(async (req: Request) => {
       try {
         const allVersions = await prisma.bibleVersion.findMany({
           orderBy: { id: "asc" },
-          cacheStrategy: { ttl: 86400, swr: 300 },
         });
         setCache("versions", allVersions);
         await kvSet(["versions"], allVersions, TTL_1D_MS);
@@ -349,7 +341,6 @@ Deno.serve(async (req: Request) => {
             where: { version: { name: v } },
             orderBy: { bookOrder: "asc" },
             select: { id: true, name: true, testament: true, bookOrder: true },
-            cacheStrategy: { ttl: 86400, swr: 300 },
           });
           setCache(`books-${v}`, books);
           await kvSet(["books", v], books, TTL_1D_MS);
