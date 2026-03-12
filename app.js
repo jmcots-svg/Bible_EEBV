@@ -158,6 +158,88 @@ modeTabs.forEach(tab => {
 });
 
 // =====================
+// FILTROS PLEGABLES (móvil)
+// =====================
+function setupCollapsibleFilters(toggleBtnId, collapsibleId, refLabelId) {
+    const btn         = document.getElementById(toggleBtnId);
+    const panel       = document.getElementById(collapsibleId);
+    const refLabel    = document.getElementById(refLabelId);
+    if (!btn || !panel) return;
+
+    let isOpen = true;
+
+    btn.addEventListener('click', () => {
+        isOpen = !isOpen;
+        panel.classList.toggle('collapsed', !isOpen);
+        btn.classList.toggle('collapsed', !isOpen);
+    });
+
+    return {
+        collapse: () => {
+            if (isOpen) {
+                isOpen = false;
+                panel.classList.add('collapsed');
+                btn.classList.add('collapsed');
+            }
+        },
+        updateRef: (text) => {
+            if (refLabel && text) refLabel.textContent = text;
+        }
+    };
+}
+
+const filterToggleLectura = setupCollapsibleFilters(
+    'toggleFiltersLectura', 'filtersLectura', 'toggleRefLectura'
+);
+const filterToggleComp = setupCollapsibleFilters(
+    'toggleFiltersComp', 'filtersComp', 'toggleRefComp'
+);
+const filterToggleConc = setupCollapsibleFilters(
+    'toggleFiltersConc', 'filtersConc', 'toggleRefConc'
+);
+
+// Auto-plegar en móvil al seleccionar capítulo
+chapterSelect.addEventListener('change', () => {
+    setTimeout(() => {
+        if (window.innerWidth <= 600) {
+            const ref = reference?.textContent?.trim();
+            filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+            filterToggleLectura?.collapse();
+        }
+    }, 500);
+});
+
+// Actualizar ref al cambiar versículo
+verseSelect.addEventListener('change', () => {
+    setTimeout(() => {
+        const ref = reference?.textContent?.trim();
+        filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+    }, 200);
+});
+
+// Auto-plegar comparación al cargar resultados
+compChapter.addEventListener('change', () => {
+    setTimeout(() => {
+        if (window.innerWidth <= 600) {
+            const ref = reference?.textContent?.trim();
+            filterToggleComp?.updateRef(ref || 'Selecciona versiones');
+            filterToggleComp?.collapse();
+        }
+    }, 500);
+});
+
+// Auto-plegar concordancia al buscar
+concSearchBtn.addEventListener('click', () => {
+    setTimeout(() => {
+        if (window.innerWidth <= 600) {
+            const query = concQuery.value.trim();
+            filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
+            filterToggleConc?.collapse();
+        }
+    }, 300);
+});
+
+// =====================
 // 3b. SYNC: Lectura → Comparación
 // =====================
 async function syncReadingToComp() {
@@ -889,48 +971,5 @@ async function renderComparison() {
             diffX < 0 ? cambiarCapitulo('sig') : cambiarCapitulo('ant');
         }
     }, { passive: true });
-
-    // =====================
-// FILTROS PLEGABLES (móvil)
-// =====================
-const toggleFiltersBtn = document.getElementById('toggleFilters');
-const filtersCollapsible = document.getElementById('filtersCollapsible');
-const toggleFiltersRef = document.getElementById('toggleFiltersRef');
-let filtersOpen = true;
-
-if (toggleFiltersBtn && filtersCollapsible) {
-
-  toggleFiltersBtn.addEventListener('click', () => {
-    filtersOpen = !filtersOpen;
-    filtersCollapsible.classList.toggle('collapsed', !filtersOpen);
-    toggleFiltersBtn.classList.toggle('collapsed', !filtersOpen);
-  });
-
-  // Actualizar referencia en el botón y auto-plegar al seleccionar capítulo
-  function updateToggleRef() {
-    const ref = reference?.textContent?.trim();
-    if (ref) toggleFiltersRef.textContent = ref;
-  }
-
-  // Auto-plegar en móvil cuando se selecciona capítulo
-  function autoCollapseFilters() {
-    if (window.innerWidth <= 600 && filtersOpen) {
-      filtersOpen = false;
-      filtersCollapsible.classList.add('collapsed');
-      toggleFiltersBtn.classList.add('collapsed');
-      updateToggleRef();
-    }
-  }
-
-  // Enganchar al cambio de capítulo
-  chapterSelect.addEventListener('change', () => {
-    setTimeout(autoCollapseFilters, 400); // espera a que cargue la referencia
-  });
-
-  // Enganchar al cambio de versículo
-  verseSelect.addEventListener('change', () => {
-    setTimeout(updateToggleRef, 100);
-  });
-}
 
 }); // ← fin DOMContentLoaded
