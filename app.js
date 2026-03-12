@@ -694,55 +694,69 @@ async function syncCompToReading() {
         renderComparison();
     }
 
-    async function renderComparison() {
-        const versionA = compVersionA.value;
-        const versionB = compVersionB.value;
-        const chIdA    = compChapter.value;
-        const vNum     = compVerse.value;
-        if (!versionA || !versionB || !chIdA) return;
-        if (versionA === versionB) {
-            content.innerHTML = '<p class="error">❌ Selecciona dos versiones diferentes</p>';
-            return;
-        }
-        content.innerHTML = '<p class="loading">⚖️ Comparando versiones...</p>';
-        try {
-            const bookName = compBook.options[compBook.selectedIndex]?.text;
-            const chNum    = compChapter.options[compChapter.selectedIndex]?.dataset.number;
-            let booksB = cache.books[versionB];
-            if (!booksB) {
-                booksB = await fetchJSON(`${API_URL}/api/books?version=${versionB}`);
-                cache.books[versionB] = booksB;
-            }
-            const bookB = booksB.find(b => b.name === bookName);
-            if (!bookB) throw new Error(`No se encontró "${bookName}" en ${versionB}`);
-            let chaptersB = cache.chapters[bookB.id];
-            if (!chaptersB) {
-                chaptersB = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookB.id}`);
-                cache.chapters[bookB.id] = chaptersB;
-            }
-            const chapterB = chaptersB.find(ch => String(ch.number) === String(chNum));
-            if (!chapterB) throw new Error(`No se encontró capítulo ${chNum} en ${versionB}`);
-            const cacheKeyA = `${chIdA}-all`;
-            const cacheKeyB = `${chapterB.id}-all`;
-            let versesA = cache.verses[cacheKeyA];
-            if (!versesA) {
-                versesA = await fetchJSON(`${API_URL}/api/verses?chapterId=${chIdA}`);
-                cache.verses[cacheKeyA] = versesA;
-            }
-            let versesB = cache.verses[cacheKeyB];
-            if (!versesB) {
-                versesB = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapterB.id}`);
-                cache.verses[cacheKeyB] = versesB;
-            }
-            if (vNum) {
-                versesA = versesA.filter(v => String(v.number) === String(vNum));
-                versesB = versesB.filter(v => String(v.number) === String(vNum));
-            }
-            renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
-        } catch (e) {
-            content.innerHTML = `<p class="error">❌ ${e.message}</p>`;
-        }
+async function renderComparison() {
+    const versionA = compVersionA.value;
+    const versionB = compVersionB.value;
+    const chIdA    = compChapter.value;
+    const vNum     = compVerse.value;
+    if (!versionA || !versionB || !chIdA) return;
+    if (versionA === versionB) {
+        content.innerHTML = '<p class="error">❌ Selecciona dos versiones diferentes</p>';
+        return;
     }
+    content.innerHTML = '<p class="loading">⚖️ Comparando versiones...</p>';
+    try {
+        const bookName = compBook.options[compBook.selectedIndex]?.text;
+        const chNum    = compChapter.options[compChapter.selectedIndex]?.dataset.number;
+
+        // ✅ Obtener bookOrder del libro seleccionado
+        let booksA = cache.books[versionA];
+        if (!booksA) {
+            booksA = await fetchJSON(`${API_URL}/api/books?version=${versionA}`);
+            cache.books[versionA] = booksA;
+        }
+        const bookA = booksA.find(b => String(b.id) === String(compBook.value));
+        const bookOrder = bookA?.bookOrder;
+        if (!bookOrder) throw new Error(`No se encontró bookOrder para el libro seleccionado`);
+
+        // ✅ Buscar libro en versión B por bookOrder en vez de por nombre
+        let booksB = cache.books[versionB];
+        if (!booksB) {
+            booksB = await fetchJSON(`${API_URL}/api/books?version=${versionB}`);
+            cache.books[versionB] = booksB;
+        }
+        const bookB = booksB.find(b => b.bookOrder === bookOrder); // ← bookOrder en vez de name
+        if (!bookB) throw new Error(`No se encontró el libro equivalente en ${versionB}`);
+
+        let chaptersB = cache.chapters[bookB.id];
+        if (!chaptersB) {
+            chaptersB = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookB.id}`);
+            cache.chapters[bookB.id] = chaptersB;
+        }
+        const chapterB = chaptersB.find(ch => String(ch.number) === String(chNum));
+        if (!chapterB) throw new Error(`No se encontró capítulo ${chNum} en ${versionB}`);
+
+        const cacheKeyA = `${chIdA}-all`;
+        const cacheKeyB = `${chapterB.id}-all`;
+        let versesA = cache.verses[cacheKeyA];
+        if (!versesA) {
+            versesA = await fetchJSON(`${API_URL}/api/verses?chapterId=${chIdA}`);
+            cache.verses[cacheKeyA] = versesA;
+        }
+        let versesB = cache.verses[cacheKeyB];
+        if (!versesB) {
+            versesB = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapterB.id}`);
+            cache.verses[cacheKeyB] = versesB;
+        }
+        if (vNum) {
+            versesA = versesA.filter(v => String(v.number) === String(vNum));
+            versesB = versesB.filter(v => String(v.number) === String(vNum));
+        }
+        renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum);
+    } catch (e) {
+        content.innerHTML = `<p class="error">❌ ${e.message}</p>`;
+    }
+}
 
     function renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum) {
         if (reference) {
