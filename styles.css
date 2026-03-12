@@ -84,6 +84,7 @@ header {
 input:checked + .slider { background-color: #4a90e2; }
 input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
 
+
 /* ===================== */
 /* 4. TABS DE MODO       */
 /* ===================== */
@@ -107,6 +108,10 @@ input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
   transition: all 0.3s ease;
   border-radius: 12px 12px 0 0;
   position: relative;
+  display: flex;              /* ← nuevo */
+  align-items: center;        /* ← nuevo */
+  justify-content: center;    /* ← nuevo */
+  gap: 6px;                   /* ← nuevo */
 }
 
 .mode-tab:hover {
@@ -118,6 +123,16 @@ input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
   background: var(--tab-active);
   color: var(--tab-active-text);
 }
+
+.tab-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;             /* ← evita que el icono se comprima */
+}
+
+.tab-text {
+  white-space: nowrap;        /* ← evita salto de línea */
+}
+
 
 /* 5. FILTROS */
 .filters {
@@ -479,19 +494,28 @@ input[type="text"]:focus {
 }
 
 /* 9. RESPONSIVE */
+/* 9. RESPONSIVE */
 @media (max-width: 600px) {
   .filters { grid-template-columns: 1fr; }
   .concordancia-filters { grid-template-columns: 1fr; }
   .content { padding: 20px; }
   .search-wrapper { flex-direction: column; }
-  .mode-tab { font-size: 0.9rem; padding: 12px 14px; }
+  .mode-tab { 
+    font-size: 0.9rem; 
+    padding: 12px 8px;  /* ← reducido de 14px */
+  }
   .search-stats { flex-direction: column; text-align: center; }
   .search-pagination { flex-direction: column; }
   .reference { padding: 0 20px; }
-      .comp-row {
-        grid-template-columns: 1fr;
-    }
-    .comp-header {
-        grid-template-columns: 1fr;
-    }
+  .comp-row { grid-template-columns: 1fr; }
+  .comp-header { grid-template-columns: 1fr; }
+
+  /* ── Tabs en móvil: solo iconos ── */
+  .tab-text {
+    display: none;            /* ← oculta el texto */
+  }
+
+  .tab-icon {
+    font-size: 1.4rem;        /* ← icono más grande para compensar */
+  }
 }
