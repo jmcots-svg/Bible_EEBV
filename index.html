@@ -24,8 +24,9 @@
     <div class="mode-tabs">
       <button class="mode-tab active" data-mode="lectura">📖 Lectura</button>
       <button class="mode-tab" data-mode="concordancia">🔍 Concordancia</button>
+      <button class="mode-tab" data-mode="concordancia">🔍 Concordancia</button>
     </div>
-
+    
     <!-- PANEL MODO LECTURA -->
     <div id="panelLectura" class="panel-mode">
       <div class="filters">
@@ -59,6 +60,54 @@
       </div>
     </div>
 
+<!-- PANEL MODO COMPARACIÓN - añadir después del panel Lectura -->
+<div id="panelComparacion" class="panel-mode" style="display:none;">
+    <div class="filters">
+
+        <!-- Versión A -->
+        <div class="filter-group">
+            <label for="compVersionA">Versión A</label>
+            <select id="compVersionA">
+                <option value="">Cargando...</option>
+            </select>
+        </div>
+
+        <!-- Versión B -->
+        <div class="filter-group">
+            <label for="compVersionB">Versión B</label>
+            <select id="compVersionB">
+                <option value="">Cargando...</option>
+            </select>
+        </div>
+
+        <!-- Libro -->
+        <div class="filter-group">
+            <label for="compBook">Libro</label>
+            <select id="compBook" disabled>
+                <option value="">-- Selecciona libro --</option>
+            </select>
+        </div>
+
+        <!-- Capítulo -->
+        <div class="filter-group">
+            <label for="compChapter">Capítulo</label>
+            <select id="compChapter" disabled>
+                <option value="">-- Selecciona capítulo --</option>
+            </select>
+        </div>
+
+        <!-- Versículo -->
+        <div class="filter-group">
+            <label for="compVerse">Versículo (opcional)</label>
+            <select id="compVerse" disabled>
+                <option value="">Todo el capítulo</option>
+            </select>
+        </div>
+
+    </div>
+</div>
+
+    
     <!-- PANEL MODO CONCORDANCIA -->
     <div id="panelConcordancia" class="panel-mode" style="display:none;">
       <div class="filters concordancia-filters">
@@ -104,7 +153,7 @@
       <p class="placeholder">Selecciona una versión y libro para comenzar</p>
     </div>
   </div>
-
+  
   <script src="app.js"></script>
 </body>
 </html>
