@@ -67,10 +67,26 @@ header {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: nowrap;       /* ← nunca rompe línea */
 }
 
-.switch { position: relative; width: 50px; height: 26px; }
+#mainTitle {
+  flex: 1;                 /* ← ocupa el espacio disponible */
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: clamp(1rem, 4vw, 1.8rem); /* ← se adapta al ancho */
+}
+
+/* ── Toggle modo noche (idéntico al original) ── */
+.switch { 
+  position: relative; 
+  width: 50px; 
+  height: 26px;
+  flex-shrink: 0;          /* ← no se comprime */
+}
 .switch input { display: none; }
 .slider {
   position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
@@ -79,7 +95,8 @@ header {
 .slider:before {
   position: absolute; content: "☀️"; height: 20px; width: 20px;
   left: 3px; bottom: 3px; background-color: white; transition: .4s;
-  border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;
+  border-radius: 50%; display: flex; align-items: center; 
+  justify-content: center; font-size: 12px;
 }
 input:checked + .slider { background-color: #4a90e2; }
 input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
@@ -521,39 +538,40 @@ input[type="text"]:focus {
 /* ===================== */
 /* 10. FONT SIZE SWITCH  */
 /* ===================== */
-
-/* Wrapper externo con las letras A pequeña y A grande */
 .font-switch-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  flex-shrink: 0;           /* ← no se comprime */
   cursor: pointer;
 }
 
-/* Letra A pequeña (izquierda) */
+/* A pequeña a la izquierda */
 .font-switch-label.small {
-  font-size: 0.75rem;
-  color: rgba(255,255,255,0.8);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.75);
   font-family: 'Georgia', serif;
   font-weight: 700;
-  line-height: 1;
   user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
-/* Letra A grande (derecha) */
+/* A grande a la derecha */
 .font-switch-label.large {
-  font-size: 1.1rem;
-  color: rgba(255,255,255,0.8);
+  font-size: 1rem;
+  color: rgba(255,255,255,0.75);
   font-family: 'Georgia', serif;
   font-weight: 700;
-  line-height: 1;
   user-select: none;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
-/* La pista del switch — más ancha para 3 posiciones */
+/* La pista — mismo alto que el toggle de noche */
 .font-switch {
   position: relative;
-  width: 68px;       /* más ancho que el toggle normal */
+  width: 68px;
   height: 26px;
   background: rgba(255,255,255,0.3);
   border-radius: 34px;
@@ -561,7 +579,7 @@ input[type="text"]:focus {
   flex-shrink: 0;
 }
 
-/* La bolita que se desliza */
+/* La bolita */
 .font-knob {
   position: absolute;
   top: 3px;
@@ -582,16 +600,33 @@ input[type="text"]:focus {
   user-select: none;
 }
 
-/* Posición izquierda  → pequeño  (pos 0): translateX(0)   */
-/* Posición centro     → normal   (pos 1): translateX(23px) */
-/* Posición derecha    → grande   (pos 2): translateX(46px) */
 .font-knob[data-pos="0"] { transform: translateX(0px);  }
 .font-knob[data-pos="1"] { transform: translateX(23px); }
 .font-knob[data-pos="2"] { transform: translateX(46px); }
 
-/* Color de la pista según posición */
 .font-switch[data-pos="0"] { background: rgba(255,255,255,0.2); }
 .font-switch[data-pos="1"] { background: rgba(255,255,255,0.3); }
 .font-switch[data-pos="2"] { background: #4a90e2; }
+
+/* ── Tamaño de texto: afecta a TODO el contenido ── */
+.content,
+.content .verse,
+.content .comp-cell,
+.content .search-result-text,
+.content .search-result-card p {
+  font-size: var(--font-reading, 1.1rem) !important;
+}
+
+/* Solo el número de versículo se escala proporcionalmente */
+.content .verse-number {
+  font-size: calc(var(--font-reading, 1.1rem) * 0.82) !important;
+}
+
+/* Responsive header */
+@media (max-width: 400px) {
+  .header-content { gap: 10px; }
+  .font-switch { width: 56px; }
+  .font-knob[data-pos="2"] { transform: translateX(34px); }
+}
   
 }
