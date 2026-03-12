@@ -156,10 +156,7 @@ modeTabs.forEach(tab => {
     }
 
     async function onVersionChange() {
-        const version = versionSelect.value;
-        if (mainTitle && versionSelect.selectedIndex >= 0) {
-            mainTitle.textContent = `📖 Biblia ${versionSelect.options[versionSelect.selectedIndex].text}`;
-        }
+
         resetSelects(['book', 'chapter', 'verse']);
         content.innerHTML = '<p class="placeholder">Cambiando de versión...</p>';
         await loadBooks(version);
@@ -708,9 +705,6 @@ async function navigateToVerse(bookName, chapterNum, verseNum) {
     // Sincronizar versión entre ambos modos
     concVersion.addEventListener('change', () => {
         versionSelect.value = concVersion.value;
-        if (mainTitle && concVersion.selectedIndex >= 0) {
-            mainTitle.textContent = `📖 Biblia ${concVersion.options[concVersion.selectedIndex].text}`;
-        }
     });
 
     versionSelect.addEventListener('change', () => {
