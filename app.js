@@ -890,4 +890,47 @@ async function renderComparison() {
         }
     }, { passive: true });
 
+    // =====================
+// FILTROS PLEGABLES (móvil)
+// =====================
+const toggleFiltersBtn = document.getElementById('toggleFilters');
+const filtersCollapsible = document.getElementById('filtersCollapsible');
+const toggleFiltersRef = document.getElementById('toggleFiltersRef');
+let filtersOpen = true;
+
+if (toggleFiltersBtn && filtersCollapsible) {
+
+  toggleFiltersBtn.addEventListener('click', () => {
+    filtersOpen = !filtersOpen;
+    filtersCollapsible.classList.toggle('collapsed', !filtersOpen);
+    toggleFiltersBtn.classList.toggle('collapsed', !filtersOpen);
+  });
+
+  // Actualizar referencia en el botón y auto-plegar al seleccionar capítulo
+  function updateToggleRef() {
+    const ref = reference?.textContent?.trim();
+    if (ref) toggleFiltersRef.textContent = ref;
+  }
+
+  // Auto-plegar en móvil cuando se selecciona capítulo
+  function autoCollapseFilters() {
+    if (window.innerWidth <= 600 && filtersOpen) {
+      filtersOpen = false;
+      filtersCollapsible.classList.add('collapsed');
+      toggleFiltersBtn.classList.add('collapsed');
+      updateToggleRef();
+    }
+  }
+
+  // Enganchar al cambio de capítulo
+  chapterSelect.addEventListener('change', () => {
+    setTimeout(autoCollapseFilters, 400); // espera a que cargue la referencia
+  });
+
+  // Enganchar al cambio de versículo
+  verseSelect.addEventListener('change', () => {
+    setTimeout(updateToggleRef, 100);
+  });
+}
+
 }); // ← fin DOMContentLoaded
