@@ -66,6 +66,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // =====================
+// 2b. TAMAÑO DE TEXTO
+// =====================
+const fontSizes = [0.85, 0.95, 1.05, 1.15, 1.25, 1.4, 1.6]; // rem
+const fontLabels = ['XS', 'S', 'M', 'A', 'L', 'XL', 'XXL'];
+let fontIndex = 3; // índice por defecto → "A" = 1.15rem
+
+const fontDecrease = document.getElementById('fontDecrease');
+const fontIncrease = document.getElementById('fontIncrease');
+const fontLabel    = document.getElementById('fontLabel');
+
+// Cargar preferencia guardada
+const savedFont = localStorage.getItem('fontIndex');
+if (savedFont !== null) {
+    fontIndex = parseInt(savedFont);
+}
+applyFontSize();
+
+function applyFontSize() {
+    // Solo afecta al contenido, no a filtros ni pestañas
+    document.getElementById('content').style.setProperty(
+        '--font-content',
+        fontSizes[fontIndex] + 'rem'
+    );
+
+    // Actualizar label e indicador visual
+    fontLabel.textContent = fontLabels[fontIndex];
+
+    // Deshabilitar botones en los extremos
+    fontDecrease.disabled = fontIndex === 0;
+    fontIncrease.disabled = fontIndex === fontSizes.length - 1;
+
+    // Opacidad para indicar deshabilitado
+    fontDecrease.style.opacity = fontIndex === 0 ? '0.3' : '1';
+    fontIncrease.style.opacity = fontIndex === fontSizes.length - 1 ? '0.3' : '1';
+}
+
+fontDecrease.addEventListener('click', () => {
+    if (fontIndex > 0) {
+        fontIndex--;
+        localStorage.setItem('fontIndex', fontIndex);
+        applyFontSize();
+    }
+});
+
+fontIncrease.addEventListener('click', () => {
+    if (fontIndex < fontSizes.length - 1) {
+        fontIndex++;
+        localStorage.setItem('fontIndex', fontIndex);
+        applyFontSize();
+    }
+});
+
 // =====================
 // 3. TABS - CAMBIO DE MODO
 // =====================
