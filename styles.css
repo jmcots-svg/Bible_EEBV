@@ -175,10 +175,17 @@ input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
   border-bottom: 1px solid var(--border);
 }
 
-.filter-group { display: flex; flex-direction: column; gap: 6px; }
+.filter-group { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+  min-width: 0; /* ← AÑADE ESTO: Es vital para que el Grid deje encoger la caja */
+}
 .filter-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
 
 select, .btn-search, input[type="text"] {
+  width: 100%;
+  text-overflow: ellipsis;
   padding: 12px;
   border: 2px solid var(--border);
   border-radius: 8px;
@@ -777,7 +784,8 @@ input[type="text"]:focus {
     gap: 10px;
   }
 
-  /* Versículo ocupa todo el ancho */
+  /* Versión (el primero) y Versículo (el último) ocupan todo el ancho */
+  .filters .filter-group:first-child,
   .filters .filter-group:last-child {
     grid-column: 1 / -1;
   }
