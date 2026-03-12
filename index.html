@@ -10,156 +10,192 @@
 <body>
   <div class="container">
     
-<header>
-  <div class="header-content">
-    <h1 id="mainTitle">📖 Biblia Digital</h1>
+    <header>
+      <div class="header-content">
+        <h1 id="mainTitle">📖 Biblia Digital</h1>
 
-    <!-- Control tamaño texto -->
-    <div class="font-track" id="fontTrack">
-      <span class="font-knob" id="fontKnob">A</span>
-    </div>
+        <!-- Control tamaño texto -->
+        <div class="font-track" id="fontTrack">
+          <span class="font-knob" id="fontKnob">A</span>
+        </div>
 
-    <!-- Switch modo noche -->
-    <label class="switch">
-      <input type="checkbox" id="themeCheckbox">
-      <span class="slider"></span>
-    </label>
+        <!-- Switch modo noche -->
+        <label class="switch">
+          <input type="checkbox" id="themeCheckbox">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </header>
 
-  </div>
-</header>
-
-  <!-- TABS DE MODO -->
-  <div class="mode-tabs">
-    <button class="mode-tab active" data-mode="lectura" title="Lectura">
+    <!-- TABS DE MODO -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="lectura" title="Lectura">
         <span class="tab-icon">📖</span>
         <span class="tab-text">Lectura</span>
-    </button>
-    <button class="mode-tab" data-mode="comparacion" title="Comparación">
+      </button>
+      <button class="mode-tab" data-mode="comparacion" title="Comparación">
         <span class="tab-icon">⚖️</span>
         <span class="tab-text">Comparación</span>
-    </button>
-    <button class="mode-tab" data-mode="concordancia" title="Concordancia">
+      </button>
+      <button class="mode-tab" data-mode="concordancia" title="Concordancia">
         <span class="tab-icon">🔍</span>
         <span class="tab-text">Concordancia</span>
-    </button>
-  </div>
-    
-    <!-- PANEL MODO LECTURA -->
+      </button>
+    </div>
+
+    <!-- ======================== -->
+    <!-- PANEL MODO LECTURA       -->
+    <!-- ======================== -->
     <div id="panelLectura" class="panel-mode">
-      <div class="filters">
-        <div class="filter-group">
-          <label for="version">Versión</label>
-          <select id="version">
-             <option value="">Cargando versiones...</option>
-          </select>
-        </div>
 
-        <div class="filter-group">
-          <label for="book">Libro</label>
-          <select id="book" disabled>
-            <option value="">Cargando...</option>
-          </select>
+      <!-- Botón toggle filtros (solo móvil) -->
+      <button id="toggleFiltersLectura" class="filters-toggle">
+        <div class="filters-toggle-left">
+          <span class="filters-toggle-icon">▲</span>
+          <span id="toggleRefLectura" class="filters-toggle-ref">Selecciona un libro</span>
         </div>
+        <span class="filters-toggle-hint">Filtros</span>
+      </button>
 
-        <div class="filter-group">
-          <label for="chapter">Capítulo</label>
-          <select id="chapter" disabled>
-            <option value="">Selecciona libro</option>
-          </select>
-        </div>
+      <!-- Filtros colapsables -->
+      <div id="filtersLectura" class="filters-collapsible">
+        <div class="filters">
+          <div class="filter-group">
+            <label for="version">Versión</label>
+            <select id="version">
+              <option value="">Cargando versiones...</option>
+            </select>
+          </div>
 
-        <div class="filter-group">
-          <label for="verse">Versículo (opcional)</label>
-          <select id="verse" disabled>
-            <option value="">Todo el capítulo</option>
-          </select>
+          <div class="filter-group">
+            <label for="book">Libro</label>
+            <select id="book" disabled>
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="chapter">Capítulo</label>
+            <select id="chapter" disabled>
+              <option value="">Selecciona libro</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="verse">Versículo (opcional)</label>
+            <select id="verse" disabled>
+              <option value="">Todo el capítulo</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
 
-<!-- PANEL MODO COMPARACIÓN - añadir después del panel Lectura -->
-<div id="panelComparacion" class="panel-mode" style="display:none;">
-    <div class="filters">
+    <!-- ======================== -->
+    <!-- PANEL MODO COMPARACIÓN   -->
+    <!-- ======================== -->
+    <div id="panelComparacion" class="panel-mode" style="display:none;">
 
-        <!-- Versión A -->
-        <div class="filter-group">
+      <!-- Botón toggle filtros (solo móvil) -->
+      <button id="toggleFiltersComp" class="filters-toggle">
+        <div class="filters-toggle-left">
+          <span class="filters-toggle-icon">▲</span>
+          <span id="toggleRefComp" class="filters-toggle-ref">Selecciona versiones</span>
+        </div>
+        <span class="filters-toggle-hint">Filtros</span>
+      </button>
+
+      <!-- Filtros colapsables -->
+      <div id="filtersComp" class="filters-collapsible">
+        <div class="filters">
+          <div class="filter-group">
             <label for="compVersionA">Versión A</label>
             <select id="compVersionA">
-                <option value="">Cargando...</option>
+              <option value="">Cargando...</option>
             </select>
-        </div>
+          </div>
 
-        <!-- Versión B -->
-        <div class="filter-group">
+          <div class="filter-group">
             <label for="compVersionB">Versión B</label>
             <select id="compVersionB">
-                <option value="">Cargando...</option>
+              <option value="">Cargando...</option>
             </select>
-        </div>
+          </div>
 
-        <!-- Libro -->
-        <div class="filter-group">
+          <div class="filter-group">
             <label for="compBook">Libro</label>
             <select id="compBook" disabled>
-                <option value="">-- Selecciona libro --</option>
+              <option value="">-- Selecciona libro --</option>
             </select>
-        </div>
+          </div>
 
-        <!-- Capítulo -->
-        <div class="filter-group">
+          <div class="filter-group">
             <label for="compChapter">Capítulo</label>
             <select id="compChapter" disabled>
-                <option value="">-- Selecciona capítulo --</option>
+              <option value="">-- Selecciona capítulo --</option>
             </select>
-        </div>
+          </div>
 
-        <!-- Versículo -->
-        <div class="filter-group">
+          <div class="filter-group">
             <label for="compVerse">Versículo (opcional)</label>
             <select id="compVerse" disabled>
-                <option value="">Todo el capítulo</option>
+              <option value="">Todo el capítulo</option>
             </select>
-        </div>
-
-    </div>
-</div>
-
-    
-    <!-- PANEL MODO CONCORDANCIA -->
-    <div id="panelConcordancia" class="panel-mode" style="display:none;">
-      <div class="filters concordancia-filters">
-        <div class="filter-group">
-          <label for="concVersion">Versión</label>
-          <select id="concVersion">
-            <option value="">Cargando versiones...</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label for="concTestament">Filtrar por</label>
-          <select id="concTestament">
-            <option value="ALL">Toda la Biblia</option>
-            <option value="OT">📜 Antiguo Testamento</option>
-            <option value="NT">✝️ Nuevo Testamento</option>
-          </select>
-        </div>
-
-        <div class="filter-group search-input-group">
-          <label for="concQuery">Buscar palabra o frase</label>
-          <div class="search-wrapper">
-            <input
-              type="text"
-              id="concQuery"
-              placeholder="Ej: amor, fe, esperanza..."
-              autocomplete="off"
-              maxlength="100"
-            >
-            <button id="concSearchBtn" class="btn-search btn-conc-search">🔎 Buscar</button>
           </div>
-          <label class="exact-toggle">
-            <input type="checkbox" id="concExact">
-            <span class="exact-toggle-label">Palabra exacta</span>
-          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- PANEL MODO CONCORDANCIA  -->
+    <!-- ======================== -->
+    <div id="panelConcordancia" class="panel-mode" style="display:none;">
+
+      <!-- Botón toggle filtros (solo móvil) -->
+      <button id="toggleFiltersConc" class="filters-toggle">
+        <div class="filters-toggle-left">
+          <span class="filters-toggle-icon">▲</span>
+          <span id="toggleRefConc" class="filters-toggle-ref">Buscar palabra</span>
+        </div>
+        <span class="filters-toggle-hint">Filtros</span>
+      </button>
+
+      <!-- Filtros colapsables -->
+      <div id="filtersConc" class="filters-collapsible">
+        <div class="filters concordancia-filters">
+          <div class="filter-group">
+            <label for="concVersion">Versión</label>
+            <select id="concVersion">
+              <option value="">Cargando versiones...</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="concTestament">Filtrar por</label>
+            <select id="concTestament">
+              <option value="ALL">Toda la Biblia</option>
+              <option value="OT">📜 Antiguo Testamento</option>
+              <option value="NT">✝️ Nuevo Testamento</option>
+            </select>
+          </div>
+
+          <div class="filter-group search-input-group">
+            <label for="concQuery">Buscar palabra o frase</label>
+            <div class="search-wrapper">
+              <input
+                type="text"
+                id="concQuery"
+                placeholder="Ej: amor, fe, esperanza..."
+                autocomplete="off"
+                maxlength="100"
+              >
+              <button id="concSearchBtn" class="btn-search btn-conc-search">🔎 Buscar</button>
+            </div>
+            <label class="exact-toggle">
+              <input type="checkbox" id="concExact">
+              <span class="exact-toggle-label">Palabra exacta</span>
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -169,6 +205,7 @@
     <div class="content" id="content">
       <p class="placeholder">Selecciona una versión y libro para comenzar</p>
     </div>
+
   </div>
   
   <script src="app.js"></script>
