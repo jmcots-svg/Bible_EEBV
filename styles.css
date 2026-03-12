@@ -674,4 +674,157 @@ input[type="text"]:focus {
   font-size: var(--font-reading, 1.1rem);
 }
 
+/* ===================== */
+/* 11. FILTROS PLEGABLES */
+/* ===================== */
+
+/* Botón toggle — solo visible en móvil */
+.filters-toggle {
+  display: none;
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-filters);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: inherit;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filters-toggle:hover {
+  background: var(--card-hover);
+}
+
+.filters-toggle-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filters-toggle-icon {
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+  color: var(--text-muted);
+}
+
+.filters-toggle-ref {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.filters-toggle-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+/* Panel animado */
+.filters-collapsible {
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.35s ease;
+  max-height: 600px;
+  opacity: 1;
+}
+
+.filters-collapsible.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* Rotar flecha cuando está cerrado */
+.filters-toggle.collapsed .filters-toggle-icon {
+  transform: rotate(180deg);
+}
+
+/* ===================== */
+/* 12. MOBILE OVERRIDES  */
+/* ===================== */
+@media (max-width: 600px) {
+
+  /* Pestañas — solo icono, más compactas */
+  .mode-tabs {
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .mode-tab {
+    padding: 10px 6px;
+    font-size: 0.8rem;
+  }
+
+  .tab-text {
+    display: none;
+  }
+
+  .tab-icon {
+    font-size: 1.4rem;
+  }
+
+  /* Mostrar botón toggle */
+  .filters-toggle {
+    display: flex;
+  }
+
+  /* Filtros en 2 columnas cuando visibles */
+  .filters {
+    grid-template-columns: 1fr 1fr;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  /* Versículo ocupa todo el ancho */
+  .filters .filter-group:last-child {
+    grid-column: 1 / -1;
+  }
+
+  /* Concordancia: filtros en 2 columnas */
+  .concordancia-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search-input-group {
+    grid-column: 1 / -1;
+  }
+
+  /* Selects más compactos */
+  select,
+  input[type="text"] {
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+
+  .filter-group label {
+    font-size: 0.78rem;
+  }
+
+  /* Contenido más compacto */
+  .content {
+    padding: 16px;
+  }
+
+  .reference {
+    padding: 0 16px;
+  }
+
+  /* Comparación apilada */
+  .comp-row {
+    grid-template-columns: 1fr;
+  }
+
+  .comp-header {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 }
