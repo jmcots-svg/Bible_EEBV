@@ -17,6 +17,7 @@ jobs:
       - name: Push Schema to DB
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }} 
         run: |
           # INSTALAMOS LA VERSIÓN 5
           npm install prisma@5 -g
