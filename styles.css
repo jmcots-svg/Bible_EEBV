@@ -534,6 +534,28 @@ input[type="text"]:focus {
     line-height: 1.6;
 }
 
+/* PISTA DE ORIENTACIÓN PARA MÓVIL EN COMPARACIÓN (Estilos generales, fuera de @media) */
+
+.orientation-hint {
+    display: none; /* Oculto por defecto en pantallas anchas y por JavaScript */
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem; /* Más pequeño para ser una pista */
+    color: var(--text-muted); /* Color sutil */
+    background-color: var(--bg-filters); /* Un poco de fondo para destacarlo */
+    padding: 4px 8px;
+    border-radius: 6px;
+    flex-shrink: 0; /* Evita que se encoja */
+    margin-top: 4px; /* Un poco de margen si se envuelve */
+    line-height: 1; /* Para que el texto se vea bien centrado verticalmente */
+}
+
+/* En modo oscuro, ajusta los colores si es necesario */
+[data-theme="dark"] .orientation-hint {
+    color: var(--text-muted);
+    background-color: var(--bg-filters);
+}
+
 /* 9. RESPONSIVE */
 
 @media (max-width: 600px) {
@@ -559,7 +581,30 @@ input[type="text"]:focus {
   .tab-icon {
     font-size: 1.4rem;        /* ← icono más grande para compensar */
   }
+
+  /*
+   * AÑADIDOS PARA LA PISTA DE ORIENTACIÓN EN MÓVIL (dentro de @media)
+   */
+  .filters-toggle-left {
+      flex-wrap: wrap; /* Permite que los elementos pasen a la siguiente línea si no hay espacio */
+      gap: 8px; /* Espacio entre los elementos */
+      justify-content: flex-start; /* Alinea al inicio */
+      align-items: center; /* Centra verticalmente */
+  }
+
+  /* Reduce el ancho máximo de la referencia para que la pista tenga más espacio */
+  .filters-toggle-ref {
+      max-width: 150px; /* Ajusta este valor según tus necesidades */
+      flex-shrink: 1; /* Permite que se encoja un poco si es necesario */
+  }
+
+  /* Hace visible la pista SOLO en pantallas estrechas */
+  .orientation-hint {
+      display: flex; /* Se muestra en pantallas estrechas (ahora flex, antes none) */
+  }
 }
+
+
 /* ===================== */
 /* 10. FONT SIZE SWITCH  */
 /* ===================== */
