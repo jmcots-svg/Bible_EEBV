@@ -157,7 +157,7 @@ modeTabs.forEach(tab => {
     }
 
     async function onVersionChange() {
-
+        const version = versionSelect.value;
         resetSelects(['book', 'chapter', 'verse']);
         content.innerHTML = '<p class="placeholder">Cambiando de versión...</p>';
         await loadBooks(version);
