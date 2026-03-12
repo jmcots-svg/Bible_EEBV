@@ -519,81 +519,79 @@ input[type="text"]:focus {
   }
 
 /* ===================== */
-/* 10. CONTROL TAMAÑO    */
-/*     DE TEXTO          */
+/* 10. FONT SIZE SWITCH  */
 /* ===================== */
 
-/* Wrapper para agrupar switch + control fuente */
-.header-controls {
+/* Wrapper externo con las letras A pequeña y A grande */
+.font-switch-wrap {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-/* Botones A- / A+ */
-.font-size-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 20px;
-  padding: 4px 8px;
-}
-
-.font-btn {
-  background: transparent;
-  border: none;
-  color: white;
+  gap: 6px;
   cursor: pointer;
+}
+
+/* Letra A pequeña (izquierda) */
+.font-switch-label.small {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.8);
   font-family: 'Georgia', serif;
   font-weight: 700;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
   line-height: 1;
-  padding: 0;
-}
-
-.font-btn:hover {
-  background: rgba(255,255,255,0.25);
-}
-
-.font-btn:active {
-  background: rgba(255,255,255,0.4);
-  transform: scale(0.95);
-}
-
-/* El indicador central "A" */
-.font-label {
-  color: rgba(255,255,255,0.9);
-  font-family: 'Georgia', serif;
-  font-weight: 700;
-  min-width: 18px;
-  text-align: center;
-  font-size: 1rem;
   user-select: none;
 }
 
-/* Variable CSS para el tamaño — se aplica SOLO al contenido */
-.content {
-  font-size: var(--font-content, 1.1rem); /* ← usa variable, con fallback */
+/* Letra A grande (derecha) */
+.font-switch-label.large {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.8);
+  font-family: 'Georgia', serif;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
 }
 
-/* Responsive: en móvil compactar un poco */
-@media (max-width: 600px) {
-  .header-controls {
-    gap: 10px;
-  }
-
-  .font-btn {
-    width: 26px;
-    height: 26px;
-    font-size: 0.8rem;
-  }
+/* La pista del switch — más ancha para 3 posiciones */
+.font-switch {
+  position: relative;
+  width: 68px;       /* más ancho que el toggle normal */
+  height: 26px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 34px;
+  transition: background 0.4s;
+  flex-shrink: 0;
 }
+
+/* La bolita que se desliza */
+.font-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #1e3a5f;
+  font-family: 'Georgia', serif;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  user-select: none;
+}
+
+/* Posición izquierda  → pequeño  (pos 0): translateX(0)   */
+/* Posición centro     → normal   (pos 1): translateX(23px) */
+/* Posición derecha    → grande   (pos 2): translateX(46px) */
+.font-knob[data-pos="0"] { transform: translateX(0px);  }
+.font-knob[data-pos="1"] { transform: translateX(23px); }
+.font-knob[data-pos="2"] { transform: translateX(46px); }
+
+/* Color de la pista según posición */
+.font-switch[data-pos="0"] { background: rgba(255,255,255,0.2); }
+.font-switch[data-pos="1"] { background: rgba(255,255,255,0.3); }
+.font-switch[data-pos="2"] { background: #4a90e2; }
   
 }
