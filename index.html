@@ -12,11 +12,19 @@
     
     <header>
       <div class="header-content">
-        <h1 id="mainTitle">📖 Biblia Digital</h1>
+        <h1 id="mainTitle">📖 Biblia Digital</h1>        
+        <div class="header-controls">             
+        <!-- Switch modo noche -->
         <label class="switch">
           <input type="checkbox" id="themeCheckbox">
           <span class="slider"></span>
         </label>
+        <!-- Selector tamaño texto -->
+        <div class="font-size-control">
+          <button class="font-btn" id="fontDecrease" title="Texto más pequeño">A−</button>
+          <span class="font-label" id="fontLabel">A</span>
+          <button class="font-btn" id="fontIncrease" title="Texto más grande">A+</button>
+        </div>      
       </div>
     </header>
 
