@@ -667,6 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (versionSelect.value) loadBooks(versionSelect.value);
+            if (compVersionA.value) loadCompBooks();
 
         } catch (e) {
             console.error('Error cargando versiones:', e);
