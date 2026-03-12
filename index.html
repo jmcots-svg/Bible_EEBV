@@ -89,6 +89,22 @@
           </div>
         </div>
       </div>
+
+      <!-- Botón flotante para copiar (opcionalmente) -->
+      <button id="copyVersesBtn" class="floating-action-button" style="display:none;" title="Copiar versículos seleccionados">
+          📋 Copiar (<span id="selectedVersesCount">0</span>)
+      </button>
+      
+      <!-- Estructura del Modal para Copiar -->
+      <div id="copyModal" class="modal" style="display: none;">
+          <div class="modal-content">
+              <span class="close-button" id="closeCopyModal">&times;</span>
+              <h3>Versículos Seleccionados</h3>
+              <textarea id="selectedVersesTextarea" readonly></textarea>
+              <button id="doCopyBtn" class="btn-search">Copiar al Portapapeles</button>
+              <div id="copyFeedback" class="copy-feedback"></div>
+          </div>
+      </div>
     </div>
 
     <!-- ======================== -->
