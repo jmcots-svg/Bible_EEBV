@@ -494,7 +494,6 @@ input[type="text"]:focus {
 }
 
 /* 9. RESPONSIVE */
-/* 9. RESPONSIVE */
 @media (max-width: 600px) {
   .filters { grid-template-columns: 1fr; }
   .concordancia-filters { grid-template-columns: 1fr; }
@@ -518,4 +517,83 @@ input[type="text"]:focus {
   .tab-icon {
     font-size: 1.4rem;        /* ← icono más grande para compensar */
   }
+
+/* ===================== */
+/* 10. CONTROL TAMAÑO    */
+/*     DE TEXTO          */
+/* ===================== */
+
+/* Wrapper para agrupar switch + control fuente */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Botones A- / A+ */
+.font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 8px;
+}
+
+.font-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-family: 'Georgia', serif;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  line-height: 1;
+  padding: 0;
+}
+
+.font-btn:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.font-btn:active {
+  background: rgba(255,255,255,0.4);
+  transform: scale(0.95);
+}
+
+/* El indicador central "A" */
+.font-label {
+  color: rgba(255,255,255,0.9);
+  font-family: 'Georgia', serif;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+  font-size: 1rem;
+  user-select: none;
+}
+
+/* Variable CSS para el tamaño — se aplica SOLO al contenido */
+.content {
+  font-size: var(--font-content, 1.1rem); /* ← usa variable, con fallback */
+}
+
+/* Responsive: en móvil compactar un poco */
+@media (max-width: 600px) {
+  .header-controls {
+    gap: 10px;
+  }
+
+  .font-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 0.8rem;
+  }
+}
+  
 }
