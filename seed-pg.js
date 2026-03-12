@@ -15,34 +15,34 @@ const client = new Client({
 });
 
 // CONFIGURACIÓN PARA BEC
-//const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
-const XML_PATH = path.join(__dirname, 'data', 'CatalanBECBible.xml');
-const VERSION_SHORT = 'BEC';
-const VERSION_FULL = 'Bíblia Evangèlica Catalana 2000';
+
+const XML_PATH = path.join(__dirname, 'data', 'SpanishRevisedRVR1960Bible.xml');
+const VERSION_SHORT = 'RVR60';
+const VERSION_FULL = 'Reina-Valera RVR 1960';
 
 // Mapeo de nombres de libros por número (Basado en el canon estándar)
 const bookNames = {
-  // ANTIC TESTAMENT
-  1: "Gènesi", 2: "Èxode", 3: "Levític", 4: "Nombres", 5: "Deuteronomi",
-  6: "Josuè", 7: "Jutges", 8: "Rut", 9: "1 Samuel", 10: "2 Samuel",
-  11: "1 Reis", 12: "2 Reis", 13: "1 Cròniques", 14: "2 Cròniques", 15: "Esdres",
-  16: "Nehemies", 17: "Ester", 18: "Job", 19: "Salms", 20: "Proverbis",
-  21: "Eclesiastès", 22: "Càntic dels Càntics", 23: "Isaïes", 24: "Jeremies", 
-  25: "Lamentacions", 26: "Ezequiel", 27: "Daniel", 28: "Osees", 29: "Joel", 
-  30: "Amós", 31: "Abdies", 32: "Jonàs", 33: "Miquees", 34: "Nahum", 
-  35: "Habacuc", 36: "Sofonies", 37: "Ageu", 38: "Zacaries", 39: "Malaquies",
-  // NOU TESTAMENT
-  40: "Mateu", 41: "Marc", 42: "Lluc", 43: "Joan", 44: "Fets dels Apòstols", 
-  45: "Romans", 46: "1 Corintis", 47: "2 Corintis", 48: "Gàlates", 
-  49: "Efesis", 50: "Filipencs", 51: "Colossencs", 52: "1 Tessalonicencs", 
-  53: "2 Tessalonicencs", 54: "1 Timoteu", 55: "2 Timoteu", 56: "Titus", 
-  57: "Filèmon", 58: "Hebreus", 59: "Jaume", 60: "1 Pere", 61: "2 Pere", 
-  62: "1 Joan", 63: "2 Joan", 64: "3 Joan", 65: "Judes", 66: "Apocalipsi"
+  // ANTIGUO TESTAMENTO
+  1: "Génesis", 2: "Éxodo", 3: "Levítico", 4: "Números", 5: "Deuteronomio",
+  6: "Josué", 7: "Jueces", 8: "Rut", 9: "1 Samuel", 10: "2 Samuel",
+  11: "1 Reyes", 12: "2 Reyes", 13: "1 Crónicas", 14: "2 Crónicas", 15: "Esdras",
+  16: "Nehemías", 17: "Ester", 18: "Job", 19: "Salmos", 20: "Proverbios",
+  21: "Eclesiastés", 22: "Cantares", 23: "Isaías", 24: "Jeremías",
+  25: "Lamentaciones", 26: "Ezequiel", 27: "Daniel", 28: "Oseas", 29: "Joel",
+  30: "Amós", 31: "Abdías", 32: "Jonás", 33: "Miqueas", 34: "Nahúm",
+  35: "Habacuc", 36: "Sofonías", 37: "Hageo", 38: "Zacarías", 39: "Malaquías",
+  // NUEVO TESTAMENTO
+  40: "Mateo", 41: "Marcos", 42: "Lucas", 43: "Juan", 44: "Hechos",
+  45: "Romanos", 46: "1 Corintios", 47: "2 Corintios", 48: "Gálatas",
+  49: "Efesios", 50: "Filipenses", 51: "Colosenses", 52: "1 Tesalonicenses",
+  53: "2 Tesalonicenses", 54: "1 Timoteo", 55: "2 Timoteo", 56: "Tito",
+  57: "Filemón", 58: "Hebreos", 59: "Santiago", 60: "1 Pedro", 61: "2 Pedro",
+  62: "1 Juan", 63: "2 Juan", 64: "3 Juan", 65: "Judas", 66: "Apocalipsis"
 };
 
 async function seed() {
   await client.connect();
-  console.log('Conectado a la DB para cargar LBLA');
+  console.log('Conectado a la DB para cargar Biblia');
 
   // Verificar si la versión ya existe para no duplicar
   const checkVersion = await client.query('SELECT id FROM "BibleVersion" WHERE name = $1', [VERSION_SHORT]);
