@@ -49,6 +49,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const panelConcordancia= document.getElementById('panelConcordancia');
     const panelComparacion = document.getElementById('panelComparacion');
 
+    const copyVersesBtn = document.getElementById('copyVersesBtn');
+    const selectedVersesCount = document.getElementById('selectedVersesCount');
+    const copyModal = document.getElementById('copyModal');
+    const closeCopyModal = document.getElementById('closeCopyModal');
+    const selectedVersesTextarea = document.getElementById('selectedVersesTextarea');
+    const doCopyBtn = document.getElementById('doCopyBtn');
+    const copyFeedback = document.getElementById('copyFeedback');
+
+    let selectedVerses = []; // Array para almacenar los IDs/números de los versículos seleccionados
+    let currentVersesData = []; // Para tener acceso a los datos del capítulo actual
+
     let currentMode = 'lectura';
 
     // =====================
@@ -514,6 +525,23 @@ async function syncCompToReading() {
             <p class="verse"><span class="verse-number">${v.number}</span>${v.text}</p>
         `).join('');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                // Guardar los datos de los versículos actuales para poder acceder a ellos al seleccionar
+        currentVersesData = verses; 
+
+        content.innerHTML = verses.map(v => `
+            <p class="verse">
+                <span class="verse-number" data-verse-number="${v.number}">${v.number}</span>${v.text}
+            </p>
+        `).join('');
+        
+        // AÑADIDO: Añadir listeners a los números de versículo
+        content.querySelectorAll('.verse-number').forEach(span => {
+            span.addEventListener('click', toggleVerseSelection);
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        updateCopyButtonVisibility(); // AÑADIDO: Actualizar el estado del botón de copiar
     }
 
     // =====================
@@ -899,9 +927,91 @@ async function renderComparison() {
         }
     }
 
+        function toggleVerseSelection(event) {
+        const verseNumberSpan = event.target;
+        const verseNumber = parseInt(verseNumberSpan.dataset.verseNumber);
+
+        const index = selectedVerses.indexOf(verseNumber);
+        if (index > -1) {
+            // Deseleccionar
+            selectedVerses.splice(index, 1);
+            verseNumberSpan.classList.remove('selected');
+        } else {
+            // Seleccionar
+            selectedVerses.push(verseNumber);
+            verseNumberSpan.classList.add('selected');
+        }
+        // Ordenar para mantener la secuencia y facilitar el copiado
+        selectedVerses.sort((a, b) => a - b);
+        updateCopyButtonVisibility();
+    }
+
+    function updateCopyButtonVisibility() {
+        if (selectedVerses.length > 0) {
+            copyVersesBtn.style.display = 'flex'; // O 'block' si no usas flex para el botón
+            selectedVersesCount.textContent = selectedVerses.length;
+        } else {
+            copyVersesBtn.style.display = 'none';
+        }
+    }
+
+    function showCopyModal() {
+        if (selectedVerses.length === 0) return;
+
+        const bookName = bookSelect.options[bookSelect.selectedIndex]?.text;
+        const chapterNum = chapterSelect.options[chapterSelect.selectedIndex]?.dataset.number;
+        const versionName = versionSelect.options[versionSelect.selectedIndex]?.text;
+
+        let textToCopy = `Versículos de ${bookName} ${chapterNum} (${versionName}):\n\n`;
+
+        selectedVerses.forEach(vNum => {
+            const verse = currentVersesData.find(v => v.number === vNum);
+            if (verse) {
+                textToCopy += `${verse.number}. ${verse.text}\n`;
+            }
+        });
+
+        selectedVersesTextarea.value = textToCopy.trim();
+        copyFeedback.textContent = ''; // Limpiar feedback anterior
+        copyModal.style.display = 'flex'; // Mostrar el modal
+    }
+
+    function hideCopyModal() {
+        copyModal.style.display = 'none';
+        copyFeedback.textContent = ''; // Limpiar feedback al cerrar
+    }
+
+    async function copySelectedVersesToClipboard() {
+        try {
+            await navigator.clipboard.writeText(selectedVersesTextarea.value);
+            copyFeedback.textContent = '¡Copiado al portapapeles!';
+            // Opcional: Cerrar el modal automáticamente después de un tiempo
+            // setTimeout(hideCopyModal, 2000); 
+        } catch (err) {
+            console.error('Error al copiar:', err);
+            copyFeedback.textContent = 'Error al copiar. Por favor, intenta de nuevo.';
+        }
+    }
+
+    function clearSelections() {
+        selectedVerses = [];
+        content.querySelectorAll('.verse-number.selected').forEach(span => {
+            span.classList.remove('selected');
+        });
+        updateCopyButtonVisibility();
+        hideCopyModal(); // Asegurarse de que el modal también se oculte
+    }
+
+    // AÑADIDO: Limpiar selecciones al cambiar de capítulo o libro
+    // (Opcional, pero mejora la UX para evitar selecciones "fantasmas")
+    chapterSelect.addEventListener('change', clearSelections);
+    bookSelect.addEventListener('change', clearSelections);
+    versionSelect.addEventListener('change', clearSelections);
+
     // =====================
     // 8. EVENTOS
     // =====================
+    
     versionSelect.addEventListener('change', onVersionChange);
     bookSelect.addEventListener('change', onBookChange);
     chapterSelect.addEventListener('change', onChapterChange);
@@ -920,6 +1030,18 @@ async function renderComparison() {
     compBook.addEventListener('change', loadCompChapters);
     compChapter.addEventListener('change', loadCompVerses);
     compVerse.addEventListener('change', renderComparison);
+
+        // Eventos para selección y copiado
+    copyVersesBtn.addEventListener('click', showCopyModal);
+    closeCopyModal.addEventListener('click', hideCopyModal);
+    doCopyBtn.addEventListener('click', copySelectedVersesToClipboard);
+    
+    // Opcional: Cerrar el modal si se hace clic fuera de él
+    window.addEventListener('click', (event) => {
+        if (event.target === copyModal) {
+            hideCopyModal();
+        }
+    });
 
     // =====================
     // 9. CARGA INICIAL - Versiones dinámicas
