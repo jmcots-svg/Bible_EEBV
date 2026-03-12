@@ -308,6 +308,43 @@ $$
       });
     }
 
+   // =====================================================
+// /api/cache/clear  (protegido por token)
+// =====================================================
+if (path === "/api/cache/clear") {
+  const token = url.searchParams.get("token");
+  const SECRET = Deno.env.get("CACHE_SECRET") ?? "mi-secreto-seguro";
+
+  if (token !== SECRET) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), {
+      status: 401,
+      headers: makeHeaders("no-store"),
+    });
+  }
+
+  // 1. Limpiar caché RAM
+  Object.keys(serverCache).forEach(k => delete serverCache[k]);
+
+  // 2. Limpiar claves KV relevantes
+  const keysToDelete: Deno.KvKey[] = [
+    ["versions"],
+    ["books", "RV60"],
+    ["books", "LBLA"],
+    ["books", "NUEVA_VERSION"], // ← pon el name de tu nueva versión
+  ];
+
+  for (const key of keysToDelete) {
+    await kv.delete(key);
+  }
+
+  return new Response(JSON.stringify({ 
+    ok: true, 
+    message: "Caché limpiada correctamente" 
+  }), {
+    headers: makeHeaders("no-store"),
+  });
+}
+    
     return new Response(JSON.stringify({ error: "404" }), {
       status: 404,
       headers: makeHeaders("no-store"),
