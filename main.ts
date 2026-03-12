@@ -384,8 +384,8 @@ if (path === "/api/cache/clear") {
 // --------------------
 // Cron warmup
 // --------------------
-Deno.cron("warmup-cache", "0 */6 * * *", async () => {
-  try {
-    await fetch("https://bible-eebv.jmcots-svg.deno.net/api/versions");
-  } catch {}
-});
+//Deno.cron("warmup-cache", "0 */6 * * *", async () => {
+//  try {
+//    await fetch("https://bible-eebv.jmcots-svg.deno.net/api/versions");
+//  } catch {}
+//});
