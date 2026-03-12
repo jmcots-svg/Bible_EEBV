@@ -16,7 +16,7 @@ const client = new Client({
 
 // CONFIGURACIÓN PARA BEC
 //const XMLURL = 'https://jmcots-svg.github.io/Bible_EEBV/data/CatalanBECBible.xml';
-const XML_PATH = path.join(__dirname, '..', 'data', 'CatalanBECBible.xml');
+const XML_PATH = path.join(__dirname, 'data', 'CatalanBECBible.xml');
 const VERSION_SHORT = 'BEC';
 const VERSION_FULL = 'Bíblia Evangèlica Catalana 2000';
 
