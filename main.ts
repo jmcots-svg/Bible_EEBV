@@ -384,10 +384,10 @@ if (path === "/api/cache/clear") {
       }
 
       const { rows } = await pool.query(
-        `SELECT id, name, "fullName"
-         FROM "BibleVersion"
-         WHERE "hasStrongs" = true
-         ORDER BY id ASC`
+        "SELECT id, name, \"fullName\" " +
+        "FROM \"BibleVersion\" " +
+        "WHERE \"hasStrongs\" = true " +
+        "ORDER BY id ASC"
       );
 
       setCache(memKey, rows);
@@ -409,12 +409,12 @@ if (path === "/api/cache/clear") {
       }
 
       const { rows } = await pool.query(
-        `SELECT v.number AS "verseNumber",
-                w.text, w.strong, w.position
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         WHERE v."chapterId" = \$1
-         ORDER BY v.number ASC, w.position ASC`,
+        "SELECT v.number AS \"verseNumber\", " +
+        "w.text, w.strong, w.position " +
+        "FROM \"Word\" w " +
+        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
+        "WHERE v.\"chapterId\" = \$1 " +
+        "ORDER BY v.number ASC, w.position ASC",
         [chId]
       );
 
@@ -456,26 +456,46 @@ if (path === "/api/cache/clear") {
 
       // Contar total
       const { rows: countRows } = await pool.query(
-        `SELECT COUNT(DISTINCT v.id) AS total
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         WHERE w.strong = \$1`,
+        "SELECT COUNT(DISTINCT v.id) AS total " +
+        "FROM \"Word\" w " +
+        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
+        "WHERE w.strong = \$1",
         [strong]
       );
       const total = parseInt(countRows[0].total);
 
       // Obtener referencias
       const { rows } = await pool.query(
-        `SELECT DISTINCT ON (b."bookOrder", c.number, v.number)
-                b.name AS book,
-                b."bookOrder",
-                b.testament,
-                c.number AS chapter,
-                v.number AS verse,
-                v.text
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         <span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
+        "SELECT DISTINCT ON (b.\"bookOrder\", c.number, v.number) " +
+        "b.name AS book, " +
+        "b.\"bookOrder\", " +
+        "b.testament, " +
+        "c.number AS chapter, " +
+        "v.number AS verse, " +
+        "v.text " +
+        "FROM \"Word\" w " +
+        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
+        "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
+        "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
+        "WHERE w.strong = \$1 " +
+        "ORDER BY b.\"bookOrder\", c.number, v.number " +
+        "LIMIT \$2 OFFSET \$3",
+        [strong, limit, offset]
+      );
+
+      const totalPages = Math.ceil(total / limit);
+
+      return new Response(JSON.stringify({
+        strong,
+        total,
+        page,
+        limit,
+        totalPages,
+        results: rows,
+      }), {
+        headers: makeHeaders("public, max-age=3600"),
+      });
+    }
          
     return new Response(JSON.stringify({ error: "404" }), {
       status: 404,
