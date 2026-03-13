@@ -436,7 +436,7 @@ if (path === "/api/search") {
     }
 
 // =====================================================
-// /api/strong-refs
+// /api/strong-refs 
 // =====================================================
 if (path === "/api/strong-refs") {
   const strong = url.searchParams.get("strong")?.trim();
@@ -451,6 +451,7 @@ if (path === "/api/strong-refs") {
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
   const offset = (page - 1) * limit;
 
+  // 1. Contar total de versículos únicos que contienen este Strong
   const { rows: countRows } = await pool.query(
     `SELECT COUNT(DISTINCT v.id) AS total
      FROM "Word" w
@@ -460,7 +461,7 @@ if (path === "/api/strong-refs") {
   );
   const total = parseInt(countRows[0].total);
 
-  // CAMBIO AQUÍ: Usamos GROUP BY y ARRAY_AGG para obtener las palabras exactas
+  // 2. Obtener los datos con w.text (que es tu columna real según el modelo Word)
   const { rows } = await pool.query(
     `SELECT b.name AS book,
             b."bookOrder",
@@ -468,7 +469,7 @@ if (path === "/api/strong-refs") {
             c.number AS chapter,
             v.number AS verse,
             v.text,
-            ARRAY_AGG(DISTINCT w.word) AS matched_words 
+            ARRAY_AGG(DISTINCT w.text) AS matched_words 
      FROM "Word" w
      JOIN "Verse" v ON w."verseId" = v.id
      JOIN "Chapter" c ON v."chapterId" = c.id
@@ -493,6 +494,7 @@ if (path === "/api/strong-refs") {
     headers: makeHeaders("public, max-age=3600"),
   });
 }
+
 
 
     // =====================================================
