@@ -102,7 +102,6 @@ model StrongEntry {
   strongsDerivation String?   // <strongs_derivation>
 
   // Relaciones
-  words         Word[]
   relations     StrongRelation[] @relation("fromStrong")
   relatedFrom   StrongRelation[] @relation("toStrong")
 
