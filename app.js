@@ -1310,84 +1310,250 @@ async function renderComparison() {
     // PANEL INFERIOR STRONG
     // =====================
 
-    async function onStrongCodeClick(strongCode, clickedEl) {
-        // Si ya está abierto con el mismo código, cerrar
-        if (currentStrongCode === strongCode && strongBottomPanel.classList.contains('open')) {
-            closeStrongPanel();
+async function onStrongCodeClick(strongCode, clickedEl) {
+    if (currentStrongCode === strongCode && strongBottomPanel.classList.contains('open')) {
+        closeStrongPanel();
+        return;
+    }
+
+    content.querySelectorAll('.strong-code.active').forEach(el => el.classList.remove('active'));
+    clickedEl.classList.add('active');
+
+    currentStrongCode = strongCode;
+    strongBottomCode.textContent = strongCode;
+    strongBottomCount.textContent = 'Cargando...';
+
+    // ── HTML con tabs ──────────────────────────────────────────────
+    strongBottomContent.innerHTML = `
+        <div class="strong-tabs">
+            <button class="strong-tab active" data-tab="dict">📖 Diccionario</button>
+            <button class="strong-tab" data-tab="refs">🔍 Referencias</button>
+        </div>
+        <div class="strong-tab-panel" id="strongTabDict">
+            <div class="strong-bottom-loading">📖 Cargando diccionario...</div>
+        </div>
+        <div class="strong-tab-panel" id="strongTabRefs" style="display:none">
+            <div class="strong-bottom-loading">🔍 Buscando referencias...</div>
+        </div>
+    `;
+    // ──────────────────────────────────────────────────────────────
+
+    strongBottomPanel.classList.add('open');
+
+    // Event listeners tabs
+    strongBottomContent.querySelectorAll('.strong-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            strongBottomContent.querySelectorAll('.strong-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            const tabName = tab.dataset.tab;
+            document.getElementById('strongTabDict').style.display = tabName === 'dict' ? '' : 'none';
+            document.getElementById('strongTabRefs').style.display = tabName === 'refs' ? '' : 'none';
+        });
+    });
+
+    // Cargar ambos en paralelo
+    loadStrongDict(strongCode);
+    loadStrongRefs(strongCode, 1);
+}
+
+async function loadStrongRefs(strongCode, page) {
+    // ── ÚNICO CAMBIO: usar strongTabRefs en vez de strongBottomContent ──
+    const panel = document.getElementById('strongTabRefs') || strongBottomContent;
+
+    try {
+        const data = await fetchJSON(
+            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=50`
+        );
+
+        strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
+
+        let html = '<div class="strong-ref-list">';
+        data.results.forEach(ref => {
+            const icon = ref.testament === 'OT' ? '📜' : '✝️';
+            html += `<a href="#" class="strong-ref-item"
+                        data-book="${escapeHtml(ref.book)}"
+                        data-chapter="${ref.chapter}"
+                        data-verse="${ref.verse}"
+                        title="${escapeHtml(ref.book)} ${ref.chapter}:${ref.verse}">
+                        <span class="ref-testament">${icon}</span>${ref.book} ${ref.chapter}:${ref.verse}
+                     </a>`;
+        });
+        html += '</div>';
+
+        if (data.totalPages > 1) {
+            html += '<div class="strong-ref-pagination">';
+            if (data.page > 1) {
+                html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
+            }
+            html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
+            if (data.page < data.totalPages) {
+                html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
+            }
+            html += '</div>';
+        }
+
+        panel.innerHTML = html;  // ← antes era strongBottomContent.innerHTML
+
+        panel.querySelectorAll('.strong-ref-item').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                navigateToVerseFromStrong(link.dataset.book, link.dataset.chapter, link.dataset.verse);
+            });
+        });
+
+        panel.querySelectorAll('.strong-ref-pagination .pagination-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                loadStrongRefs(strongCode, parseInt(btn.dataset.page));
+            });
+        });
+
+    } catch (e) {
+        panel.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
+    }
+}
+
+    async function loadStrongDict(strongCode) {
+    const panel = document.getElementById('strongTabDict');
+    if (!panel) return;
+
+    try {
+        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}`);
+
+        if (!data || data.error) {
+            panel.innerHTML = `<p class="strong-dict-empty">Sin información del diccionario para <strong>${strongCode}</strong>.</p>`;
             return;
         }
 
-        // Quitar .active de todos los códigos, poner en el actual
-        content.querySelectorAll('.strong-code.active').forEach(el => el.classList.remove('active'));
-        clickedEl.classList.add('active');
+        const isHebrew = data.language === 'H';
+        const langLabel = isHebrew ? '🔤 Hebreo' : '🔤 Griego';
 
-        currentStrongCode = strongCode;
-        strongBottomCode.textContent = strongCode;
-        strongBottomCount.textContent = 'Cargando...';
-        strongBottomContent.innerHTML = '<div class="strong-bottom-loading">🔍 Buscando referencias...</div>';
-        strongBottomPanel.classList.add('open');
+        let html = `<div class="strong-dict-entry">`;
 
-        loadStrongRefs(strongCode, 1);
-    }
-
-    async function loadStrongRefs(strongCode, page) {
-        try {
-            const data = await fetchJSON(
-                `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=50`
-            );
-
-            strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
-
-            let html = '<div class="strong-ref-list">';
-            data.results.forEach(ref => {
-                const icon = ref.testament === 'OT' ? '📜' : '✝️';
-                html += `<a href="#" class="strong-ref-item" 
-                            data-book="${escapeHtml(ref.book)}" 
-                            data-chapter="${ref.chapter}" 
-                            data-verse="${ref.verse}"
-                            title="${escapeHtml(ref.book)} ${ref.chapter}:${ref.verse}">` +
-                         `<span class="ref-testament">${icon}</span>${ref.book} ${ref.chapter}:${ref.verse}` +
-                         `</a>`;
-            });
-            html += '</div>';
-
-            // Paginación
-            if (data.totalPages > 1) {
-                html += '<div class="strong-ref-pagination">';
-                if (data.page > 1) {
-                    html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
-                }
-                html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
-                if (data.page < data.totalPages) {
-                    html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
-                }
-                html += '</div>';
-            }
-
-            strongBottomContent.innerHTML = html;
-
-            // Event listeners para referencias
-            strongBottomContent.querySelectorAll('.strong-ref-item').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const book = link.dataset.book;
-                    const chapter = link.dataset.chapter;
-                    const verse = link.dataset.verse;
-                    navigateToVerseFromStrong(book, chapter, verse);
-                });
-            });
-
-            // Event listeners para paginación
-            strongBottomContent.querySelectorAll('.strong-ref-pagination .pagination-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    loadStrongRefs(strongCode, parseInt(btn.dataset.page));
-                });
-            });
-
-        } catch (e) {
-            strongBottomContent.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
+        // ── Cabecera ────────────────────────────────────────────────
+        html += `<div class="strong-dict-header">`;
+        if (data.lemma) {
+            html += `<span class="strong-dict-lemma" dir="${isHebrew ? 'rtl' : 'ltr'}">${escapeHtml(data.lemma)}</span>`;
         }
+        if (data.translit) {
+            html += `<span class="strong-dict-translit">${escapeHtml(data.translit)}</span>`;
+        }
+        if (data.pronunciation) {
+            html += `<span class="strong-dict-pronun">/${escapeHtml(data.pronunciation)}/</span>`;
+        }
+        html += `</div>`; // .strong-dict-header
+
+        // ── Badges ──────────────────────────────────────────────────
+        html += `<div class="strong-dict-badges">`;
+        html += `<span class="strong-dict-badge lang">${langLabel}</span>`;
+        if (data.morphology) {
+            html += `<span class="strong-dict-badge morph">${escapeHtml(data.morphology)}</span>`;
+        }
+        if (data.speechLang) {
+            html += `<span class="strong-dict-badge speech">${escapeHtml(data.speechLang)}</span>`;
+        }
+        html += `</div>`; // .strong-dict-badges
+
+        // ── KJV ─────────────────────────────────────────────────────
+        if (data.kjvDefinition) {
+            html += `<div class="strong-dict-section kjv">
+                        <span class="strong-dict-label">KJV</span>
+                        <p>${escapeHtml(data.kjvDefinition)}</p>
+                     </div>`;
+        }
+
+        // ── Definición ──────────────────────────────────────────────
+        if (data.definition) {
+            html += `<div class="strong-dict-section">
+                        <span class="strong-dict-label">Definición</span>
+                        <p>${escapeHtml(data.definition)}</p>
+                     </div>`;
+        }
+
+        // ── Strong's Def (griego) ────────────────────────────────────
+        if (data.strongsDef) {
+            html += `<div class="strong-dict-section">
+                        <span class="strong-dict-label">Strong's Definition</span>
+                        <p>${escapeHtml(data.strongsDef)}</p>
+                     </div>`;
+        }
+
+        // ── Derivación (griego) ──────────────────────────────────────
+        if (data.strongsDerivation) {
+            html += `<div class="strong-dict-section">
+                        <span class="strong-dict-label">Derivación</span>
+                        <p>${escapeHtml(data.strongsDerivation)}</p>
+                     </div>`;
+        }
+
+        // ── Exégesis (hebreo) ────────────────────────────────────────
+        if (data.exegesis) {
+            html += `<div class="strong-dict-section exegesis">
+                        <span class="strong-dict-label">Exégesis</span>
+                        <p>${escapeHtml(data.exegesis)}</p>
+                     </div>`;
+        }
+
+        // ── Explicación (hebreo) ─────────────────────────────────────
+        if (data.explanation) {
+            html += `<div class="strong-dict-section">
+                        <span class="strong-dict-label">Explicación</span>
+                        <p>${escapeHtml(data.explanation)}</p>
+                     </div>`;
+        }
+
+        // ── Relaciones ───────────────────────────────────────────────
+        if (data.relations && data.relations.length > 0) {
+            html += `<div class="strong-dict-section">
+                        <span class="strong-dict-label">Ver también</span>
+                        <div class="strong-dict-relations">`;
+            data.relations.forEach(rel => {
+                const label = {
+                    see_also:     'ver también',
+                    derives_from: 'deriva de',
+                    greek_equiv:  'equiv. griego',
+                    related:      'relacionado'
+                }[rel.relationType] ?? rel.relationType;
+
+                html += `<button class="strong-dict-rel-btn" data-strong="${escapeHtml(rel.toStrong)}"
+                                  title="${escapeHtml(rel.to?.kjvDefinition || '')}">
+                            <span class="rel-code">${escapeHtml(rel.toStrong)}</span>
+                            ${rel.to?.translit ? `<span class="rel-translit">${escapeHtml(rel.to.translit)}</span>` : ''}
+                            <span class="rel-type">${label}</span>
+                         </button>`;
+            });
+            html += `</div></div>`; // .strong-dict-relations + .strong-dict-section
+        }
+
+        html += `</div>`; // .strong-dict-entry
+        panel.innerHTML = html;
+
+        // Click en relaciones → cargar ese Strong
+        panel.querySelectorAll('.strong-dict-rel-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const code = btn.dataset.strong;
+                // Actualizar cabecera del panel
+                strongBottomCode.textContent = code;
+                currentStrongCode = code;
+                // Resetear tabs a diccionario
+                strongBottomContent.querySelectorAll('.strong-tab').forEach(t => {
+                    t.classList.toggle('active', t.dataset.tab === 'dict');
+                });
+                document.getElementById('strongTabDict').style.display = '';
+                document.getElementById('strongTabRefs').style.display = 'none';
+                // Recargar
+                document.getElementById('strongTabDict').innerHTML =
+                    '<div class="strong-bottom-loading">📖 Cargando diccionario...</div>';
+                strongBottomCount.textContent = 'Cargando...';
+                loadStrongDict(code);
+                loadStrongRefs(code, 1);
+            });
+        });
+
+    } catch (e) {
+        panel.innerHTML = `<p class="error">❌ Error al cargar el diccionario</p>`;
+        console.error('Error loadStrongDict:', e);
     }
+}
 
     function closeStrongPanel() {
         strongBottomPanel.classList.remove('open');
