@@ -1038,4 +1038,232 @@ input[type="text"]:focus {
     text-align: center;
 }
 
+/* ===================== */
+/* 14. PANEL STRONG      */
+/* ===================== */
+
+/* Contenedor de versículo con Strong */
+.strong-verse {
+  margin-bottom: 20px;
+  line-height: 2.4;
+  text-align: justify;
+}
+
+.strong-verse .verse-number {
+  font-weight: bold;
+  color: var(--accent);
+  margin-right: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* Cada palabra con Strong */
+.strong-word-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0 1px;
+  vertical-align: bottom;
+  position: relative;
+}
+
+.strong-code {
+  font-size: 0.55em;
+  color: var(--accent);
+  opacity: 0.7;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1;
+  transition: all 0.2s ease;
+  padding: 1px 3px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.strong-code:hover {
+  opacity: 1;
+  background: var(--accent);
+  color: white;
+  transform: scale(1.1);
+}
+
+.strong-code.active {
+  opacity: 1;
+  background: var(--accent);
+  color: white;
+}
+
+.strong-word-text {
+  line-height: 1.4;
+}
+
+/* Palabra sin Strong (inline normal) */
+.strong-plain-word {
+  margin: 0 1px;
+}
+
+/* ===================== */
+/* PANEL INFERIOR STRONG */
+/* ===================== */
+
+.strong-bottom-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--bg-container);
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+  transition: max-height 0.4s ease, padding 0.4s ease;
+  z-index: 1000;
+  padding: 0 20px;
+}
+
+.strong-bottom-panel.open {
+  max-height: 45vh;
+  padding: 16px 20px;
+}
+
+.strong-bottom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.strong-bottom-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.strong-code-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.strong-ref-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.strong-bottom-close {
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.strong-bottom-close:hover {
+  color: var(--accent);
+}
+
+.strong-bottom-content {
+  overflow-y: auto;
+  max-height: calc(45vh - 70px);
+  padding-right: 8px;
+}
+
+/* Lista de referencias */
+.strong-ref-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.strong-ref-item {
+  display: inline-block;
+  padding: 5px 12px;
+  background: var(--bg-filters);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.strong-ref-item:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.strong-ref-item .ref-testament {
+  font-size: 0.75rem;
+  margin-right: 2px;
+}
+
+/* Paginación en el panel Strong */
+.strong-ref-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0 4px;
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.strong-ref-pagination .pagination-btn {
+  padding: 6px 16px;
+  font-size: 0.85rem;
+}
+
+.strong-ref-pagination .pagination-info {
+  font-size: 0.8rem;
+}
+
+/* Loading en panel inferior */
+.strong-bottom-loading {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ===================== */
+/* RESPONSIVE STRONG     */
+/* ===================== */
+
+@media (max-width: 600px) {
+  .strong-bottom-panel.open {
+    max-height: 55vh;
+  }
+
+  .strong-bottom-content {
+    max-height: calc(55vh - 70px);
+  }
+
+  .strong-code {
+    font-size: 0.5em;
+  }
+
+  .strong-ref-item {
+    padding: 4px 8px;
+    font-size: 0.78rem;
+  }
+
+  .strong-code-badge {
+    font-size: 0.85rem;
+    padding: 3px 10px;
+  }
+}
+
 }
