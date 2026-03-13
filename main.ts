@@ -509,8 +509,8 @@ if (path === "/api/cache/clear") {
       headers: makeHeaders("no-store"),
     });
   }
-});
 
+  
     // =====================================================
     // /api/strong-refs — Referencias donde aparece un Strong
     // =====================================================
@@ -595,6 +595,9 @@ if (path === "/api/cache/clear") {
         headers: makeHeaders("public, max-age=604800"),
       });
     }
+  
+});
+
 
     // ← aquí ya estaba tu línea del 404
     return new Response(JSON.stringify({ error: "404" }), {
