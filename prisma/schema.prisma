@@ -62,15 +62,12 @@ model Verse {
 }
 
 model Word {
-  id       Int     @id @default(autoincrement())
-  text     String
-  strong   String?
-  position Int
-  verseId  Int
-  verse    Verse   @relation(fields: [verseId], references: [id], onDelete: Cascade)
-
-  // Relación con diccionario Strong
-  strongEntry StrongEntry? @relation(fields: [strong], references: [strong])
+  id        Int     @id @default(autoincrement())
+  text      String
+  strong    String?
+  position  Int
+  verseId   Int
+  verse     Verse   @relation(fields: [verseId], references: [id], onDelete: Cascade)
 
   @@index([verseId, position])
   @@index([strong])
