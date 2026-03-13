@@ -436,61 +436,64 @@ if (path === "/api/search") {
     }
 
     // =====================================================
-    // /api/strong-refs
-    // =====================================================
-    if (path === "/api/strong-refs") {
-      const strong = url.searchParams.get("strong")?.trim();
-      if (!strong) {
-        return new Response(JSON.stringify({ error: "Parámetro strong requerido" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
-      }
+// /api/strong-refs
+// =====================================================
+if (path === "/api/strong-refs") {
+  const strong = url.searchParams.get("strong")?.trim();
+  if (!strong) {
+    return new Response(JSON.stringify({ error: "Parámetro strong requerido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
-      const offset = (page - 1) * limit;
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
+  const offset = (page - 1) * limit;
 
-      const { rows: countRows } = await pool.query(
-        `SELECT COUNT(DISTINCT v.id) AS total
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         WHERE w.strong = \$1`,
-        [strong]
-      );
-      const total = parseInt(countRows[0].total);
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(DISTINCT v.id) AS total
+     FROM "Word" w
+     JOIN "Verse" v ON w."verseId" = v.id
+     WHERE w.strong = $1`,
+    [strong]
+  );
+  const total = parseInt(countRows[0].total);
 
-      const { rows } = await pool.query(
-        `SELECT DISTINCT ON (b."bookOrder", c.number, v.number)
-                b.name AS book,
-                b."bookOrder",
-                b.testament,
-                c.number AS chapter,
-                v.number AS verse,
-                v.text
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         JOIN "Chapter" c ON v."chapterId" = c.id
-         JOIN "Book" b ON c."bookId" = b.id
-         WHERE w.strong = \$1
-         ORDER BY b."bookOrder", c.number, v.number
-         LIMIT \$2 OFFSET \$3`,
-        [strong, limit, offset]
-      );
+  // CAMBIO AQUÍ: Usamos GROUP BY y ARRAY_AGG para obtener las palabras exactas
+  const { rows } = await pool.query(
+    `SELECT b.name AS book,
+            b."bookOrder",
+            b.testament,
+            c.number AS chapter,
+            v.number AS verse,
+            v.text,
+            ARRAY_AGG(DISTINCT w.word) AS matched_words 
+     FROM "Word" w
+     JOIN "Verse" v ON w."verseId" = v.id
+     JOIN "Chapter" c ON v."chapterId" = c.id
+     JOIN "Book" b ON c."bookId" = b.id
+     WHERE w.strong = $1
+     GROUP BY b.id, c.id, v.id, b.name, b."bookOrder", b.testament, c.number, v.number, v.text
+     ORDER BY b."bookOrder", c.number, v.number
+     LIMIT $2 OFFSET $3`,
+    [strong, limit, offset]
+  );
 
-      const totalPages = Math.ceil(total / limit);
+  const totalPages = Math.ceil(total / limit);
 
-      return new Response(JSON.stringify({
-        strong,
-        total,
-        page,
-        limit,
-        totalPages,
-        results: rows,
-      }), {
-        headers: makeHeaders("public, max-age=3600"),
-      });
-    }
+  return new Response(JSON.stringify({
+    strong,
+    total,
+    page,
+    limit,
+    totalPages,
+    results: rows,
+  }), {
+    headers: makeHeaders("public, max-age=3600"),
+  });
+}
+
 
     // =====================================================
     // /api/strong-dict/:code
