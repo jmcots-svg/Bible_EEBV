@@ -1238,6 +1238,45 @@ input[type="text"]:focus {
   font-style: italic;
 }
 
+/* ===================================================== */
+/* MEJORA: REFERENCIAS DETALLADAS EN PANEL STRONG        */
+/* ===================================================== */
+
+/* Contenedor de las tarjetas de resultados dentro del panel */
+.strong-ref-list-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+/* Ajuste de las tarjetas cuando están dentro del panel inferior */
+.strong-bottom-content .search-result-card {
+  margin-bottom: 0; /* El espacio lo maneja el gap del contenedor */
+  background: var(--bg-filters);
+  border-left-width: 3px;
+}
+
+/* Ajuste del texto del versículo para que sea más compacto en el panel */
+.strong-bottom-content .search-result-text {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-top: 4px;
+  color: var(--text-main);
+}
+
+/* Asegurar que la paginación de búsqueda se vea bien en el panel pequeño */
+.strong-bottom-content .search-pagination {
+  padding: 15px 0;
+  gap: 10px;
+}
+
+.strong-bottom-content .pagination-btn {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+
 
 /* ===================== */
 /* 14. PANEL STRONG      */
