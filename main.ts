@@ -274,46 +274,38 @@ if (path === "/api/search") {
 
   let testamentFilter = "";
   if (testament !== "ALL") {
-    // ✅ CORREGIDO: usar ${paramIndex} para interpolar correctamente
-    testamentFilter = ` AND b."testament" = 
-$$
-{paramIndex}`;
+    testamentFilter = " AND b.\"testament\" = $" + paramIndex;
     params.push(testament);
     paramIndex++;
   }
 
   const countSql =
-    `SELECT COUNT(*) as total ` +
-    `FROM "Verse" v ` +
-    `JOIN "Chapter" c ON v."chapterId" = c.id ` +
-    `JOIN "Book" b ON c."bookId" = b.id ` +
-    `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
-    `WHERE bv.name = $1 ` +
-    `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'` +
+    "SELECT COUNT(*) as total " +
+    "FROM \"Verse\" v " +
+    "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
+    "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
+    "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
+    "WHERE bv.name = \$1 " +
+    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'" +
     testamentFilter;
 
   const dataSql =
-    `SELECT ` +
-    `v."number" AS verse, ` +
-    `v."text" AS text, ` +
-    `c."number" AS chapter, ` +
-    `b."name" AS book, ` +
-    `b."testament", ` +
-    `b."bookOrder" ` +
-    `FROM "Verse" v ` +
-    `JOIN "Chapter" c ON v."chapterId" = c.id ` +
-    `JOIN "Book" b ON c."bookId" = b.id ` +
-    `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
-    `WHERE bv.name = $1 ` +
-    `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'` +
-    testamentFilter + ` ` +
-    `ORDER BY b."bookOrder", c."number", v."number" ` +
-    // ✅ CORREGIDO: usar ${paramIndex} para LIMIT y OFFSET
-    `LIMIT
-$$
-{paramIndex} OFFSET 
-$$
-{paramIndex + 1}`;
+    "SELECT " +
+    "v.\"number\" AS verse, " +
+    "v.\"text\" AS text, " +
+    "c.\"number\" AS chapter, " +
+    "b.\"name\" AS book, " +
+    "b.\"testament\", " +
+    "b.\"bookOrder\" " +
+    "FROM \"Verse\" v " +
+    "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
+    "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
+    "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
+    "WHERE bv.name = \$1 " +
+    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'" +
+    testamentFilter + " " +
+    "ORDER BY b.\"bookOrder\", c.\"number\", v.\"number\" " +
+    "LIMIT $" + paramIndex + " OFFSET $" + (paramIndex + 1);
 
   params.push(limit, offset);
 
