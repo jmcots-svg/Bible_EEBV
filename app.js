@@ -1357,43 +1357,65 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 }
 
 async function loadStrongRefs(strongCode, page) {
-    // ── ÚNICO CAMBIO: usar strongTabRefs en vez de strongBottomContent ──
     const panel = document.getElementById('strongTabRefs') || strongBottomContent;
 
     try {
+        // Mantenemos el límite de 50 o lo puedes bajar a 20 para igualar a concordancia
+        const limit = 50; 
         const data = await fetchJSON(
-            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=50`
+            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}`
         );
 
         strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
 
-        let html = '<div class="strong-ref-list">';
+        // ── INICIO DE CAMBIOS: Estructura HTML idéntica a Concordancia ──
+        const startResult = (data.page - 1) * limit + 1;
+        const endResult = Math.min(data.page * limit, data.total);
+
+        // Opcional: Mostrar el rango de resultados al inicio
+        let html = `<div class="search-stats">
+            <span class="search-range">Mostrando ${startResult}-${endResult}</span>
+        </div>`;
+
+        html += '<div class="strong-ref-list-detailed">';
+        
         data.results.forEach(ref => {
             const icon = ref.testament === 'OT' ? '📜' : '✝️';
-            html += `<a href="#" class="strong-ref-item"
-                        data-book="${escapeHtml(ref.book)}"
-                        data-chapter="${ref.chapter}"
-                        data-verse="${ref.verse}"
-                        title="${escapeHtml(ref.book)} ${ref.chapter}:${ref.verse}">
-                        <span class="ref-testament">${icon}</span>${ref.book} ${ref.chapter}:${ref.verse}
-                     </a>`;
+            // Asumimos que tu API devuelve 'ref.text'. Si viene subrayado desde el backend, mejor.
+            const verseText = ref.text ? ref.text : '<em>Texto no disponible</em>';
+
+            html += `<div class="search-result-card">
+                <div class="search-result-header">
+                    <a href="#" class="strong-ref-item search-nav-link"
+                       data-book="${escapeHtml(ref.book)}"
+                       data-chapter="${ref.chapter}"
+                       data-verse="${ref.verse}"
+                       title="${escapeHtml(ref.book)} ${ref.chapter}:${ref.verse}">
+                        <span class="ref-testament">${icon}</span> ${ref.book} ${ref.chapter}:${ref.verse}
+                    </a>
+                </div>
+                <p class="search-result-text">${verseText}</p>
+            </div>`;
         });
         html += '</div>';
 
+        // ── Paginación adaptada a los estilos de Concordancia ──
         if (data.totalPages > 1) {
-            html += '<div class="strong-ref-pagination">';
+            html += `<div class="strong-ref-pagination search-pagination">`;
             if (data.page > 1) {
-                html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
+                html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
             }
-            html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
+            html += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
             if (data.page < data.totalPages) {
-                html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
+                html += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
             }
-            html += '</div>';
+            html += `</div>`;
         }
+        // ── FIN DE CAMBIOS ──
 
-        panel.innerHTML = html;  // ← antes era strongBottomContent.innerHTML
+        panel.innerHTML = html;
 
+        // Reasignar Event Listeners para la navegación de los versículos
         panel.querySelectorAll('.strong-ref-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1401,9 +1423,14 @@ async function loadStrongRefs(strongCode, page) {
             });
         });
 
-        panel.querySelectorAll('.strong-ref-pagination .pagination-btn').forEach(btn => {
+        // Reasignar Event Listeners para la paginación
+        panel.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Mostramos un pequeño indicador de carga mientras trae la nueva página
+                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Buscando referencias...</div>';
                 loadStrongRefs(strongCode, parseInt(btn.dataset.page));
+                // Opcional: hacer scroll automático hacia arriba del panel al cambiar de página
+                panel.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
 
@@ -1411,6 +1438,7 @@ async function loadStrongRefs(strongCode, page) {
         panel.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
     }
 }
+
 
     async function loadStrongDict(strongCode) {
     const panel = document.getElementById('strongTabDict');
