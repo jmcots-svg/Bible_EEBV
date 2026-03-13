@@ -10,22 +10,45 @@
 <body>
   <div class="container">
     
-    <header>
-      <div class="header-content">
-        <h1 id="mainTitle">📖 Biblia Digital</h1>
+<header>
+  <div class="header-content">
+    <h1 id="mainTitle">📖 Biblia Digital</h1>
 
+    <!-- Botón de ajustes -->
+    <button id="settingsBtn" class="settings-btn" title="Ajustes">
+      ⚙️
+    </button>
+  </div>
+
+  <!-- Panel flotante de ajustes (oculto por defecto) -->
+  <div id="settingsPanel" class="settings-panel">
+    <div class="settings-panel-content">
+      <div class="settings-panel-header">
+        <h3>Ajustes</h3>
+        <button id="closeSettingsBtn" class="close-settings-btn">&times;</button>
+      </div>
+
+      <div class="settings-panel-body">
         <!-- Control tamaño texto -->
-        <div class="font-track" id="fontTrack">
-          <span class="font-knob" id="fontKnob">A</span>
+        <div class="settings-item">
+          <label>Tamaño de texto</label>
+          <div class="font-track" id="fontTrack">
+            <span class="font-knob" id="fontKnob">A</span>
+          </div>
         </div>
 
         <!-- Switch modo noche -->
-        <label class="switch">
-          <input type="checkbox" id="themeCheckbox">
-          <span class="slider"></span>
-        </label>
+        <div class="settings-item">
+          <label>Modo oscuro</label>
+          <label class="switch">
+            <input type="checkbox" id="themeCheckbox">
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
-    </header>
+    </div>
+  </div>
+</header>
 
     <!-- TABS DE MODO -->
     <div class="mode-tabs">
