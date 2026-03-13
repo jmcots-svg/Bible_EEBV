@@ -116,12 +116,16 @@ input[type="text"]:focus {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .filters-toggle-icon {
   font-size: 0.75rem;
   transition: transform 0.3s ease;
   color: var(--text-muted);
+  flex-shrink: 0;
+  order: -1; /* Mueve el icono al principio */
 }
 
 .filters-toggle.collapsed .filters-toggle-icon {
@@ -211,4 +215,5 @@ input[type="text"]:focus {
 
 .font-track[data-pos="2"] {
   background-color: #4a90e2;
+
 }
