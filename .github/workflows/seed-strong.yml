@@ -1,0 +1,19 @@
+name: 🌿 Seed Strong
+
+on:
+  workflow_dispatch:
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install
+        run: npm install pg
+      - name: Run Seed
+        run: node seed_strong.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
