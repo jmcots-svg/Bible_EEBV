@@ -1357,55 +1357,57 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 }
 
 async function loadStrongRefs(strongCode, page) {
-    // Buscamos el panel de la pestaña de referencias si existe, 
-    // si no, usamos el contenedor principal del panel inferior.
+    // Buscamos el panel de la pestaña de referencias
     const panel = document.getElementById('strongTabRefs') || strongBottomContent;
 
     try {
-        const limit = 50; 
+        // Aumentamos un poco el límite ya que es un panel de desplazamiento
+        const limit = 50;
         const data = await fetchJSON(
             `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}`
         );
 
-        // Actualizamos el contador en la cabecera (H0000 - 15 referencias)
+        // Actualizamos el contador en la cabecera del panel
         strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
 
+        // 1. Contenedor de lista detallada (quitamos strong-ref-list para que no se pongan de lado)
         let html = '<div class="strong-ref-list-detailed">';
 
-        // Iteramos los resultados (ahora incluyendo el texto)
-        data.results.forEach(ref => {
-            const icon = ref.testament === 'OT' ? '📜' : '✝️';
-            
-            // 1. Preparamos el texto del versículo
-            // Si el backend envía matched_words, las resaltamos usando tu función highlightText
-            let highlightedText = ref.text ? escapeHtml(ref.text) : '<em>Texto no disponible</em>';
-            
-            if (ref.matched_words && Array.isArray(ref.matched_words)) {
-                ref.matched_words.forEach(word => {
-                    // Reutilizamos tu función highlightText del modo concordancia
-                    highlightedText = highlightText(ref.text, word); 
-                });
-            }
+        if (data.total === 0) {
+            html = '<div class="search-no-results"><h3>No se encontraron referencias</h3></div>';
+        } else {
+            data.results.forEach(ref => {
+                const icon = ref.testament === 'OT' ? '📜' : '✝️';
+                
+                // 2. Preparamos el texto (con escape de HTML por seguridad)
+                // Si el backend envía matched_words, las resaltamos usando tu highlightText de concordancia
+                let highlightedText = ref.text ? escapeHtml(ref.text) : '<em>Texto no disponible</em>';
+                
+                if (ref.matched_words && Array.isArray(ref.matched_words)) {
+                    ref.matched_words.forEach(word => {
+                        highlightedText = highlightText(ref.text, word);
+                    });
+                }
 
-            // 2. Usamos las mismas clases de la pestaña concordancia: 
-            // search-result-card, search-result-header y search-result-text
-            html += `
-            <div class="search-result-card">
-                <div class="search-result-header">
-                    <a href="#" class="strong-ref-item search-nav-link"
-                       data-book="${escapeHtml(ref.book)}"
-                       data-chapter="${ref.chapter}"
-                       data-verse="${ref.verse}">
-                        ${icon} ${ref.book} ${ref.chapter}:${ref.verse}
-                    </a>
-                </div>
-                <p class="search-result-text">${highlightedText}</p>
-            </div>`;
-        });
+                // 3. Usamos exactamente la misma estructura que tu modo Concordancia
+                html += `
+                <div class="search-result-card">
+                    <div class="search-result-header">
+                        <a href="#" class="strong-ref-item search-nav-link"
+                           data-book="${escapeHtml(ref.book)}"
+                           data-chapter="${ref.chapter}"
+                           data-verse="${ref.verse}">
+                            ${icon} ${ref.book} ${ref.chapter}:${ref.verse}
+                        </a>
+                    </div>
+                    <p class="search-result-text">${highlightedText}</p>
+                </div>`;
+            });
+        }
         
         html += '</div>';
 
-        // 3. Añadimos la paginación con el mismo estilo de búsqueda
+        // 4. Paginación con estilo de concordancia (clase search-pagination)
         if (data.totalPages > 1) {
             html += `<div class="search-pagination">`;
             if (data.page > 1) {
@@ -1420,9 +1422,9 @@ async function loadStrongRefs(strongCode, page) {
 
         panel.innerHTML = html;
 
-        // --- ASIGNACIÓN DE EVENTOS ---
+        // --- REASIGNAR EVENTOS ---
 
-        // Evento para navegar al versículo al hacer click en la cita
+        // Click en la referencia para ir al versículo
         panel.querySelectorAll('.strong-ref-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1430,12 +1432,12 @@ async function loadStrongRefs(strongCode, page) {
             });
         });
 
-        // Evento para los botones de paginación
+        // Click en paginación
         panel.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Cargando página...</div>';
+                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Cargando referencias...</div>';
                 loadStrongRefs(strongCode, parseInt(btn.dataset.page));
-                // Scroll al inicio del panel inferior para ver los nuevos resultados
+                // Scroll al principio del panel de contenido
                 panel.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
@@ -1445,10 +1447,6 @@ async function loadStrongRefs(strongCode, page) {
         panel.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
     }
 }
-
-
-}
-
 
     async function loadStrongDict(strongCode) {
     const panel = document.getElementById('strongTabDict');
