@@ -248,94 +248,98 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // =====================================================
-    // /api/search
-    // =====================================================
-    if (path === "/api/search") {
-      const queryText = url.searchParams.get("query")?.trim();
-      const version = url.searchParams.get("version") || "RV60";
-      const testament = url.searchParams.get("testament") || "ALL";
+// =====================================================
+// /api/search
+// =====================================================
+if (path === "/api/search") {
+  const queryText = url.searchParams.get("query")?.trim();
+  const version = url.searchParams.get("version") || "RV60";
+  const testament = url.searchParams.get("testament") || "ALL";
 
-      console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
+  console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
 
-      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
-      const offset = (page - 1) * limit;
+  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+  const offset = (page - 1) * limit;
 
-      if (!queryText || queryText.length < 2) {
-        return new Response(JSON.stringify({ error: "Query inválida" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
-      }
+  if (!queryText || queryText.length < 2) {
+    return new Response(JSON.stringify({ error: "Query inválida" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      const params: any[] = [version, queryText];
-      let paramIndex = 3;
+  const params: any[] = [version, queryText];
+  let paramIndex = 3;
 
-      let testamentFilter = "";
-      if (testament !== "ALL") {
-        testamentFilter = `AND b."testament" = 
+  let testamentFilter = "";
+  if (testament !== "ALL") {
+    // ✅ CORREGIDO: usar ${paramIndex} para interpolar correctamente
+    testamentFilter = ` AND b."testament" = 
 $$
 {paramIndex}`;
-        params.push(testament);
-        paramIndex++;
-      }
+    params.push(testament);
+    paramIndex++;
+  }
 
-      const countSql =
-        `SELECT COUNT(*) as total ` +
-        `FROM "Verse" v ` +
-        `JOIN "Chapter" c ON v."chapterId" = c.id ` +
-        `JOIN "Book" b ON c."bookId" = b.id ` +
-        `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
-        `WHERE bv.name = $1 ` +
-        `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%' ` +
-        testamentFilter;
+  const countSql =
+    `SELECT COUNT(*) as total ` +
+    `FROM "Verse" v ` +
+    `JOIN "Chapter" c ON v."chapterId" = c.id ` +
+    `JOIN "Book" b ON c."bookId" = b.id ` +
+    `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
+    `WHERE bv.name = $1 ` +
+    `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'` +
+    testamentFilter;
 
-      const dataSql =
-        `SELECT ` +
-        `v."number" AS verse, ` +
-        `v."text" AS text, ` +
-        `c."number" AS chapter, ` +
-        `b."name" AS book, ` +
-        `b."testament", ` +
-        `b."bookOrder" ` +
-        `FROM "Verse" v ` +
-        `JOIN "Chapter" c ON v."chapterId" = c.id ` +
-        `JOIN "Book" b ON c."bookId" = b.id ` +
-        `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
-        `WHERE bv.name = $1 ` +
-        `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%' ` +
-        testamentFilter + ` ` +
-        `ORDER BY b."bookOrder", c."number", v."number" ` +
-        `LIMIT
+  const dataSql =
+    `SELECT ` +
+    `v."number" AS verse, ` +
+    `v."text" AS text, ` +
+    `c."number" AS chapter, ` +
+    `b."name" AS book, ` +
+    `b."testament", ` +
+    `b."bookOrder" ` +
+    `FROM "Verse" v ` +
+    `JOIN "Chapter" c ON v."chapterId" = c.id ` +
+    `JOIN "Book" b ON c."bookId" = b.id ` +
+    `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
+    `WHERE bv.name = $1 ` +
+    `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'` +
+    testamentFilter + ` ` +
+    `ORDER BY b."bookOrder", c."number", v."number" ` +
+    // ✅ CORREGIDO: usar ${paramIndex} para LIMIT y OFFSET
+    `LIMIT
 $$
-{paramIndex} OFFSET $${paramIndex + 1}`;
+{paramIndex} OFFSET 
+$$
+{paramIndex + 1}`;
 
-      params.push(limit, offset);
+  params.push(limit, offset);
 
-      const [countResult, dataResult] = await Promise.all([
-        pool.query(countSql, params.slice(0, paramIndex - 1)),
-        pool.query(dataSql, params),
-      ]);
+  const [countResult, dataResult] = await Promise.all([
+    pool.query(countSql, params.slice(0, paramIndex - 1)),
+    pool.query(dataSql, params),
+  ]);
 
-      const total = parseInt(countResult.rows[0].total);
-      const totalPages = Math.ceil(total / limit);
+  const total = parseInt(countResult.rows[0].total);
+  const totalPages = Math.ceil(total / limit);
 
-      const response = {
-        query: queryText,
-        version,
-        testament,
-        total,
-        page,
-        limit,
-        totalPages,
-        results: dataResult.rows,
-      };
+  const response = {
+    query: queryText,
+    version,
+    testament,
+    total,
+    page,
+    limit,
+    totalPages,
+    results: dataResult.rows,
+  };
 
-      return new Response(JSON.stringify(response), {
-        headers: makeHeaders("public, max-age=3600"),
-      });
-    }
+  return new Response(JSON.stringify(response), {
+    headers: makeHeaders("public, max-age=3600"),
+  });
+}
 
     // =====================================================
     // /api/cache/clear
