@@ -7,7 +7,7 @@ const client = new Client({
   ssl: { rejectUnauthorized: false }
 });
 
-const JSON_PATH = path.join(__dirname, 'data', 'rv_1909_strong.json');
+const JSON_PATH = path.join(__dirname, 'data', 'rv_1909_strongs.json');
 const VERSION_SHORT = 'RV1909S';
 const VERSION_FULL = 'Reina Valera 1909 con Strong';
 
