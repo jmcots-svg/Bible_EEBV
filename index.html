@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Biblia Multi-versión</title>
+  <title>Biblia Multi-versiÃ³n</title>
   <link rel="icon" type="image/jpeg" href="fabicon.jpg">
-<link rel="stylesheet" href="css/variables.css">
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/header.css">
+<link rel="stylesheet" href="css/variables-y-base.css">
+<link rel="stylesheet" href="css/header-tabs.css">
 <link rel="stylesheet" href="css/filters.css">
 <link rel="stylesheet" href="css/content.css">
 <link rel="stylesheet" href="css/responsive.css">
@@ -19,9 +18,9 @@
     
     <header>
       <div class="header-content">
-        <h1 id="mainTitle">📖 Biblia Digital</h1>
+        <h1 id="mainTitle">ðŸ“– Biblia Digital</h1>
 
-        <!-- Control tamaño texto -->
+        <!-- Control tamaÃ±o texto -->
         <div class="font-track" id="fontTrack">
           <span class="font-knob" id="fontKnob">A</span>
         </div>
@@ -37,15 +36,15 @@
     <!-- TABS DE MODO -->
     <div class="mode-tabs">
       <button class="mode-tab active" data-mode="lectura" title="Lectura">
-        <span class="tab-icon">📖</span>
+        <span class="tab-icon">ðŸ“–</span>
         <span class="tab-text">Lectura</span>
       </button>
-      <button class="mode-tab" data-mode="comparacion" title="Comparación">
-        <span class="tab-icon">⚖️</span>
-        <span class="tab-text">Comparación</span>
+      <button class="mode-tab" data-mode="comparacion" title="ComparaciÃ³n">
+        <span class="tab-icon">âš–ï¸</span>
+        <span class="tab-text">ComparaciÃ³n</span>
       </button>
       <button class="mode-tab" data-mode="concordancia" title="Concordancia">
-        <span class="tab-icon">🔍</span>
+        <span class="tab-icon">ðŸ”</span>
         <span class="tab-text">Concordancia</span>
       </button>
     </div>
@@ -55,10 +54,10 @@
     <!-- ======================== -->
     <div id="panelLectura" class="panel-mode">
 
-      <!-- Botón toggle filtros (solo móvil) -->
+      <!-- BotÃ³n toggle filtros (solo mÃ³vil) -->
       <button id="toggleFiltersLectura" class="filters-toggle">
         <div class="filters-toggle-left">
-          <span class="filters-toggle-icon">�?/span>
+          <span class="filters-toggle-icon">â–?/span>
           <span id="toggleRefLectura" class="filters-toggle-ref">Selecciona un libro</span>
         </div>
         <span class="filters-toggle-hint">Filtros</span>
@@ -68,7 +67,7 @@
       <div id="filtersLectura" class="filters-collapsible">
         <div class="filters">
           <div class="filter-group">
-            <label for="version">Versión</label>
+            <label for="version">VersiÃ³n</label>
             <select id="version">
               <option value="">Cargando versiones...</option>
             </select>
@@ -82,31 +81,31 @@
           </div>
 
           <div class="filter-group">
-            <label for="chapter">Capítulo</label>
+            <label for="chapter">CapÃ­tulo</label>
             <select id="chapter" disabled>
               <option value="">Selecciona libro</option>
             </select>
           </div>
 
           <div class="filter-group">
-            <label for="verse">Versículo (opcional)</label>
+            <label for="verse">VersÃ­culo (opcional)</label>
             <select id="verse" disabled>
-              <option value="">Todo el capítulo</option>
+              <option value="">Todo el capÃ­tulo</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- Botón flotante para copiar (opcionalmente) -->
-      <button id="copyVersesBtn" class="floating-action-button" style="display:none;" title="Copiar versículos seleccionados">
-          📋 Copiar (<span id="selectedVersesCount">0</span>)
+      <!-- BotÃ³n flotante para copiar (opcionalmente) -->
+      <button id="copyVersesBtn" class="floating-action-button" style="display:none;" title="Copiar versÃ­culos seleccionados">
+          ðŸ“‹ Copiar (<span id="selectedVersesCount">0</span>)
       </button>
       
       <!-- Estructura del Modal para Copiar -->
       <div id="copyModal" class="modal" style="display: none;">
           <div class="modal-content">
               <span class="close-button" id="closeCopyModal">&times;</span>
-              <h3>Versículos Seleccionados</h3>
+              <h3>VersÃ­culos Seleccionados</h3>
               <textarea id="selectedVersesTextarea" readonly></textarea>
               <button id="doCopyBtn" class="btn-search">Copiar al Portapapeles</button>
               <div id="copyFeedback" class="copy-feedback"></div>
@@ -115,17 +114,17 @@
     </div>
 
     <!-- ======================== -->
-    <!-- PANEL MODO COMPARACIÓN   -->
+    <!-- PANEL MODO COMPARACIÃ“N   -->
     <!-- ======================== -->
     <div id="panelComparacion" class="panel-mode" style="display:none;">
 
-      <!-- Botón toggle filtros (solo móvil) -->
+      <!-- BotÃ³n toggle filtros (solo mÃ³vil) -->
       <button id="toggleFiltersComp" class="filters-toggle">
         <div class="filters-toggle-left">
-          <span class="filters-toggle-icon">�?/span>
+          <span class="filters-toggle-icon">â–?/span>
           <span id="toggleRefComp" class="filters-toggle-ref">Selecciona versiones</span>
           <span id="compOrientationHint" class="orientation-hint">
-             <span class="hint-icon">🔄</span> <span class="hint-text">Gira para comparar</span>
+             <span class="hint-icon">ðŸ”„</span> <span class="hint-text">Gira para comparar</span>
           </span>
         </div>
         <span class="filters-toggle-hint">Filtros</span>
@@ -135,14 +134,14 @@
       <div id="filtersComp" class="filters-collapsible">
         <div class="filters">
           <div class="filter-group">
-            <label for="compVersionA">Versión A</label>
+            <label for="compVersionA">VersiÃ³n A</label>
             <select id="compVersionA">
               <option value="">Cargando...</option>
             </select>
           </div>
 
           <div class="filter-group">
-            <label for="compVersionB">Versión B</label>
+            <label for="compVersionB">VersiÃ³n B</label>
             <select id="compVersionB">
               <option value="">Cargando...</option>
             </select>
@@ -156,16 +155,16 @@
           </div>
 
           <div class="filter-group">
-            <label for="compChapter">Capítulo</label>
+            <label for="compChapter">CapÃ­tulo</label>
             <select id="compChapter" disabled>
-              <option value="">-- Selecciona capítulo --</option>
+              <option value="">-- Selecciona capÃ­tulo --</option>
             </select>
           </div>
 
           <div class="filter-group">
-            <label for="compVerse">Versículo (opcional)</label>
+            <label for="compVerse">VersÃ­culo (opcional)</label>
             <select id="compVerse" disabled>
-              <option value="">Todo el capítulo</option>
+              <option value="">Todo el capÃ­tulo</option>
             </select>
           </div>
         </div>
@@ -177,10 +176,10 @@
     <!-- ======================== -->
     <div id="panelConcordancia" class="panel-mode" style="display:none;">
 
-      <!-- Botón toggle filtros (solo móvil) -->
+      <!-- BotÃ³n toggle filtros (solo mÃ³vil) -->
       <button id="toggleFiltersConc" class="filters-toggle">
         <div class="filters-toggle-left">
-          <span class="filters-toggle-icon">�?/span>
+          <span class="filters-toggle-icon">â–?/span>
           <span id="toggleRefConc" class="filters-toggle-ref">Buscar palabra</span>
         </div>
         <span class="filters-toggle-hint">Filtros</span>
@@ -190,7 +189,7 @@
       <div id="filtersConc" class="filters-collapsible">
         <div class="filters concordancia-filters">
           <div class="filter-group">
-            <label for="concVersion">Versión</label>
+            <label for="concVersion">VersiÃ³n</label>
             <select id="concVersion">
               <option value="">Cargando versiones...</option>
             </select>
@@ -200,8 +199,8 @@
             <label for="concTestament">Filtrar por</label>
             <select id="concTestament">
               <option value="ALL">Toda la Biblia</option>
-              <option value="OT">📜 Antiguo Testamento</option>
-              <option value="NT">✝️ Nuevo Testamento</option>
+              <option value="OT">ðŸ“œ Antiguo Testamento</option>
+              <option value="NT">âœï¸ Nuevo Testamento</option>
             </select>
           </div>
 
@@ -215,7 +214,7 @@
                 autocomplete="off"
                 maxlength="100"
               >
-              <button id="concSearchBtn" class="btn-search btn-conc-search">🔎 Buscar</button>
+              <button id="concSearchBtn" class="btn-search btn-conc-search">ðŸ”Ž Buscar</button>
             </div>
             <label class="exact-toggle">
               <input type="checkbox" id="concExact">
@@ -229,11 +228,12 @@
     <div class="reference" id="reference"></div>
 
     <div class="content" id="content">
-      <p class="placeholder">Selecciona una versión y libro para comenzar</p>
+      <p class="placeholder">Selecciona una versiÃ³n y libro para comenzar</p>
     </div>
 
   </div>
   
   <script src="app.js"></script>
 </body>
+
 </html>
