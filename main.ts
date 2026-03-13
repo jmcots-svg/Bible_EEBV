@@ -370,7 +370,113 @@ if (path === "/api/cache/clear") {
     headers: makeHeaders("no-store"),
   });
 }
-    
+
+    // =====================================================
+    // /api/versions/strongs — Versiones con Strong
+    // =====================================================
+    if (path === "/api/versions/strongs") {
+      const memKey = "versions-strongs";
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders("public, max-age=86400");
+        headers.set("X-Cache", "HIT(mem)");
+        return new Response(JSON.stringify(mem), { headers });
+      }
+
+      const { rows } = await pool.query(
+        `SELECT id, name, "fullName"
+         FROM "BibleVersion"
+         WHERE "hasStrongs" = true
+         ORDER BY id ASC`
+      );
+
+      setCache(memKey, rows);
+      return new Response(JSON.stringify(rows), {
+        headers: makeHeaders("public, max-age=86400"),
+      });
+    }
+
+    // =====================================================
+    // /api/words — Palabras con Strong de un capítulo
+    // =====================================================
+    if (path === "/api/words") {
+      const chId = Number(url.searchParams.get("chapterId"));
+      if (!Number.isFinite(chId)) {
+        return new Response(JSON.stringify({ error: "Parámetro chapterId inválido" }), {
+          status: 400,
+          headers: makeHeaders("no-store"),
+        });
+      }
+
+      const { rows } = await pool.query(
+        `SELECT v.number AS "verseNumber",
+                w.text, w.strong, w.position
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE v."chapterId" = \$1
+         ORDER BY v.number ASC, w.position ASC`,
+        [chId]
+      );
+
+      // Agrupar por versículo
+      const grouped: Record<number, { verseNumber: number; words: { text: string; strong: string | null; position: number }[] }> = {};
+      for (const row of rows) {
+        if (!grouped[row.verseNumber]) {
+          grouped[row.verseNumber] = { verseNumber: row.verseNumber, words: [] };
+        }
+        grouped[row.verseNumber].words.push({
+          text: row.text,
+          strong: row.strong,
+          position: row.position,
+        });
+      }
+
+      const result = Object.values(grouped).sort((a, b) => a.verseNumber - b.verseNumber);
+
+      return new Response(JSON.stringify(result), {
+        headers: makeHeaders("public, max-age=604800"),
+      });
+    }
+
+    // =====================================================
+    // /api/strong-refs — Referencias donde aparece un Strong
+    // =====================================================
+    if (path === "/api/strong-refs") {
+      const strong = url.searchParams.get("strong")?.trim();
+      if (!strong) {
+        return new Response(JSON.stringify({ error: "Parámetro strong requerido" }), {
+          status: 400,
+          headers: makeHeaders("no-store"),
+        });
+      }
+
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
+      const offset = (page - 1) * limit;
+
+      // Contar total
+      const { rows: countRows } = await pool.query(
+        `SELECT COUNT(DISTINCT v.id) AS total
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE w.strong = \$1`,
+        [strong]
+      );
+      const total = parseInt(countRows[0].total);
+
+      // Obtener referencias
+      const { rows } = await pool.query(
+        `SELECT DISTINCT ON (b."bookOrder", c.number, v.number)
+                b.name AS book,
+                b."bookOrder",
+                b.testament,
+                c.number AS chapter,
+                v.number AS verse,
+                v.text
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         <span class="ml-2" /><span class="inline-block w-3 h-3 rounded-full bg-neutral-a12 align-middle mb-[0.1rem]" />
+         
     return new Response(JSON.stringify({ error: "404" }), {
       status: 404,
       headers: makeHeaders("no-store"),
