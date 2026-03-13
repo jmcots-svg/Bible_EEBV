@@ -1357,20 +1357,16 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 }
 
 async function loadStrongRefs(strongCode, page) {
-    // Buscamos el panel de la pestaña de referencias
     const panel = document.getElementById('strongTabRefs') || strongBottomContent;
 
     try {
-        // Aumentamos un poco el límite ya que es un panel de desplazamiento
         const limit = 50;
         const data = await fetchJSON(
             `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}`
         );
 
-        // Actualizamos el contador en la cabecera del panel
         strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
 
-        // 1. Contenedor de lista detallada (quitamos strong-ref-list para que no se pongan de lado)
         let html = '<div class="strong-ref-list-detailed">';
 
         if (data.total === 0) {
@@ -1379,17 +1375,17 @@ async function loadStrongRefs(strongCode, page) {
             data.results.forEach(ref => {
                 const icon = ref.testament === 'OT' ? '📜' : '✝️';
                 
-                // 2. Preparamos el texto (con escape de HTML por seguridad)
-                // Si el backend envía matched_words, las resaltamos usando tu highlightText de concordancia
+                // Procesamos el texto con resaltado si matched_words existe
                 let highlightedText = ref.text ? escapeHtml(ref.text) : '<em>Texto no disponible</em>';
                 
                 if (ref.matched_words && Array.isArray(ref.matched_words)) {
-                    ref.matched_words.forEach(word => {
-                        highlightedText = highlightText(ref.text, word);
+                    // Ordenamos de mayor a menor longitud para un resaltado limpio
+                    const sortedWords = [...ref.matched_words].sort((a, b) => b.length - a.length);
+                    sortedWords.forEach(word => {
+                        if (word) highlightedText = highlightText(highlightedText, word);
                     });
                 }
 
-                // 3. Usamos exactamente la misma estructura que tu modo Concordancia
                 html += `
                 <div class="search-result-card">
                     <div class="search-result-header">
@@ -1407,24 +1403,17 @@ async function loadStrongRefs(strongCode, page) {
         
         html += '</div>';
 
-        // 4. Paginación con estilo de concordancia (clase search-pagination)
         if (data.totalPages > 1) {
             html += `<div class="search-pagination">`;
-            if (data.page > 1) {
-                html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
-            }
-            html += `<span class="pagination-info">Pág ${data.page} de ${data.totalPages}</span>`;
-            if (data.page < data.totalPages) {
-                html += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
-            }
+            if (data.page > 1) html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
+            html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
+            if (data.page < data.totalPages) html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
             html += `</div>`;
         }
 
         panel.innerHTML = html;
 
-        // --- REASIGNAR EVENTOS ---
-
-        // Click en la referencia para ir al versículo
+        // Eventos de navegación
         panel.querySelectorAll('.strong-ref-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -1432,21 +1421,20 @@ async function loadStrongRefs(strongCode, page) {
             });
         });
 
-        // Click en paginación
+        // Eventos de paginación
         panel.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Cargando referencias...</div>';
+                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Cargando...</div>';
                 loadStrongRefs(strongCode, parseInt(btn.dataset.page));
-                // Scroll al principio del panel de contenido
                 panel.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
 
     } catch (e) {
-        console.error("Error loadStrongRefs:", e);
         panel.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
     }
 }
+
 
     async function loadStrongDict(strongCode) {
     const panel = document.getElementById('strongTabDict');
