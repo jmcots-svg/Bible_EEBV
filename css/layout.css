@@ -1,0 +1,104 @@
+/* Header y controles */
+header {
+  background: var(--bg-header);
+  color: white;
+  padding: 24px;
+  text-align: center;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+#mainTitle {
+  font-size: clamp(1rem, 3.5vw, 1.8rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  text-align: center;
+}
+
+/* Pestañas de modo */
+.mode-tabs {
+  display: flex;
+  background: var(--bg-header);
+  padding: 0 24px;
+  gap: 4px;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 14px 20px;
+  border: none;
+  background: var(--tab-inactive);
+  color: rgba(255,255,255,0.7);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 12px 12px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.mode-tab:hover { background: rgba(255,255,255,0.3); color: white; }
+.mode-tab.active { background: var(--tab-active); color: var(--tab-active-text); }
+
+/* Filtros principales */
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  padding: 24px;
+  background: var(--bg-filters);
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.filter-group label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+.filters-toggle {
+  display: none;
+  width: 100%;
+  padding: 10px 16px;
+  background: var(--bg-filters);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  font-family: inherit;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filters-toggle:hover { background: var(--card-hover); }
+
+.filters-toggle-icon { font-size: 0.75rem; transition: transform 0.3s ease; color: var(--text-muted); }
+.filters-toggle.collapsed .filters-toggle-icon { transform: rotate(180deg); }
+
+.filters-toggle-ref {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.filters-toggle-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 400;
+  flex-shrink: 0;
+}

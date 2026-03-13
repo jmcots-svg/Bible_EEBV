@@ -1,0 +1,41 @@
+/* 1. VARIABLES */
+:root {
+  --bg-body: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-container: #ffffff;
+  --bg-header: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+  --bg-filters: #f8f9fa;
+  --text-main: #2d3748;
+  --text-muted: #495057;
+  --border: #dee2e6;
+  --accent: #667eea;
+  --highlight-bg: #fff3cd;
+  --highlight-text: #856404;
+  --card-hover: #f0f4ff;
+  --tab-inactive: rgba(255,255,255,0.2);
+  --tab-active: rgba(255,255,255,0.95);
+  --tab-active-text: #1e3a5f;
+}
+
+/* 2. RESET Y BASE */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Georgia', serif;
+  background: var(--bg-body);
+  background-attachment: fixed;
+  min-height: 100vh;
+  padding: 20px;
+  color: var(--text-main);
+  transition: all 0.3s ease;
+}
+
+.container {
+  max-width: 850px;
+  margin: 0 auto;
+  background: var(--bg-container);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
