@@ -71,10 +71,16 @@ async function seed() {
   await client.connect();
   await client.query('BEGIN');
 
-  console.log("✅ Conectado");
+  console.log("✅ Conectado\n");
+
+  const startTime = Date.now();
 
   const raw = fs.readFileSync(JSON_PATH, 'utf8');
   const data = JSON.parse(raw);
+
+  const totalVerses = data.verses.length;
+  let processedVerses = 0;
+  let totalWordsInserted = 0;
 
   const versionRes = await client.query(
     `INSERT INTO "BibleVersion" (name,"fullName","hasStrongs")
@@ -136,17 +142,37 @@ async function seed() {
 
       if (wordBatch.length >= BATCH_SIZE) {
         await insertWordBatch(wordBatch);
+        totalWordsInserted += wordBatch.length;
         wordBatch = [];
       }
     }
+
+    processedVerses++;
+
+    // Mostrar progreso cada 500 versículos
+    if (processedVerses % 500 === 0) {
+      const percent = ((processedVerses / totalVerses) * 100).toFixed(2);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const speed = (processedVerses / elapsed).toFixed(1);
+
+      console.log(
+        `📖 ${processedVerses}/${totalVerses} (${percent}%) | ⏱ ${elapsed}s | ⚡ ${speed} vers/s`
+      );
+    }
   }
 
-  // Insertar lo que quede
   await insertWordBatch(wordBatch);
+  totalWordsInserted += wordBatch.length;
 
   await client.query('COMMIT');
 
-  console.log("🎉 RV1909 Strong cargada ultra rápido ✅");
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  console.log("\n🎉 RV1909 Strong cargada correctamente");
+  console.log(`📖 Versículos: ${processedVerses}`);
+  console.log(`🔤 Palabras insertadas: ${totalWordsInserted}`);
+  console.log(`⏱ Tiempo total: ${totalTime}s`);
+
   await client.end();
 }
 
