@@ -76,6 +76,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+
     // =====================================================
     // /api/versions
     // =====================================================
@@ -84,21 +85,20 @@ Deno.serve(async (req: Request) => {
       const memKey = "versions";
       const kvKey: Deno.KvKey = ["versions"];
 
-  // 👇 COMENTA ESTAS DOS COMPROBACIONES
-  // const mem = getCached(memKey);
-  // if (mem) {
-  //   const headers = makeHeaders(cacheControl);
-  //   headers.set("X-Cache", "HIT(mem)");
-  //   return new Response(JSON.stringify(mem), { headers });
-  // }
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(mem)");
+        return new Response(JSON.stringify(mem), { headers });
+      }
 
-  // const kvVal = await kvGet<any[]>(kvKey);
-  // if (kvVal) {
-  //   setCache(memKey, kvVal);
-  //   const headers = makeHeaders(cacheControl);
-  //   headers.set("X-Cache", "HIT(kv)");
-  //   return new Response(JSON.stringify(kvVal), { headers });
-  // }
+      const kvVal = await kvGet<any[]>(kvKey);
+      if (kvVal) {
+        setCache(memKey, kvVal);
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(kv)");
+        return new Response(JSON.stringify(kvVal), { headers });
+      }
 
       const { rows } = await pool.query(
         `SELECT id, name, "fullName"
@@ -124,22 +124,20 @@ Deno.serve(async (req: Request) => {
       const memKey = `books-${version}`;
       const kvKey: Deno.KvKey = ["books", version];
 
-  // 👇 COMENTA ESTO TEMPORALMENTE
-  // const mem = getCached(memKey);
-  // if (mem) {
-  //   const headers = makeHeaders(cacheControl);
-  //   headers.set("X-Cache", "HIT(mem)");
-  //   return new Response(JSON.stringify(mem), { headers });
-  // }
+      const mem = getCached(memKey);
+      if (mem) {
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(mem)");
+        return new Response(JSON.stringify(mem), { headers });
+      }
 
-  // const kvVal = await kvGet<any[]>(kvKey);
-  // if (kvVal) {
-  //   setCache(memKey, kvVal);
-  //   const headers = makeHeaders(cacheControl);
-  //   headers.set("X-Cache", "HIT(kv)");
-  //   return new Response(JSON.stringify(kvVal), { headers });
-  // }
-
+      const kvVal = await kvGet<any[]>(kvKey);
+      if (kvVal) {
+        setCache(memKey, kvVal);
+        const headers = makeHeaders(cacheControl);
+        headers.set("X-Cache", "HIT(kv)");
+        return new Response(JSON.stringify(kvVal), { headers });
+      }
 
       const { rows } = await pool.query(
         `SELECT b.id, b.name, b.testament, b."bookOrder"
@@ -217,162 +215,162 @@ Deno.serve(async (req: Request) => {
         headers: makeHeaders("public, max-age=604800"),
       });
     }
-// =====================================================
-// /api/compare
-// =====================================================
-if (path === "/api/compare") {
-  const bookOrder = Number(url.searchParams.get("bookOrder")); // ← cambia bookName por bookOrder
-  const chapter = Number(url.searchParams.get("chapter"));
-  const verse = Number(url.searchParams.get("verse"));
 
-  if (!bookOrder || isNaN(chapter) || isNaN(verse)) {
-    return new Response(JSON.stringify({ error: "Datos inválidos" }), {
-      status: 400,
-      headers: makeHeaders("no-store"),
-    });
-  }
+    // =====================================================
+    // /api/compare
+    // =====================================================
+    if (path === "/api/compare") {
+      const bookOrder = Number(url.searchParams.get("bookOrder"));
+      const chapter = Number(url.searchParams.get("chapter"));
+      const verse = Number(url.searchParams.get("verse"));
 
-  const { rows } = await pool.query(
-    `SELECT v.text, bv.name as version, b.name as bookName
-     FROM "Verse" v
-     JOIN "Chapter" c ON v."chapterId" = c.id
-     JOIN "Book" b ON c."bookId" = b.id
-     JOIN "BibleVersion" bv ON b."versionId" = bv.id
-     WHERE v.number = \$1
-       AND c.number = \$2
-       AND b."bookOrder" = \$3`,  // ← busca por orden en vez de nombre
-    [verse, chapter, bookOrder]
-  );
+      if (!bookOrder || isNaN(chapter) || isNaN(verse)) {
+        return new Response(JSON.stringify({ error: "Datos inválidos" }), {
+          status: 400,
+          headers: makeHeaders("no-store"),
+        });
+      }
 
-  return new Response(JSON.stringify(rows), {
-    headers: makeHeaders("public, max-age=86400"),
-  });
-}
+      const { rows } = await pool.query(
+        `SELECT v.text, bv.name as version, b.name as bookName
+         FROM "Verse" v
+         JOIN "Chapter" c ON v."chapterId" = c.id
+         JOIN "Book" b ON c."bookId" = b.id
+         JOIN "BibleVersion" bv ON b."versionId" = bv.id
+         WHERE v.number = \$1
+           AND c.number = \$2
+           AND b."bookOrder" = \$3`,
+        [verse, chapter, bookOrder]
+      );
+
+      return new Response(JSON.stringify(rows), {
+        headers: makeHeaders("public, max-age=86400"),
+      });
+    }
 
     // =====================================================
     // /api/search
     // =====================================================
-    
-if (path === "/api/search") {
-  const queryText = url.searchParams.get("query")?.trim();
-  const version = url.searchParams.get("version") || "RV60";
-  const testament = url.searchParams.get("testament") || "ALL";
+    if (path === "/api/search") {
+      const queryText = url.searchParams.get("query")?.trim();
+      const version = url.searchParams.get("version") || "RV60";
+      const testament = url.searchParams.get("testament") || "ALL";
 
-  console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
+      console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
 
-  const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
-  const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
-  const offset = (page - 1) * limit;
+      const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
+      const offset = (page - 1) * limit;
 
-  if (!queryText || queryText.length < 2) {
-    return new Response(JSON.stringify({ error: "Query inválida" }), {
-      status: 400,
-      headers: makeHeaders("no-store"),
-    });
-  }
+      if (!queryText || queryText.length < 2) {
+        return new Response(JSON.stringify({ error: "Query inválida" }), {
+          status: 400,
+          headers: makeHeaders("no-store"),
+        });
+      }
 
-  const params: any[] = [version, queryText];
-  let paramIndex = 3;
-let testamentFilter = "";
-if (testament !== "ALL") {
-    testamentFilter = "AND b.\"testament\" = $" + paramIndex;
-    params.push(testament);
-    paramIndex++;
-}
+      const params: any[] = [version, queryText];
+      let paramIndex = 3;
 
-  // Query de conteo total
-const countSql = "SELECT COUNT(*) as total " +
-    "FROM \"Verse\" v " +
-    "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
-    "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
-    "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
-    "WHERE bv.name = \$1 " +
-    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%' " +
-    testamentFilter;
+      let testamentFilter = "";
+      if (testament !== "ALL") {
+        testamentFilter = `AND b."testament" = 
+$$
+{paramIndex}`;
+        params.push(testament);
+        paramIndex++;
+      }
 
-  // Query de resultados
-const dataSql = "SELECT " +
-    "v.\"number\" AS verse, " +
-    "v.\"text\" AS text, " +
-    "c.\"number\" AS chapter, " +
-    "b.\"name\" AS book, " +
-    "b.\"testament\", " +
-    "b.\"bookOrder\" " +
-    "FROM \"Verse\" v " +
-    "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
-    "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
-    "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
-    "WHERE bv.name = \$1 " +
-    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%' " +
-    testamentFilter + " " +
-    "ORDER BY b.\"bookOrder\", c.\"number\", v.\"number\" " +
-    "LIMIT $" + paramIndex + " OFFSET $" + (paramIndex + 1);
+      const countSql =
+        `SELECT COUNT(*) as total ` +
+        `FROM "Verse" v ` +
+        `JOIN "Chapter" c ON v."chapterId" = c.id ` +
+        `JOIN "Book" b ON c."bookId" = b.id ` +
+        `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
+        `WHERE bv.name = $1 ` +
+        `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%' ` +
+        testamentFilter;
 
-  params.push(limit, offset);
+      const dataSql =
+        `SELECT ` +
+        `v."number" AS verse, ` +
+        `v."text" AS text, ` +
+        `c."number" AS chapter, ` +
+        `b."name" AS book, ` +
+        `b."testament", ` +
+        `b."bookOrder" ` +
+        `FROM "Verse" v ` +
+        `JOIN "Chapter" c ON v."chapterId" = c.id ` +
+        `JOIN "Book" b ON c."bookId" = b.id ` +
+        `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
+        `WHERE bv.name = $1 ` +
+        `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%' ` +
+        testamentFilter + ` ` +
+        `ORDER BY b."bookOrder", c."number", v."number" ` +
+        `LIMIT
+$$
+{paramIndex} OFFSET $${paramIndex + 1}`;
 
-  const [countResult, dataResult] = await Promise.all([
-    pool.query(countSql, params.slice(0, paramIndex - 1)),
-    pool.query(dataSql, params),
-  ]);
+      params.push(limit, offset);
 
-  const total = parseInt(countResult.rows[0].total);
-  const totalPages = Math.ceil(total / limit);
+      const [countResult, dataResult] = await Promise.all([
+        pool.query(countSql, params.slice(0, paramIndex - 1)),
+        pool.query(dataSql, params),
+      ]);
 
-  const response = {
-    query: queryText,
-    version,
-    testament,
-    total,
-    page,
-    limit,
-    totalPages,
-    results: dataResult.rows,
-  };
+      const total = parseInt(countResult.rows[0].total);
+      const totalPages = Math.ceil(total / limit);
 
-  return new Response(JSON.stringify(response), {
-    headers: makeHeaders("public, max-age=3600"),
-  });
-}
+      const response = {
+        query: queryText,
+        version,
+        testament,
+        total,
+        page,
+        limit,
+        totalPages,
+        results: dataResult.rows,
+      };
 
-   // =====================================================
-// /api/cache/clear  (protegido por token)
-// =====================================================
-if (path === "/api/cache/clear") {
-  const token = url.searchParams.get("token");
-  const SECRET = Deno.env.get("CACHE_SECRET") ?? "mi-secreto-seguro";
-
-  if (token !== SECRET) {
-    return new Response(JSON.stringify({ error: "No autorizado" }), {
-      status: 401,
-      headers: makeHeaders("no-store"),
-    });
-  }
-
-  // 1. Limpiar caché RAM
-  Object.keys(serverCache).forEach(k => delete serverCache[k]);
-
-  // 2. Limpiar claves KV relevantes
-  const keysToDelete: Deno.KvKey[] = [
-    ["versions"],
-    ["books", "RV60"],
-    ["books", "LBLA"],
-    ["books", "NUEVA_VERSION"], // ← pon el name de tu nueva versión
-  ];
-
-  for (const key of keysToDelete) {
-    await kv.delete(key);
-  }
-
-  return new Response(JSON.stringify({ 
-    ok: true, 
-    message: "Caché limpiada correctamente" 
-  }), {
-    headers: makeHeaders("no-store"),
-  });
-}
+      return new Response(JSON.stringify(response), {
+        headers: makeHeaders("public, max-age=3600"),
+      });
+    }
 
     // =====================================================
-    // /api/versions/strongs — Versiones con Strong
+    // /api/cache/clear
+    // =====================================================
+    if (path === "/api/cache/clear") {
+      const token = url.searchParams.get("token");
+      const SECRET = Deno.env.get("CACHE_SECRET") ?? "mi-secreto-seguro";
+
+      if (token !== SECRET) {
+        return new Response(JSON.stringify({ error: "No autorizado" }), {
+          status: 401,
+          headers: makeHeaders("no-store"),
+        });
+      }
+
+      Object.keys(serverCache).forEach((k) => delete serverCache[k]);
+
+      const keysToDelete: Deno.KvKey[] = [
+        ["versions"],
+        ["books", "RV60"],
+        ["books", "LBLA"],
+        ["books", "NUEVA_VERSION"],
+      ];
+
+      for (const key of keysToDelete) {
+        await kv.delete(key);
+      }
+
+      return new Response(JSON.stringify({ ok: true, message: "Caché limpiada correctamente" }), {
+        headers: makeHeaders("no-store"),
+      });
+    }
+
+    // =====================================================
+    // /api/versions/strongs
     // =====================================================
     if (path === "/api/versions/strongs") {
       const memKey = "versions-strongs";
@@ -384,10 +382,10 @@ if (path === "/api/cache/clear") {
       }
 
       const { rows } = await pool.query(
-        "SELECT id, name, \"fullName\" " +
-        "FROM \"BibleVersion\" " +
-        "WHERE \"hasStrongs\" = true " +
-        "ORDER BY id ASC"
+        `SELECT id, name, "fullName"
+         FROM "BibleVersion"
+         WHERE "hasStrongs" = true
+         ORDER BY id ASC`
       );
 
       setCache(memKey, rows);
@@ -397,7 +395,7 @@ if (path === "/api/cache/clear") {
     }
 
     // =====================================================
-    // /api/words — Palabras con Strong de un capítulo
+    // /api/words
     // =====================================================
     if (path === "/api/words") {
       const chId = Number(url.searchParams.get("chapterId"));
@@ -409,17 +407,20 @@ if (path === "/api/cache/clear") {
       }
 
       const { rows } = await pool.query(
-        "SELECT v.number AS \"verseNumber\", " +
-        "w.text, w.strong, w.position " +
-        "FROM \"Word\" w " +
-        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
-        "WHERE v.\"chapterId\" = \$1 " +
-        "ORDER BY v.number ASC, w.position ASC",
+        `SELECT v.number AS "verseNumber",
+                w.text, w.strong, w.position
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE v."chapterId" = \$1
+         ORDER BY v.number ASC, w.position ASC`,
         [chId]
       );
 
-      // Agrupar por versículo
-      const grouped: Record<number, { verseNumber: number; words: { text: string; strong: string | null; position: number }[] }> = {};
+      const grouped: Record<number, {
+        verseNumber: number;
+        words: { text: string; strong: string | null; position: number }[];
+      }> = {};
+
       for (const row of rows) {
         if (!grouped[row.verseNumber]) {
           grouped[row.verseNumber] = { verseNumber: row.verseNumber, words: [] };
@@ -439,7 +440,7 @@ if (path === "/api/cache/clear") {
     }
 
     // =====================================================
-    // /api/strong-refs — Referencias donde aparece un Strong
+    // /api/strong-refs
     // =====================================================
     if (path === "/api/strong-refs") {
       const strong = url.searchParams.get("strong")?.trim();
@@ -454,32 +455,30 @@ if (path === "/api/cache/clear") {
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit")) || 50));
       const offset = (page - 1) * limit;
 
-      // Contar total
       const { rows: countRows } = await pool.query(
-        "SELECT COUNT(DISTINCT v.id) AS total " +
-        "FROM \"Word\" w " +
-        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
-        "WHERE w.strong = \$1",
+        `SELECT COUNT(DISTINCT v.id) AS total
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE w.strong = \$1`,
         [strong]
       );
       const total = parseInt(countRows[0].total);
 
-      // Obtener referencias
       const { rows } = await pool.query(
-        "SELECT DISTINCT ON (b.\"bookOrder\", c.number, v.number) " +
-        "b.name AS book, " +
-        "b.\"bookOrder\", " +
-        "b.testament, " +
-        "c.number AS chapter, " +
-        "v.number AS verse, " +
-        "v.text " +
-        "FROM \"Word\" w " +
-        "JOIN \"Verse\" v ON w.\"verseId\" = v.id " +
-        "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id " +
-        "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
-        "WHERE w.strong = \$1 " +
-        "ORDER BY b.\"bookOrder\", c.number, v.number " +
-        "LIMIT \$2 OFFSET \$3",
+        `SELECT DISTINCT ON (b."bookOrder", c.number, v.number)
+                b.name AS book,
+                b."bookOrder",
+                b.testament,
+                c.number AS chapter,
+                v.number AS verse,
+                v.text
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         JOIN "Chapter" c ON v."chapterId" = c.id
+         JOIN "Book" b ON c."bookId" = b.id
+         WHERE w.strong = \$1
+         ORDER BY b."bookOrder", c.number, v.number
+         LIMIT \$2 OFFSET \$3`,
         [strong, limit, offset]
       );
 
@@ -496,33 +495,14 @@ if (path === "/api/cache/clear") {
         headers: makeHeaders("public, max-age=3600"),
       });
     }
-         
-    return new Response(JSON.stringify({ error: "404" }), {
-      status: 404,
-      headers: makeHeaders("no-store"),
-    });
-
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-      headers: makeHeaders("no-store"),
-    });
-  }
-
-  
-    // =====================================================
-    // /api/strong-refs — Referencias donde aparece un Strong
-    // =====================================================
-    if (path === "/api/strong-refs") {
-      // ... tu código existente ...
-    }
 
     // =====================================================
-    // /api/strong-dict — Datos del diccionario para un Strong
+    // /api/strong-dict/:code
     // =====================================================
     if (path.startsWith("/api/strong-dict/")) {
-      const code = decodeURIComponent(path.replace("/api/strong-dict/", "")).toUpperCase().trim();
+      const code = decodeURIComponent(
+        path.replace("/api/strong-dict/", "")
+      ).toUpperCase().trim();
 
       if (!code) {
         return new Response(JSON.stringify({ error: "Código Strong requerido" }), {
@@ -531,7 +511,6 @@ if (path === "/api/cache/clear") {
         });
       }
 
-      // Caché RAM (los datos del diccionario no cambian)
       const memKey = `strong-dict-${code}`;
       const mem = getCached(memKey);
       if (mem) {
@@ -540,12 +519,11 @@ if (path === "/api/cache/clear") {
         return new Response(JSON.stringify(mem), { headers });
       }
 
-      // 1. Entrada principal
       const { rows: entryRows } = await pool.query(
         `SELECT
-          strong, language, lemma, translit, pronunciation,
-          morphology, "speechLang", definition, exegesis,
-          explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
+           strong, language, lemma, translit, pronunciation,
+           morphology, "speechLang", definition, exegesis,
+           explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
          FROM "StrongEntry"
          WHERE strong = \$1`,
         [code]
@@ -560,14 +538,13 @@ if (path === "/api/cache/clear") {
 
       const entry = entryRows[0];
 
-      // 2. Relaciones (ver también, deriva de, etc.)
       const { rows: relRows } = await pool.query(
         `SELECT
-          sr."toStrong",
-          sr."relationType",
-          se.lemma        AS "toLemma",
-          se.translit     AS "toTranslit",
-          se."kjvDefinition" AS "toKjvDefinition"
+           sr."toStrong",
+           sr."relationType",
+           se.lemma           AS "toLemma",
+           se.translit        AS "toTranslit",
+           se."kjvDefinition" AS "toKjvDefinition"
          FROM "StrongRelation" sr
          LEFT JOIN "StrongEntry" se ON sr."toStrong" = se.strong
          WHERE sr."fromStrong" = \$1
@@ -575,8 +552,7 @@ if (path === "/api/cache/clear") {
         [code]
       );
 
-      // Formatear relaciones igual que espera el frontend
-      const relations = relRows.map(r => ({
+      const relations = relRows.map((r) => ({
         toStrong: r.toStrong,
         relationType: r.relationType,
         to: {
@@ -588,29 +564,26 @@ if (path === "/api/cache/clear") {
       }));
 
       const result = { ...entry, relations };
-
       setCache(memKey, result);
 
       return new Response(JSON.stringify(result), {
         headers: makeHeaders("public, max-age=604800"),
       });
     }
-  
-});
 
-
-    // ← aquí ya estaba tu línea del 404
+    // =====================================================
+    // 404
+    // =====================================================
     return new Response(JSON.stringify({ error: "404" }), {
       status: 404,
       headers: makeHeaders("no-store"),
     });
 
-
-// --------------------
-// Cron warmup
-// --------------------
-//Deno.cron("warmup-cache", "0 */6 * * *", async () => {
-//  try {
-//    await fetch("https://bible-eebv.jmcots-svg.deno.net/api/versions");
-//  } catch {}
-//});
+  } catch (error) {
+    console.error(error);
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: makeHeaders("no-store"),
+    });
+  }
+});
