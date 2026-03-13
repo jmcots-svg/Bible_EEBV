@@ -5,31 +5,35 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")  
+  directUrl = env("DIRECT_URL")
 }
 
+// ============================================
+// BIBLIA
+// ============================================
+
 model BibleVersion {
-  id          Int      @id @default(autoincrement())
-  name        String   @unique
-  fullName    String
-  hasStrongs  Boolean  @default(false) // 👈 NUEVO
-  books       Book[]
-  createdAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  name       String   @unique
+  fullName   String
+  hasStrongs Boolean  @default(false)
+  books      Book[]
+  createdAt  DateTime @default(now())
 }
 
 model Book {
-  id          Int          @id @default(autoincrement())
-  name        String
-  testament   String
-  abbr        String?
-  bookOrder   Int?
-  versionId   Int
-  chapters    Chapter[]
-  version     BibleVersion @relation(fields: [versionId], references: [id])
-  createdAt   DateTime     @default(now())
+  id        Int          @id @default(autoincrement())
+  name      String
+  testament String
+  abbr      String?
+  bookOrder Int?
+  versionId Int
+  chapters  Chapter[]
+  version   BibleVersion @relation(fields: [versionId], references: [id])
+  createdAt DateTime     @default(now())
 
   @@unique([name, versionId])
-  @@index([versionId, bookOrder]) // Optimiza el listado ordenado de libros
+  @@index([versionId, bookOrder])
 }
 
 model Chapter {
@@ -40,7 +44,7 @@ model Chapter {
   verses    Verse[]
   createdAt DateTime @default(now())
 
-  @@unique([number, bookId]) // Evita duplicados como el que arreglamos
+  @@unique([number, bookId])
   @@index([bookId, number])
 }
 
@@ -50,7 +54,7 @@ model Verse {
   text      String
   chapterId Int
   chapter   Chapter  @relation(fields: [chapterId], references: [id])
-  words     Word[]   // 👈 NUEVO
+  words     Word[]
   createdAt DateTime @default(now())
 
   @@index([chapterId, number])
@@ -58,13 +62,83 @@ model Verse {
 }
 
 model Word {
-  id        Int     @id @default(autoincrement())
-  text      String
-  strong    String?
-  position  Int
-  verseId   Int
-  verse     Verse   @relation(fields: [verseId], references: [id], onDelete: Cascade)
+  id       Int     @id @default(autoincrement())
+  text     String
+  strong   String?
+  position Int
+  verseId  Int
+  verse    Verse   @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  // Relación con diccionario Strong
+  strongEntry StrongEntry? @relation(fields: [strong], references: [strong])
 
   @@index([verseId, position])
   @@index([strong])
+}
+
+// ============================================
+// DICCIONARIO STRONG — OPCIÓN C
+// ============================================
+
+model StrongEntry {
+  // Identificador principal: H0001, G0001
+  strong        String  @id
+
+  // Idioma: "H" (hebreo/arameo) o "G" (griego)
+  language      String
+
+  // Datos lingüísticos
+  lemma         String?   // Palabra original (אָב, Α)
+  translit      String?   // Transliteración (ʼâb, A)
+  pronunciation String?   // Pronunciación (awb, al'-fah)
+  morphology    String?   // Solo hebreo (n-m, n-pr-m)
+  speechLang    String?   // Idioma del texto (heb, arc, grc, x-pn)
+
+  // Definiciones
+  definition    String?   // Lista de items unificada
+  exegesis      String?   // Solo hebreo: note type=exegesis
+  explanation   String?   // Solo hebreo: note type=explanation
+  kjvDefinition String?   // Traducción KJV
+
+  // Solo griego
+  strongsDef        String?   // <strongs_def>
+  strongsDerivation String?   // <strongs_derivation>
+
+  // Relaciones
+  words         Word[]
+  relations     StrongRelation[] @relation("fromStrong")
+  relatedFrom   StrongRelation[] @relation("toStrong")
+
+  createdAt     DateTime @default(now())
+
+  @@index([language])
+  @@index([lemma])
+}
+
+model StrongRelation {
+  id         Int    @id @default(autoincrement())
+
+  // Origen de la relación
+  fromStrong String
+  from       StrongEntry @relation("fromStrong", fields: [fromStrong], references: [strong])
+
+  // Destino de la relación
+  toStrong   String
+  to         StrongEntry @relation("toStrong", fields: [toStrong], references: [strong])
+
+  // Tipo de relación
+  // "see_also"       → <see> en griego
+  // "derives_from"   → <strongsref> en derivación
+  // "greek_equiv"    → <foreign> en hebreo
+  // "related"        → referencias internas hebreo src=
+  relationType String
+
+  // De dónde viene la relación
+  // "HEBREW" o "GREEK"
+  sourceLanguage String
+
+  @@unique([fromStrong, toStrong, relationType])
+  @@index([fromStrong])
+  @@index([toStrong])
+  @@index([relationType])
 }
