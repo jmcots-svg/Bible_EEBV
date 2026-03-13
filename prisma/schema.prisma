@@ -9,11 +9,12 @@ datasource db {
 }
 
 model BibleVersion {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  fullName  String
-  books     Book[]
-  createdAt DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  fullName    String
+  hasStrongs  Boolean  @default(false) // 👈 NUEVO
+  books       Book[]
+  createdAt   DateTime @default(now())
 }
 
 model Book {
@@ -49,8 +50,21 @@ model Verse {
   text      String
   chapterId Int
   chapter   Chapter  @relation(fields: [chapterId], references: [id])
+  words     Word[]   // 👈 NUEVO
   createdAt DateTime @default(now())
 
-  @@index([chapterId, number]) // Carga versículos en orden instantáneamente
+  @@index([chapterId, number])
   @@index([chapterId])
+}
+
+model Word {
+  id        Int     @id @default(autoincrement())
+  text      String
+  strong    String?
+  position  Int
+  verseId   Int
+  verse     Verse   @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+  @@index([verseId, position])
+  @@index([strong])
 }
