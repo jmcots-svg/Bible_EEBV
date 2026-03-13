@@ -41,29 +41,25 @@ function parseWords(text) {
 async function insertWordBatch(batch) {
   if (batch.length === 0) return;
 
-  const values = [];
-  const placeholders = [];
+  const texts = [];
+  const strongs = [];
+  const positions = [];
+  const verseIds = [];
 
-  batch.forEach((w, i) => {
-    const base = i * 4;
-    placeholders.push(
-      `(
-$$
-{base + 1},
-$$
-{base + 2}, 
-$$
-{base + 3},
-$$
-{base + 4})`
-    );
-    values.push(w.text, w.strong, w.position, w.verseId);
-  });
+  for (const w of batch) {
+    texts.push(w.text);
+    strongs.push(w.strong);
+    positions.push(w.position);
+    verseIds.push(w.verseId);
+  }
 
   await client.query(
-    `INSERT INTO "Word" (text,strong,position,"verseId")
-     VALUES ${placeholders.join(',')}`,
-    values
+    `
+    INSERT INTO "Word" (text, strong, position, "verseId")
+    SELECT *
+    FROM unnest(\$1::text[], \$2::text[], \$3::int[], \$4::int[])
+    `,
+    [texts, strongs, positions, verseIds]
   );
 }
 
