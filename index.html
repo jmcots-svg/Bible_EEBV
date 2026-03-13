@@ -41,6 +41,9 @@
         <span class="tab-icon">🔍</span>
         <span class="tab-text">Concordancia</span>
       </button>
+      <button class="mode-tab" data-mode="strong" title="Strong">
+      <span class="tab-icon">🔤</span>
+      <span class="tab-text">Strong</span>
     </div>
 
     <!-- ======================== -->
@@ -219,6 +222,70 @@
       </div>
     </div>
 
+    <!-- ======================== -->
+    <!-- PANEL MODO STRONG        -->
+    <!-- ======================== -->
+    <div id="panelStrong" class="panel-mode" style="display:none;">
+
+      <!-- Botón toggle filtros (solo móvil) -->
+      <button id="toggleFiltersStrong" class="filters-toggle">
+        <div class="filters-toggle-left">
+          <span class="filters-toggle-icon">▲</span>
+          <span id="toggleRefStrong" class="filters-toggle-ref">Selecciona un libro</span>
+        </div>
+        <span class="filters-toggle-hint">Filtros</span>
+      </button>
+
+      <!-- Filtros colapsables -->
+      <div id="filtersStrong" class="filters-collapsible">
+        <div class="filters">
+          <div class="filter-group">
+            <label for="strongVersion">Versión</label>
+            <select id="strongVersion" disabled>
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="strongBook">Libro</label>
+            <select id="strongBook" disabled>
+              <option value="">-- Selecciona libro --</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="strongChapter">Capítulo</label>
+            <select id="strongChapter" disabled>
+              <option value="">-- Selecciona capítulo --</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="strongVerse">Versículo (opcional)</label>
+            <select id="strongVerse" disabled>
+              <option value="">Todo el capítulo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== -->
+    <!-- PANEL INFERIOR STRONG    -->
+    <!-- ======================== -->
+    <div id="strongBottomPanel" class="strong-bottom-panel">
+      <div class="strong-bottom-header">
+        <div class="strong-bottom-title">
+          <span id="strongBottomCode" class="strong-code-badge">H0000</span>
+          <span id="strongBottomCount" class="strong-ref-count"></span>
+        </div>
+        <button id="strongBottomClose" class="strong-bottom-close">&times;</button>
+      </div>
+      <div id="strongBottomContent" class="strong-bottom-content">
+        <!-- Las referencias se cargan aquí -->
+      </div>
+    </div>
+    
     <div class="reference" id="reference"></div>
 
     <div class="content" id="content">
