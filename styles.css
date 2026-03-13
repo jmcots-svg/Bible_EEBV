@@ -1472,33 +1472,6 @@ input[type="text"]:focus {
   .strong-dict-translit { font-size: 0.9rem; }
 }
 
-  /* ===================== */
-  /* RESPONSIVE STRONG     */
-  /* ===================== */
-  
-  @media (max-width: 600px) {
-    .strong-bottom-panel.open {
-      max-height: 55vh;
-    }
-  
-    .strong-bottom-content {
-      max-height: calc(55vh - 70px);
-    }
-  
-    .strong-code {
-      font-size: 0.5em;
-    }
-  
-    .strong-ref-item {
-      padding: 4px 8px;
-      font-size: 0.78rem;
-    }
-  
-    .strong-code-badge {
-      font-size: 0.85rem;
-      padding: 3px 10px;
-    }
-  }
 
 /* ===================== */
 /* PANEL FLOTANTE AJUSTES */
