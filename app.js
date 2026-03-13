@@ -16,6 +16,60 @@ const cache = {
 
 document.addEventListener('DOMContentLoaded', () => {
 
+        // =====================
+    // PANEL FLOTANTE AJUSTES
+    // =====================
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    let settingsOverlay = null;
+
+    // Crear overlay
+    function createSettingsOverlay() {
+      const overlay = document.createElement('div');
+      overlay.className = 'settings-overlay';
+      document.body.appendChild(overlay);
+      return overlay;
+    }
+
+    settingsOverlay = createSettingsOverlay();
+
+    // Abrir panel
+    function openSettingsPanel() {
+      settingsPanel.classList.add('open');
+      settingsOverlay.classList.add('active');
+    }
+
+    // Cerrar panel
+    function closeSettingsPanel() {
+      settingsPanel.classList.remove('open');
+      settingsOverlay.classList.remove('active');
+    }
+
+    // Click en el botón de ajustes
+    settingsBtn.addEventListener('click', () => {
+      const isOpen = settingsPanel.classList.contains('open');
+      if (isOpen) {
+        closeSettingsPanel();
+      } else {
+        openSettingsPanel();
+      }
+    });
+
+    // Click en el botón X
+    closeSettingsBtn.addEventListener('click', closeSettingsPanel);
+
+    // Click fuera del panel
+    settingsOverlay.addEventListener('click', closeSettingsPanel);
+
+    // Cerrar panel al presionar ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && settingsPanel.classList.contains('open')) {
+        closeSettingsPanel();
+      }
+    });
+
+
     // =====================
     // 1. SELECCIÓN DE ELEMENTOS
     // =====================
