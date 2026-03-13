@@ -1238,31 +1238,199 @@ input[type="text"]:focus {
   font-style: italic;
 }
 
+  /* ===================== */
+  /* RESPONSIVE STRONG     */
+  /* ===================== */
+  
+  @media (max-width: 600px) {
+    .strong-bottom-panel.open {
+      max-height: 55vh;
+    }
+  
+    .strong-bottom-content {
+      max-height: calc(55vh - 70px);
+    }
+  
+    .strong-code {
+      font-size: 0.5em;
+    }
+  
+    .strong-ref-item {
+      padding: 4px 8px;
+      font-size: 0.78rem;
+    }
+  
+    .strong-code-badge {
+      font-size: 0.85rem;
+      padding: 3px 10px;
+    }
+  }
+
 /* ===================== */
-/* RESPONSIVE STRONG     */
+/* PANEL FLOTANTE AJUSTES */
+/* ===================== */
+
+/* Botón de ajustes en el header */
+.settings-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.settings-btn:hover {
+  transform: rotate(15deg);
+}
+
+.settings-btn:active {
+  transform: rotate(-15deg);
+}
+
+/* Panel flotante */
+.settings-panel {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  background: var(--bg-container);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  max-width: 280px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+/* Cuando está abierto */
+.settings-panel.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.settings-panel-content {
+  padding: 0;
+}
+
+.settings-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.close-settings-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.close-settings-btn:hover {
+  color: var(--accent);
+}
+
+.settings-panel-body {
+  padding: 16px;
+}
+
+/* Items dentro del panel */
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-item:last-child {
+  margin-bottom: 0;
+}
+
+.settings-item > label:first-child {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* Ajustar el switch dentro del panel */
+.settings-item .switch {
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+/* Ajustar el font-track dentro del panel */
+.settings-item .font-track {
+  width: 68px;
+  height: 26px;
+  min-width: 68px;
+  flex-shrink: 0;
+}
+
+/* Overlay para cerrar al hacer click fuera */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.settings-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ===================== */
+/* RESPONSIVE AJUSTES    */
 /* ===================== */
 
 @media (max-width: 600px) {
-  .strong-bottom-panel.open {
-    max-height: 55vh;
+  .settings-panel {
+    top: 80px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
   }
 
-  .strong-bottom-content {
-    max-height: calc(55vh - 70px);
+  .settings-item {
+    justify-content: space-between;
   }
 
-  .strong-code {
-    font-size: 0.5em;
-  }
-
-  .strong-ref-item {
-    padding: 4px 8px;
-    font-size: 0.78rem;
-  }
-
-  .strong-code-badge {
-    font-size: 0.85rem;
-    padding: 3px 10px;
+  .settings-item > label:first-child {
+    font-size: 0.9rem;
   }
 }
 
