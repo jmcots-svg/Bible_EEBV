@@ -57,6 +57,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const doCopyBtn = document.getElementById('doCopyBtn');
     const copyFeedback = document.getElementById('copyFeedback');
 
+        // Strong
+    const strongVersion  = document.getElementById('strongVersion');
+    const strongBook     = document.getElementById('strongBook');
+    const strongChapter  = document.getElementById('strongChapter');
+    const strongVerse    = document.getElementById('strongVerse');
+    const panelStrong    = document.getElementById('panelStrong');
+
+    // Panel inferior Strong
+    const strongBottomPanel   = document.getElementById('strongBottomPanel');
+    const strongBottomCode    = document.getElementById('strongBottomCode');
+    const strongBottomCount   = document.getElementById('strongBottomCount');
+    const strongBottomClose   = document.getElementById('strongBottomClose');
+    const strongBottomContent = document.getElementById('strongBottomContent');
+
+    // Cache para Strong
+    let currentStrongCode = null;
+    let strongWordsCache = {}; // chapterId -> data
+
     let selectedVerses = []; // Array para almacenar los IDs/números de los versículos seleccionados
     let currentVersesData = []; // Para tener acceso a los datos del capítulo actual
 
@@ -118,6 +136,8 @@ modeTabs.forEach(tab => {
         panelLectura.style.display      = 'none';
         panelConcordancia.style.display = 'none';
         panelComparacion.style.display  = 'none';
+        panelStrong.style.display       = 'none';
+        closeStrongPanel(); // Cerrar panel inferior al cambiar de modo
 
         if (mode === 'lectura') {
             panelLectura.style.display = '';
@@ -166,6 +186,17 @@ modeTabs.forEach(tab => {
                 content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
                 if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
             }
+                } else if (mode === 'strong') {
+            panelStrong.style.display = '';
+            if (strongChapter.value) {
+                renderStrongChapter();
+            } else if (strongBook.value) {
+                content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            } else {
+                content.innerHTML = '<p class="placeholder">Selecciona un libro para ver los códigos Strong</p>';
+                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+            }
         }
         updateComparisonOrientationHint();
     });
@@ -211,6 +242,9 @@ const filterToggleComp = setupCollapsibleFilters(
 const filterToggleConc = setupCollapsibleFilters(
     'toggleFiltersConc', 'filtersConc', 'toggleRefConc'
 );
+const filterToggleStrong = setupCollapsibleFilters(
+    'toggleFiltersStrong', 'filtersStrong', 'toggleRefStrong'
+);
 
 // Auto-plegar en móvil al seleccionar capítulo
 chapterSelect.addEventListener('change', () => {
@@ -251,6 +285,15 @@ concSearchBtn.addEventListener('click', () => {
             filterToggleConc?.collapse();
         }
     }, 300);
+});
+strongChapter.addEventListener('change', () => {
+    setTimeout(() => {
+        if (window.innerWidth <= 600) {
+            const ref = reference?.textContent?.trim();
+            filterToggleStrong?.updateRef(ref || 'Selecciona un libro');
+            filterToggleStrong?.collapse();
+        }
+    }, 500);
 });
 
 // =====================
@@ -1042,6 +1085,338 @@ async function renderComparison() {
     bookSelect.addEventListener('change', clearSelections);
     versionSelect.addEventListener('change', clearSelections);
 
+
+    // =====================
+    // FUNCIONES MODO STRONG
+    // =====================
+
+    async function loadStrongVersions() {
+        try {
+            const versions = await fetchJSON(`${API_URL}/api/versions/strongs`);
+            strongVersion.innerHTML = '';
+            versions.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = v.name;
+                opt.textContent = v.fullName;
+                if (i === 0) opt.selected = true;
+                strongVersion.appendChild(opt);
+            });
+            strongVersion.disabled = false;
+            if (versions.length > 0) {
+                loadStrongBooks(versions[0].name);
+            }
+        } catch (e) {
+            console.error('Error cargando versiones Strong:', e);
+            strongVersion.innerHTML = '<option value="">Error al cargar</option>';
+        }
+    }
+
+    async function loadStrongBooks(version) {
+        if (!version) return;
+        let books = cache.books[version];
+        if (!books) {
+            books = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+            cache.books[version] = books;
+        }
+        strongBook.innerHTML = '<option value="">-- Selecciona libro --</option>';
+        const ot = books.filter(b => b.testament === 'OT');
+        const nt = books.filter(b => b.testament === 'NT');
+        const createGroup = (label, list) => {
+            const group = document.createElement('optgroup');
+            group.label = label;
+            list.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b.id;
+                opt.textContent = b.name;
+                group.appendChild(opt);
+            });
+            return group;
+        };
+        strongBook.appendChild(createGroup('📜 Antiguo Testamento', ot));
+        strongBook.appendChild(createGroup('✝️ Nuevo Testamento', nt));
+        strongBook.disabled = false;
+        strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+        strongChapter.disabled = true;
+        strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        strongVerse.disabled = true;
+    }
+
+    async function loadStrongChapters() {
+        const bookId = strongBook.value;
+        if (!bookId) return;
+        let chapters = cache.chapters[bookId];
+        if (!chapters) {
+            chapters = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
+            cache.chapters[bookId] = chapters;
+        }
+        strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+        chapters.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch.id;
+            opt.textContent = `Capítulo ${ch.number}`;
+            opt.dataset.number = ch.number;
+            strongChapter.appendChild(opt);
+        });
+        strongChapter.disabled = false;
+        strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        strongVerse.disabled = true;
+    }
+
+    async function onStrongChapterChange() {
+        const chId = strongChapter.value;
+        if (!chId) {
+            content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+            if (reference) reference.classList.remove('visible');
+            return;
+        }
+        strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        strongVerse.disabled = true;
+        content.innerHTML = '<p class="loading">🔤 Cargando palabras con Strong...</p>';
+
+        try {
+            let wordsData = strongWordsCache[chId];
+            if (!wordsData) {
+                wordsData = await fetchJSON(`${API_URL}/api/words?chapterId=${chId}`);
+                strongWordsCache[chId] = wordsData;
+            }
+
+            // Poblar selector de versículo
+            wordsData.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.verseNumber;
+                opt.textContent = `Versículo ${v.verseNumber}`;
+                strongVerse.appendChild(opt);
+            });
+            strongVerse.disabled = false;
+
+            renderStrongVerses(wordsData);
+        } catch (e) {
+            showError('Error al cargar palabras Strong');
+        }
+    }
+
+    function renderStrongChapter() {
+        const chId = strongChapter.value;
+        if (!chId) return;
+        const wordsData = strongWordsCache[chId];
+        if (wordsData) {
+            renderStrongVerses(wordsData);
+        } else {
+            onStrongChapterChange();
+        }
+    }
+
+    function renderStrongVerses(versesData) {
+        const bName = strongBook.selectedIndex >= 0 ? strongBook.options[strongBook.selectedIndex].text : '';
+        const chNum = strongChapter.selectedIndex >= 0 ? strongChapter.options[strongChapter.selectedIndex].dataset.number : '';
+        const vNum = strongVerse.value;
+
+        let dataToRender = versesData;
+        if (vNum) {
+            dataToRender = versesData.filter(v => String(v.verseNumber) === String(vNum));
+        }
+
+        if (reference) {
+            reference.textContent = `${bName} ${chNum}${vNum ? ':' + vNum : ''} (Strong)`;
+            reference.classList.add('visible');
+        }
+
+        let html = '';
+        dataToRender.forEach(verseData => {
+            html += `<p class="strong-verse"><span class="verse-number">${verseData.verseNumber}</span>`;
+
+            verseData.words.forEach(word => {
+                if (word.strong) {
+                    html += `<span class="strong-word-wrap">` +
+                            `<span class="strong-code" data-strong="${word.strong}" title="Strong ${word.strong}">${word.strong}</span>` +
+                            `<span class="strong-word-text">${escapeHtml(word.text)}</span>` +
+                            `</span> `;
+                } else {
+                    html += `<span class="strong-plain-word">${escapeHtml(word.text)}</span> `;
+                }
+            });
+
+            html += `</p>`;
+        });
+
+        content.innerHTML = html;
+
+        // Añadir event listeners a los códigos Strong
+        content.querySelectorAll('.strong-code').forEach(el => {
+            el.addEventListener('click', (e) => {
+                const code = e.target.dataset.strong;
+                onStrongCodeClick(code, e.target);
+            });
+        });
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =====================
+    // PANEL INFERIOR STRONG
+    // =====================
+
+    async function onStrongCodeClick(strongCode, clickedEl) {
+        // Si ya está abierto con el mismo código, cerrar
+        if (currentStrongCode === strongCode && strongBottomPanel.classList.contains('open')) {
+            closeStrongPanel();
+            return;
+        }
+
+        // Quitar .active de todos los códigos, poner en el actual
+        content.querySelectorAll('.strong-code.active').forEach(el => el.classList.remove('active'));
+        clickedEl.classList.add('active');
+
+        currentStrongCode = strongCode;
+        strongBottomCode.textContent = strongCode;
+        strongBottomCount.textContent = 'Cargando...';
+        strongBottomContent.innerHTML = '<div class="strong-bottom-loading">🔍 Buscando referencias...</div>';
+        strongBottomPanel.classList.add('open');
+
+        loadStrongRefs(strongCode, 1);
+    }
+
+    async function loadStrongRefs(strongCode, page) {
+        try {
+            const data = await fetchJSON(
+                `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=50`
+            );
+
+            strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
+
+            let html = '<div class="strong-ref-list">';
+            data.results.forEach(ref => {
+                const icon = ref.testament === 'OT' ? '📜' : '✝️';
+                html += `<a href="#" class="strong-ref-item" 
+                            data-book="${escapeHtml(ref.book)}" 
+                            data-chapter="${ref.chapter}" 
+                            data-verse="${ref.verse}"
+                            title="${escapeHtml(ref.book)} ${ref.chapter}:${ref.verse}">` +
+                         `<span class="ref-testament">${icon}</span>${ref.book} ${ref.chapter}:${ref.verse}` +
+                         `</a>`;
+            });
+            html += '</div>';
+
+            // Paginación
+            if (data.totalPages > 1) {
+                html += '<div class="strong-ref-pagination">';
+                if (data.page > 1) {
+                    html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
+                }
+                html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
+                if (data.page < data.totalPages) {
+                    html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
+                }
+                html += '</div>';
+            }
+
+            strongBottomContent.innerHTML = html;
+
+            // Event listeners para referencias
+            strongBottomContent.querySelectorAll('.strong-ref-item').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const book = link.dataset.book;
+                    const chapter = link.dataset.chapter;
+                    const verse = link.dataset.verse;
+                    navigateToVerseFromStrong(book, chapter, verse);
+                });
+            });
+
+            // Event listeners para paginación
+            strongBottomContent.querySelectorAll('.strong-ref-pagination .pagination-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    loadStrongRefs(strongCode, parseInt(btn.dataset.page));
+                });
+            });
+
+        } catch (e) {
+            strongBottomContent.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
+        }
+    }
+
+    function closeStrongPanel() {
+        strongBottomPanel.classList.remove('open');
+        currentStrongCode = null;
+        content.querySelectorAll('.strong-code.active').forEach(el => el.classList.remove('active'));
+    }
+
+    async function navigateToVerseFromStrong(bookName, chapterNum, verseNum) {
+        // Navegar al panel de lectura sin perder contexto de Strong
+        const version = strongVersion.value;
+
+        try {
+            // Asegurar que tenemos la versión Strong seleccionada en lectura
+            // Primero verificar si esta versión existe en el selector de lectura
+            let lecturaVersion = version;
+            const lecturaOptions = Array.from(versionSelect.options).map(o => o.value);
+            if (!lecturaOptions.includes(version)) {
+                // Usar la primera versión disponible en lectura
+                lecturaVersion = versionSelect.options[0]?.value || version;
+            }
+
+            versionSelect.value = lecturaVersion;
+
+            if (!cache.books[lecturaVersion]) {
+                const data = await fetchJSON(`${API_URL}/api/books?version=${lecturaVersion}`);
+                cache.books[lecturaVersion] = data;
+            }
+            renderBooks(cache.books[lecturaVersion]);
+
+            const book = cache.books[lecturaVersion].find(b => b.name === bookName);
+            if (!book) {
+                showError(`No se encontró el libro "${bookName}" en ${lecturaVersion}`);
+                return;
+            }
+
+            bookSelect.value = book.id;
+
+            if (!cache.chapters[book.id]) {
+                const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${book.id}`);
+                cache.chapters[book.id] = chaptersData;
+            }
+            renderChapters(cache.chapters[book.id]);
+
+            const chapter = cache.chapters[book.id].find(ch => String(ch.number) === String(chapterNum));
+            if (!chapter) {
+                showError(`No se encontró el capítulo ${chapterNum}`);
+                return;
+            }
+
+            chapterSelect.value = chapter.id;
+
+            const cacheKey = `${chapter.id}-all`;
+            if (!cache.verses[cacheKey]) {
+                const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapter.id}`);
+                cache.verses[cacheKey] = versesData;
+            }
+            renderVerseSelect(cache.verses[cacheKey]);
+            verseSelect.value = String(verseNum);
+
+            // Cambiar a modo lectura
+            currentMode = 'lectura';
+            modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === 'lectura'));
+            panelLectura.style.display = '';
+            panelConcordancia.style.display = 'none';
+            panelComparacion.style.display = 'none';
+            panelStrong.style.display = 'none';
+            closeStrongPanel();
+
+            onSearch();
+
+        } catch (e) {
+            showError('Error al navegar al versículo');
+        }
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+
+    
     // =====================
     // 8. EVENTOS
     // =====================
@@ -1069,6 +1444,23 @@ async function renderComparison() {
     copyVersesBtn.addEventListener('click', showCopyModal);
     closeCopyModal.addEventListener('click', hideCopyModal);
     doCopyBtn.addEventListener('click', copySelectedVersesToClipboard);
+
+        // Eventos Strong
+    strongVersion.addEventListener('change', () => {
+        loadStrongBooks(strongVersion.value);
+        strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+        strongChapter.disabled = true;
+        strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        strongVerse.disabled = true;
+    });
+    strongBook.addEventListener('change', loadStrongChapters);
+    strongChapter.addEventListener('change', onStrongChapterChange);
+    strongVerse.addEventListener('change', () => {
+        if (strongWordsCache[strongChapter.value]) {
+            renderStrongVerses(strongWordsCache[strongChapter.value]);
+        }
+    });
+    strongBottomClose.addEventListener('click', closeStrongPanel);
     
     // Opcional: Cerrar el modal si se hace clic fuera de él
     window.addEventListener('click', (event) => {
@@ -1107,8 +1499,9 @@ async function renderComparison() {
             if (versionSelect.value) loadBooks(versionSelect.value);
         }
     }
-
+    
     loadVersions();
+    loadStrongVersions();
 
     // =====================
     // 10. NAVEGACIÓN ENTRE CAPÍTULOS
