@@ -572,22 +572,22 @@ if (path.startsWith("/api/strong-dict/")) {
   // =====================================================
   // 3️⃣ CARGAR RELACIONES CON EL IDIOMA FINAL
   // =====================================================
-  const { rows: relRows } = await pool.query(
-    `SELECT
-       sr."toStrong",
-       sr."relationType",
-       se.lemma           AS "toLemma",
-       se.translit        AS "toTranslit",
-       se."kjvDefinition" AS "toKjvDefinition"
-     FROM "StrongRelation" sr
-     LEFT JOIN "StrongEntry" se 
-       ON sr."toStrong" = se.strong 
-       AND se."definitionLang" = \$2
-     WHERE sr."fromStrong" = \$1
-       AND sr."fromDefLang" = \$2
-     ORDER BY sr."relationType", sr."toStrong"`,
-    [code, usedLang]
-  );
+const { rows: relRows } = await pool.query(
+  `SELECT
+     sr."toStrong",
+     sr."relationType",
+     se.lemma           AS "toLemma",
+     se.translit        AS "toTranslit",
+     se."kjvDefinition" AS "toKjvDefinition"
+   FROM "StrongRelation" sr
+   LEFT JOIN "StrongEntry" se 
+     ON sr."toStrong" = se.strong 
+     AND se."definitionLang" = \$2
+   WHERE sr."fromStrong" = \$1
+     AND sr."fromDefLang" = \$2
+   ORDER BY sr."relationType", sr."toStrong"`,
+  [code, usedLang]
+);
 
   const relations = relRows.map((r) => ({
     toStrong: r.toStrong,
