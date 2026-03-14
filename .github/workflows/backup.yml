@@ -1,0 +1,35 @@
+name: Supabase Backup
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # cada día a las 03:00
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          pg_dump \
+            -h ${{ secrets.SUPABASE_DB_HOST }} \
+            -p ${{ secrets.SUPABASE_DB_PORT }} \
+            -U ${{ secrets.SUPABASE_DB_USER }} \
+            -d ${{ secrets.SUPABASE_DB_NAME }} \
+            -F c \
+            -f backup.dump
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-backup
+          path: backup.dump
