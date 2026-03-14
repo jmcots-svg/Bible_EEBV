@@ -13,12 +13,15 @@ datasource db {
 // ============================================
 
 model BibleVersion {
-  id         Int      @id @default(autoincrement())
-  name       String   @unique
-  fullName   String
-  hasStrongs Boolean  @default(false)
-  books      Book[]
-  createdAt  DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  fullName    String
+  hasStrongs  Boolean  @default(false)
+  language    String   @default("es")   // 👈 añadido
+  books       Book[]
+  createdAt   DateTime @default(now())
+
+  @@index([language])
 }
 
 model Book {
@@ -76,39 +79,32 @@ model Word {
 // ============================================
 // DICCIONARIO STRONG — OPCIÓN C
 // ============================================
-
 model StrongEntry {
-  // Identificador principal: H0001, G0001
-  strong        String  @id
+  strong            String  @id
+  language          String
+  definitionLang    String  @default("en")  // 👈 añadido
 
-  // Idioma: "H" (hebreo/arameo) o "G" (griego)
-  language      String
+  lemma             String?
+  translit          String?
+  pronunciation     String?
+  morphology        String?
+  speechLang        String?
 
-  // Datos lingüísticos
-  lemma         String?   // Palabra original (אָב, Α)
-  translit      String?   // Transliteración (ʼâb, A)
-  pronunciation String?   // Pronunciación (awb, al'-fah)
-  morphology    String?   // Solo hebreo (n-m, n-pr-m)
-  speechLang    String?   // Idioma del texto (heb, arc, grc, x-pn)
+  definition        String?
+  exegesis          String?
+  explanation       String?
+  kjvDefinition     String?
+  strongsDef        String?
+  strongsDerivation String?
 
-  // Definiciones
-  definition    String?   // Lista de items unificada
-  exegesis      String?   // Solo hebreo: note type=exegesis
-  explanation   String?   // Solo hebreo: note type=explanation
-  kjvDefinition String?   // Traducción KJV
+  relations         StrongRelation[] @relation("fromStrong")
+  relatedFrom       StrongRelation[] @relation("toStrong")
 
-  // Solo griego
-  strongsDef        String?   // <strongs_def>
-  strongsDerivation String?   // <strongs_derivation>
-
-  // Relaciones
-  relations     StrongRelation[] @relation("fromStrong")
-  relatedFrom   StrongRelation[] @relation("toStrong")
-
-  createdAt     DateTime @default(now())
+  createdAt         DateTime @default(now())
 
   @@index([language])
   @@index([lemma])
+  @@index([definitionLang])   // 👈 añadido
 }
 
 model StrongRelation {
