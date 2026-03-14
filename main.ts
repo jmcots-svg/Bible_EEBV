@@ -620,6 +620,52 @@ const { rows: relRows } = await pool.query(
   });
 }
 
+// En tu backend, añadir:
+
+// =====================================================
+// /api/commentary
+// =====================================================
+if (path === "/api/commentary") {
+  const bookOrder = Number(url.searchParams.get("bookOrder"));
+  const chapter = Number(url.searchParams.get("chapter"));
+  const verse = url.searchParams.get("verse");
+  const source = url.searchParams.get("source") || "MHC";
+  
+  if (!bookOrder || !chapter) {
+    return new Response(JSON.stringify({ error: "Parámetros requeridos: bookOrder, chapter" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+  
+  let query = `
+    SELECT ce.*, cs.name as source_name, cs."fullName" as source_full_name
+    FROM "CommentaryEntry" ce
+    JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
+    WHERE ce."bookOrder" = \$1 
+      AND ce.chapter = \$2
+      AND cs.name = \$3
+  `;
+  
+  const params = [bookOrder, chapter, source];
+  
+  if (verse) {
+    query += `
+      AND (ce."verseStart" IS NULL 
+           OR (ce."verseStart" <= \$4 AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= \$4)))
+    `;
+    params.push(Number(verse));
+  }
+  
+  query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
+  
+  const { rows } = await pool.query(query, params);
+  
+  return new Response(JSON.stringify(rows), {
+    headers: makeHeaders("public, max-age=86400"),
+  });
+}
+
 // =====================================================
 // 404
 // =====================================================
