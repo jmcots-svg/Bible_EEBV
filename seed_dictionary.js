@@ -130,7 +130,7 @@ function parseHebrew(filepath) {
           if (toStrong) {
             // ✅ fromDefLang y toDefLang añadidos
             relations.push({
-              fromStrong,
+              fromStrong:     strong,
               fromDefLang:    DEFINITION_LANG,
               toStrong,
               toDefLang:      DEFINITION_LANG,
@@ -152,7 +152,7 @@ function parseHebrew(filepath) {
           if (toStrong) {
             // ✅ fromDefLang y toDefLang añadidos
             relations.push({
-              fromStrong,
+              fromStrong:     strong,
               fromDefLang:    DEFINITION_LANG,
               toStrong,
               toDefLang:      DEFINITION_LANG,
