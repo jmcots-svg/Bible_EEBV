@@ -615,3 +615,12 @@ return new Response(JSON.stringify({ error: "404" }), {
   status: 404,
   headers: makeHeaders("no-store"),
 });
+
+  } catch (error) {
+    console.error("Error en el servidor:", error);
+    return new Response(JSON.stringify({ error: "Error interno del servidor" }), {
+      status: 500,
+      headers: makeHeaders("no-store"),
+    });
+  }
+});  
