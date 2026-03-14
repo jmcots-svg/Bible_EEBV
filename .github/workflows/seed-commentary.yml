@@ -1,0 +1,66 @@
+name: Seed Commentary
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: 'Idioma del comentario (es/en)'
+        required: true
+        default: 'es'
+        type: choice
+        options:
+          - es
+          - en
+      source:
+        description: 'Nombre de la fuente (MHC, etc.)'
+        required: true
+        default: 'MHC'
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  DIRECT_URL: ${{ secrets.DIRECT_URL }}
+  COMMENTARY_LANG: ${{ github.event.inputs.language }}
+  COMMENTARY_SOURCE: ${{ github.event.inputs.source }}
+
+jobs:
+  seed-commentary:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install fast-xml-parser
+      
+      - name: Generate Prisma Client
+        run: npx prisma generate
+      
+      - name: Verify XML files exist
+        run: |
+          echo "📁 Verificando archivos de comentarios..."
+          ls -la prisma/data/commentary/ || echo "⚠️ Directorio no encontrado"
+      
+      - name: Run Commentary Seed
+        run: node prisma/seed_commentary.js
+      
+      - name: Verify import
+        run: |
+          echo "📊 Verificando importación..."
+          npx prisma db execute --stdin <<EOF
+          SELECT 
+            cs.name as source,
+            ce.language,
+            COUNT(*) as total_entries
+          FROM "CommentaryEntry" ce
+          JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
+          GROUP BY cs.name, ce.language;
+          EOF
