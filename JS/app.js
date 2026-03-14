@@ -1,6 +1,14 @@
 // ⚠️ URL de tu backend
 import { API_URL } from './config.js';
-import { fetchJSON, escapeHtml, escapeRegExp, removeAccents } from './utils.js';
+import { 
+    fetchJSON, 
+    escapeHtml, 
+    escapeRegExp, 
+    removeAccents,
+    highlightText,
+    highlightExactWord,
+    isExactWordMatch
+} from './utils.js';
 import { cache, strongWordsCache } from './cache.js';
 import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
 
@@ -615,13 +623,6 @@ async function syncCompToReading() {
         }
     }
 
-    function isExactWordMatch(text, query) {
-        const normalized = removeAccents(text.toLowerCase());
-        const normalizedQ = removeAccents(query.toLowerCase().trim());
-        const regex = new RegExp(`\\b${escapeRegExp(normalizedQ)}\\b`, 'i');
-        return regex.test(normalized);
-    }
-
     function renderSearchResults(data) {
         const exactMode = concExact && concExact.checked;
         let results = data.results;
@@ -671,49 +672,6 @@ async function syncCompToReading() {
     }
 
     function removeAccents(str) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
-
-    function highlightExactWord(text, query) {
-        if (!query) return escapeHtml(text);
-        const normalizedText = removeAccents(text.toLowerCase());
-        const normalizedQuery = removeAccents(query.toLowerCase().trim());
-        const regex = new RegExp(`\\b${escapeRegExp(normalizedQuery)}\\b`, 'gi');
-        const matches = [];
-        let match;
-        while ((match = regex.exec(normalizedText)) !== null) {
-            matches.push({ start: match.index, end: match.index + normalizedQuery.length });
-        }
-        if (matches.length === 0) return escapeHtml(text);
-        let result = '', lastEnd = 0;
-        for (const m of matches) {
-            result += escapeHtml(text.substring(lastEnd, m.start));
-            result += `<mark class="search-highlight">${escapeHtml(text.substring(m.start, m.end))}</mark>`;
-            lastEnd = m.end;
-        }
-        return result + escapeHtml(text.substring(lastEnd));
-    }
-
-    function highlightText(text, query) {
-        if (!query) return escapeHtml(text);
-        const normalizedText = removeAccents(text.toLowerCase());
-        const normalizedQuery = removeAccents(query.toLowerCase());
-        const matches = [];
-        let searchFrom = 0;
-        while (searchFrom < normalizedText.length) {
-            const index = normalizedText.indexOf(normalizedQuery, searchFrom);
-            if (index === -1) break;
-            matches.push({ start: index, end: index + normalizedQuery.length });
-            searchFrom = index + 1;
-        }
-        if (matches.length === 0) return escapeHtml(text);
-        let result = '', lastEnd = 0;
-        for (const m of matches) {
-            result += escapeHtml(text.substring(lastEnd, m.start));
-            result += `<mark class="search-highlight">${escapeHtml(text.substring(m.start, m.end))}</mark>`;
-            lastEnd = m.end;
-        }
-        return result + escapeHtml(text.substring(lastEnd));
-    }
-
     function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
     function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
