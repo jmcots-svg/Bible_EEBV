@@ -13,7 +13,7 @@ import { cache, strongWordsCache } from './cache.js';
 import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel } from './strong.js';
 import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData } from './comparacion.js';
-
+import { initConcordancia, getCurrentSearchData, renderSearchResults } from './concordancia.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -71,6 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =====================
+    // INICIALIZAR CONCORDANCIA
+    // =====================
+    initConcordancia({
+        concVersion: document.getElementById('concVersion'),
+        concTestament: document.getElementById('concTestament'),
+        concQuery: document.getElementById('concQuery'),
+        concSearchBtn: document.getElementById('concSearchBtn'),
+        concExact: document.getElementById('concExact'),
+        content: document.getElementById('content'),
+        reference: document.getElementById('reference')
+    }, {
+        showError,
+        navigateToVerse
+    });
+
+    // =====================
     // 1. SELECCIÓN DE ELEMENTOS
     // =====================
     const versionSelect  = document.getElementById('version');
@@ -81,13 +97,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const reference      = document.getElementById('reference');
     const mainTitle      = document.getElementById('mainTitle');
     const themeCheckbox  = document.getElementById('themeCheckbox');
-
-    // Concordancia
-    const concVersion   = document.getElementById('concVersion');
-    const concTestament = document.getElementById('concTestament');
-    const concQuery     = document.getElementById('concQuery');
-    const concSearchBtn = document.getElementById('concSearchBtn');
-    const concExact     = document.getElementById('concExact');
 
     // Comparación
     const compOrientationHint = document.getElementById('compOrientationHint');
@@ -202,9 +211,10 @@ modeTabs.forEach(tab => {
 
         } else if (mode === 'concordancia') {
             panelConcordancia.style.display = '';
-            if (currentSearchData) {
-                renderSearchResults(currentSearchData);
-            } else {
+            const searchData = getCurrentSearchData();
+            if (searchData) {
+                renderSearchResults(searchData);
+            }else {
                 content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
                 if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
             }
@@ -482,96 +492,7 @@ strongChapter.addEventListener('change', () => {
     // =====================
     // 5. FUNCIONES MODO CONCORDANCIA
     // =====================
-    
-    let searchAbort = null;
-    let currentSearchPage = 1;
-    let currentSearchData = null;
 
-
-    async function onConcordanciaSearch(page = 1) {
-        const query = concQuery.value.trim();
-        const version = concVersion.value;
-        const testament = concTestament.value;
-        if (!query || query.length < 2) { showError('Escribe al menos 2 caracteres para buscar'); return; }
-        currentSearchPage = page;
-        content.innerHTML = '<p class="loading">🔍 Buscando en toda la Biblia...</p>';
-        if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-        concSearchBtn.disabled = true;
-        concSearchBtn.textContent = '⏱️...';
-        const cacheKey = `${version}-${testament}-${query.toLowerCase()}-p${page}`;
-        if (cache.search[cacheKey]) {
-            currentSearchData = cache.search[cacheKey];
-            renderSearchResults(cache.search[cacheKey]);
-            concSearchBtn.disabled = false;
-            concSearchBtn.textContent = '🔎 Buscar';
-            return;
-        }
-        try {
-            if (searchAbort) searchAbort.abort();
-            searchAbort = new AbortController();
-            const data = await fetchJSON(
-                `${API_URL}/api/search?query=${encodeURIComponent(query)}&version=${version}&testament=${testament}&page=${page}&limit=20`,
-                searchAbort.signal
-            );
-            cache.search[cacheKey] = data;
-            currentSearchData = data;
-            renderSearchResults(data);
-        } catch (e) {
-            if (e.name === "AbortError") return;
-            showError('Error al realizar la búsqueda');
-        } finally {
-            concSearchBtn.disabled = false;
-            concSearchBtn.textContent = '🔎 Buscar';
-        }
-    }
-
-    function renderSearchResults(data) {
-        const exactMode = concExact && concExact.checked;
-        let results = data.results;
-        if (exactMode) results = results.filter(r => isExactWordMatch(r.text, data.query));
-        if (reference) { reference.textContent = `Resultados para "${data.query}"`; reference.classList.add('visible'); }
-        if (data.total === 0 || (exactMode && results.length === 0 && data.results.length === 0)) {
-            content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔍</p><h3>No se encontraron resultados</h3></div>`;
-            return;
-        }
-        if (exactMode && results.length === 0) {
-            content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔎</p><h3>Sin coincidencias exactas en esta página</h3></div>`;
-            return;
-        }
-        const startResult = (data.page - 1) * data.limit + 1;
-        const endResult = Math.min(data.page * data.limit, data.total);
-        let html = `<div class="search-stats">
-            <span class="search-total">📊 ${data.total.toLocaleString()} resultado${data.total !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"</span>
-            <span class="search-range">Mostrando ${startResult}-${endResult}</span>
-        </div>`;
-        results.forEach(r => {
-            const highlightedText = exactMode ? highlightExactWord(r.text, data.query) : highlightText(r.text, data.query);
-            const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
-            html += `<div class="search-result-card">
-                <div class="search-result-header">
-                    <a href="#" class="search-result-ref search-nav-link"
-                       data-book="${escapeHtml(r.book)}" data-chapter="${r.chapter}" data-verse="${r.verse}">
-                        ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
-                    </a>
-                </div>
-                <p class="search-result-text">${highlightedText}</p>
-            </div>`;
-        });
-        if (data.totalPages > 1) {
-            html += `<div class="search-pagination">`;
-            if (data.page > 1) html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
-            html += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
-            if (data.page < data.totalPages) html += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
-            html += `</div>`;
-        }
-        content.innerHTML = html;
-        content.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', () => { onConcordanciaSearch(parseInt(btn.dataset.page)); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-        });
-        content.querySelectorAll('.search-nav-link').forEach(link => {
-            link.addEventListener('click', (e) => { e.preventDefault(); navigateToVerse(link.dataset.book, link.dataset.chapter, link.dataset.verse); });
-        });
-    }
 
     function removeAccents(str) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
@@ -856,9 +777,6 @@ strongChapter.addEventListener('change', () => {
     bookSelect.addEventListener('change', onBookChange);
     chapterSelect.addEventListener('change', onChapterChange);
     verseSelect.addEventListener('change', onSearch);
-
-    concSearchBtn.addEventListener('click', () => onConcordanciaSearch(1));
-    concQuery.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); onConcordanciaSearch(1); } });
 
     // Sincronizar versión lectura ↔ concordancia
     concVersion.addEventListener('change', () => { versionSelect.value = concVersion.value; });
