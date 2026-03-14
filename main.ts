@@ -500,77 +500,87 @@ if (path === "/api/strong-refs") {
     // =====================================================
     // /api/strong-dict/:code
     // =====================================================
+
     if (path.startsWith("/api/strong-dict/")) {
-      const code = decodeURIComponent(
-        path.replace("/api/strong-dict/", "")
-      ).toUpperCase().trim();
+  const code = decodeURIComponent(
+    path.replace("/api/strong-dict/", "")
+  ).toUpperCase().trim();
 
-      if (!code) {
-        return new Response(JSON.stringify({ error: "Código Strong requerido" }), {
-          status: 400,
-          headers: makeHeaders("no-store"),
-        });
-      }
+  // ✅ Leer idioma del query param, por defecto 'es'
+  const defLang = url.searchParams.get("lang") || "es";
 
-      const memKey = `strong-dict-${code}`;
-      const mem = getCached(memKey);
-      if (mem) {
-        const headers = makeHeaders("public, max-age=604800");
-        headers.set("X-Cache", "HIT(mem)");
-        return new Response(JSON.stringify(mem), { headers });
-      }
+  if (!code) {
+    return new Response(JSON.stringify({ error: "Código Strong requerido" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      const { rows: entryRows } = await pool.query(
-        `SELECT
-           strong, language, lemma, translit, pronunciation,
-           morphology, "speechLang", definition, exegesis,
-           explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
-         FROM "StrongEntry"
-         WHERE strong = \$1`,
-        [code]
-      );
+  // ✅ Cache key incluye idioma
+  const memKey = `strong-dict-${code}-${defLang}`;
+  const mem = getCached(memKey);
+  if (mem) {
+    const headers = makeHeaders("public, max-age=604800");
+    headers.set("X-Cache", "HIT(mem)");
+    return new Response(JSON.stringify(mem), { headers });
+  }
 
-      if (entryRows.length === 0) {
-        return new Response(JSON.stringify({ error: "not found" }), {
-          status: 404,
-          headers: makeHeaders("no-store"),
-        });
-      }
+  // ✅ Filtrar por strong Y definitionLang
+  const { rows: entryRows } = await pool.query(
+    `SELECT
+       strong, language, "definitionLang", lemma, translit, pronunciation,
+       morphology, "speechLang", definition, exegesis,
+       explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
+     FROM "StrongEntry"
+     WHERE strong = \$1 AND "definitionLang" = \$2`,
+    [code, defLang]
+  );
 
-      const entry = entryRows[0];
+  if (entryRows.length === 0) {
+    return new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      const { rows: relRows } = await pool.query(
-        `SELECT
-           sr."toStrong",
-           sr."relationType",
-           se.lemma           AS "toLemma",
-           se.translit        AS "toTranslit",
-           se."kjvDefinition" AS "toKjvDefinition"
-         FROM "StrongRelation" sr
-         LEFT JOIN "StrongEntry" se ON sr."toStrong" = se.strong
-         WHERE sr."fromStrong" = \$1
-         ORDER BY sr."relationType", sr."toStrong"`,
-        [code]
-      );
+  const entry = entryRows[0];
 
-      const relations = relRows.map((r) => ({
-        toStrong: r.toStrong,
-        relationType: r.relationType,
-        to: {
-          strong: r.toStrong,
-          lemma: r.toLemma,
-          translit: r.toTranslit,
-          kjvDefinition: r.toKjvDefinition,
-        },
-      }));
+  // ✅ JOIN de relaciones también filtra por definitionLang
+  const { rows: relRows } = await pool.query(
+    `SELECT
+       sr."toStrong",
+       sr."relationType",
+       se.lemma           AS "toLemma",
+       se.translit        AS "toTranslit",
+       se."kjvDefinition" AS "toKjvDefinition"
+     FROM "StrongRelation" sr
+     LEFT JOIN "StrongEntry" se 
+       ON sr."toStrong" = se.strong 
+       AND se."definitionLang" = \$2
+     WHERE sr."fromStrong" = \$1
+       AND sr."fromDefLang" = \$2
+     ORDER BY sr."relationType", sr."toStrong"`,
+    [code, defLang]
+  );
 
-      const result = { ...entry, relations };
-      setCache(memKey, result);
+  const relations = relRows.map((r) => ({
+    toStrong: r.toStrong,
+    relationType: r.relationType,
+    to: {
+      strong: r.toStrong,
+      lemma: r.toLemma,
+      translit: r.toTranslit,
+      kjvDefinition: r.toKjvDefinition,
+    },
+  }));
 
-      return new Response(JSON.stringify(result), {
-        headers: makeHeaders("public, max-age=604800"),
-      });
-    }
+  const result = { ...entry, relations };
+  setCache(memKey, result);
+
+  return new Response(JSON.stringify(result), {
+    headers: makeHeaders("public, max-age=604800"),
+  });
+}
 
     // =====================================================
     // 404
