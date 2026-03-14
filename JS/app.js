@@ -1155,23 +1155,6 @@ async function renderComparison() {
     copyVersesBtn.addEventListener('click', showCopyModal);
     closeCopyModal.addEventListener('click', hideCopyModal);
     doCopyBtn.addEventListener('click', copySelectedVersesToClipboard);
-
-        // Eventos Strong
-    strongVersion.addEventListener('change', () => {
-        loadStrongBooks(strongVersion.value);
-        strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
-        strongChapter.disabled = true;
-        strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
-        strongVerse.disabled = true;
-    });
-    strongBook.addEventListener('change', loadStrongChapters);
-    strongChapter.addEventListener('change', onStrongChapterChange);
-    strongVerse.addEventListener('change', () => {
-        if (strongWordsCache[strongChapter.value]) {
-            renderStrongVerses(strongWordsCache[strongChapter.value]);
-        }
-    });
-    strongBottomClose.addEventListener('click', closeStrongPanel);
     
     // Opcional: Cerrar el modal si se hace clic fuera de él
     window.addEventListener('click', (event) => {
