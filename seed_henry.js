@@ -228,18 +228,18 @@ async function main() {
   
   // 2. Procesar cada volumen
   const volumes = [
-    { file: 'mhc1_es.xml', num: 1 },
-    { file: 'mhc2_es.xml', num: 2 },
-    { file: 'mhc3_es.xml', num: 3 },
-    { file: 'mhc4_es.xml', num: 4 },
-    { file: 'mhc5_es.xml', num: 5 },
-    { file: 'mhc6_es.xml', num: 6 },
+    { file: 'mhc1.xml', num: 1 },
+    { file: 'mhc2.xml', num: 2 },
+    { file: 'mhc3.xml', num: 3 },
+    { file: 'mhc4.xml', num: 4 },
+    { file: 'mhc5.xml', num: 5 },
+    { file: 'mhc6.xml', num: 6 },
   ];
   
   let totalEntries = 0;
   
   for (const vol of volumes) {
-    const filepath = path.join(__dirname, 'data', vol.file);
+    const dataDir = path.join(__dirname, 'data');
     
     if (!fs.existsSync(filepath)) {
       console.warn(`⚠️  Archivo no encontrado: ${vol.file}`);
