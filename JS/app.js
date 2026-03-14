@@ -154,12 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // FONT SIZE
-const fontSizes = ['0.9rem', '1.1rem', '1.35rem'];
-const fontKnob  = document.getElementById('fontKnob');
-const fontTrack = document.getElementById('fontTrack');
-let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
-
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
