@@ -10,7 +10,7 @@ const path = require('path');
 // ============================================
 // CONFIGURACIÓN — cambia esto según el idioma
 // ============================================
-const DEFINITION_LANG = 'en'; // 'en' para inglés, 'es' para español
+const DEFINITION_LANG = 'es'; // 'en' para inglés, 'es' para español
 
 const prisma = new PrismaClient();
 
