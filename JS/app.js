@@ -160,22 +160,6 @@ const fontKnob  = document.getElementById('fontKnob');
 const fontTrack = document.getElementById('fontTrack');
 let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
 
-function applyFontPos(pos) {
-    fontPos = pos;
-    fontKnob.dataset.pos  = pos;
-    fontTrack.dataset.pos = pos;
-    fontKnob.textContent  = ['a','A','A'][pos];
-    document.getElementById('content')
-            .style.setProperty('--font-reading', fontSizes[pos]);
-    localStorage.setItem('fontPos', pos);
-}
-
-applyFontPos(fontPos);
-
-fontTrack.addEventListener('click', () => {
-    applyFontPos((fontPos + 1) % 3);
-});
-
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
