@@ -32,6 +32,7 @@ export async function onConcordanciaSearch(page = 1) {
     const query = elements.concQuery.value.trim();
     const version = elements.concVersion.value;
     const testament = elements.concTestament.value;
+    const exact = elements.concExact && elements.concExact.checked; // ← NUEVO
 
     if (!query || query.length < 2) {
         callbacks.showError('Escribe al menos 2 caracteres para buscar');
@@ -48,7 +49,7 @@ export async function onConcordanciaSearch(page = 1) {
     elements.concSearchBtn.disabled = true;
     elements.concSearchBtn.textContent = '⏱️...';
 
-    const cacheKey = `${version}-${testament}-${query.toLowerCase()}-p${page}`;
+    const cacheKey = `${version}-${testament}-${query.toLowerCase()}-exact${exact}-p${page}`; // ← incluir exact en cache key
     if (cache.search[cacheKey]) {
         currentSearchData = cache.search[cacheKey];
         renderSearchResults(cache.search[cacheKey]);
@@ -61,7 +62,7 @@ export async function onConcordanciaSearch(page = 1) {
         if (searchAbort) searchAbort.abort();
         searchAbort = new AbortController();
         const data = await fetchJSON(
-            `${API_URL}/api/search?query=${encodeURIComponent(query)}&version=${version}&testament=${testament}&page=${page}&limit=20`,
+            `${API_URL}/api/search?query=${encodeURIComponent(query)}&version=${version}&testament=${testament}&exact=${exact}&page=${page}&limit=20`,
             searchAbort.signal
         );
         cache.search[cacheKey] = data;
@@ -77,63 +78,29 @@ export async function onConcordanciaSearch(page = 1) {
 }
 
 export function renderSearchResults(data) {
-    const exactMode = elements.concExact && elements.concExact.checked;
-    let results = data.results;
-
-    if (exactMode) {
-        results = results.filter(r => isExactWordMatch(r.text, data.query));
-    }
+    // Ya no necesitamos filtrar en frontend
+    const results = data.results;
 
     if (elements.reference) {
-        elements.reference.textContent = `Resultados para "${data.query}"`;
+        elements.reference.textContent = `Resultados para "${data.query}"${data.exact ? ' (exacta)' : ''}`;
         elements.reference.classList.add('visible');
     }
 
-    // Sin resultados en absoluto
     if (data.total === 0) {
         elements.content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔍</p><h3>No se encontraron resultados</h3></div>`;
         return;
     }
 
-    // En modo exacto, sin coincidencias en esta página
-    if (exactMode && results.length === 0) {
-        elements.content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔎</p><h3>Sin coincidencias exactas en esta página</h3></div>`;
-        
-        // Mostrar paginación para poder navegar
-        if (data.totalPages > 1) {
-            let paginationHtml = `<div class="search-pagination">`;
-            if (data.page > 1) {
-                paginationHtml += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
-            }
-            paginationHtml += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
-            if (data.page < data.totalPages) {
-                paginationHtml += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
-            }
-            paginationHtml += `</div>`;
-            elements.content.innerHTML += paginationHtml;
-            
-            elements.content.querySelectorAll('.pagination-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    onConcordanciaSearch(parseInt(btn.dataset.page));
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                });
-            });
-        }
-        return;
-    }
-
-    // Calcular contadores correctos
-    const totalToShow = exactMode ? results.length : data.total;
-    const startResult = exactMode ? 1 : (data.page - 1) * data.limit + 1;
-    const endResult = exactMode ? results.length : Math.min(data.page * data.limit, data.total);
+    const startResult = (data.page - 1) * data.limit + 1;
+    const endResult = Math.min(data.page * data.limit, data.total);
 
     let html = `<div class="search-stats">
-        <span class="search-total">📊 ${exactMode ? results.length : data.total.toLocaleString()} resultado${totalToShow !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"${exactMode ? ' (en esta página)' : ''}</span>
+        <span class="search-total">📊 ${data.total.toLocaleString()} resultado${data.total !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"${data.exact ? ' (palabra exacta)' : ''}</span>
         <span class="search-range">Mostrando ${startResult}-${endResult}</span>
     </div>`;
 
     results.forEach(r => {
-        const highlightedText = exactMode 
+        const highlightedText = data.exact 
             ? highlightExactWord(r.text, data.query) 
             : highlightText(r.text, data.query);
         const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
