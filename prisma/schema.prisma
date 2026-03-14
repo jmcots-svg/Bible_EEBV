@@ -80,9 +80,9 @@ model Word {
 // DICCIONARIO STRONG — OPCIÓN C
 // ============================================
 model StrongEntry {
-  strong            String  @id
+  strong            String
   language          String
-  definitionLang    String  @default("en")  // 👈 añadido
+  definitionLang    String   @default("en")
 
   lemma             String?
   translit          String?
@@ -102,34 +102,26 @@ model StrongEntry {
 
   createdAt         DateTime @default(now())
 
+  @@id([strong, definitionLang])
   @@index([language])
   @@index([lemma])
-  @@index([definitionLang])   // 👈 añadido
+  @@index([definitionLang])
 }
 
 model StrongRelation {
-  id         Int    @id @default(autoincrement())
+  id             Int    @id @default(autoincrement())
 
-  // Origen de la relación
-  fromStrong String
-  from       StrongEntry @relation("fromStrong", fields: [fromStrong], references: [strong])
-
-  // Destino de la relación
-  toStrong   String
-  to         StrongEntry @relation("toStrong", fields: [toStrong], references: [strong])
-
-  // Tipo de relación
-  // "see_also"       → <see> en griego
-  // "derives_from"   → <strongsref> en derivación
-  // "greek_equiv"    → <foreign> en hebreo
-  // "related"        → referencias internas hebreo src=
-  relationType String
-
-  // De dónde viene la relación
-  // "HEBREW" o "GREEK"
+  fromStrong     String
+  fromDefLang    String @default("en")
+  toStrong       String
+  toDefLang      String @default("en")
+  relationType   String
   sourceLanguage String
 
-  @@unique([fromStrong, toStrong, relationType])
+  from  StrongEntry @relation("fromStrong", fields: [fromStrong, fromDefLang], references: [strong, definitionLang])
+  to    StrongEntry @relation("toStrong",   fields: [toStrong,   toDefLang],   references: [strong, definitionLang])
+
+  @@unique([fromStrong, fromDefLang, toStrong, toDefLang, relationType])
   @@index([fromStrong])
   @@index([toStrong])
   @@index([relationType])
