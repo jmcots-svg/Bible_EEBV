@@ -2,7 +2,7 @@
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml, escapeRegExp, removeAccents } from './utils.js';
 import { cache, strongWordsCache } from './cache.js';
-import { initTheme, initFontSize, initSettingsPanel } from './ui.js';
+import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -215,33 +215,6 @@ modeTabs.forEach(tab => {
 // =====================
 // FILTROS PLEGABLES (móvil)
 // =====================
-function setupCollapsibleFilters(toggleBtnId, collapsibleId, refLabelId) {
-    const btn         = document.getElementById(toggleBtnId);
-    const panel       = document.getElementById(collapsibleId);
-    const refLabel    = document.getElementById(refLabelId);
-    if (!btn || !panel) return;
-
-    let isOpen = true;
-
-    btn.addEventListener('click', () => {
-        isOpen = !isOpen;
-        panel.classList.toggle('collapsed', !isOpen);
-        btn.classList.toggle('collapsed', !isOpen);
-    });
-
-    return {
-        collapse: () => {
-            if (isOpen) {
-                isOpen = false;
-                panel.classList.add('collapsed');
-                btn.classList.add('collapsed');
-            }
-        },
-        updateRef: (text) => {
-            if (refLabel && text) refLabel.textContent = text;
-        }
-    };
-}
 
 const filterToggleLectura = setupCollapsibleFilters(
     'toggleFiltersLectura', 'filtersLectura', 'toggleRefLectura'
