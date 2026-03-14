@@ -1152,6 +1152,7 @@ async function renderComparison() {
                 const opt = document.createElement('option');
                 opt.value = v.name;
                 opt.textContent = v.fullName;
+                opt.dataset.lang = v.language;  // 👈 guardar idioma en el option
                 if (i === 0) opt.selected = true;
                 strongVersion.appendChild(opt);
             });
