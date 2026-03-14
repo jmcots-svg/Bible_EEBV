@@ -35,8 +35,6 @@ export function initFontSize(fontKnob, fontTrack, contentEl) {
     /* FONT SIZE SWITCHER    */
     /* ===================== */
     
-    const fontTrack = document.getElementById('fontTrack');
-    const fontKnob = document.getElementById('fontKnob');
     
     const fontSizes = ['0.95rem', '1.1rem', '1.3rem'];
     let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
