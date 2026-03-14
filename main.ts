@@ -255,8 +255,9 @@ if (path === "/api/search") {
   const queryText = url.searchParams.get("query")?.trim();
   const version = url.searchParams.get("version") || "RV60";
   const testament = url.searchParams.get("testament") || "ALL";
+  const exact = url.searchParams.get("exact") === "true"; // ← NUEVO
 
-  console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}"`);
+  console.log(`[API Search] Received query: "${queryText}", version: "${version}", testament: "${testament}", exact: ${exact}`);
 
   const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
@@ -279,6 +280,16 @@ if (path === "/api/search") {
     paramIndex++;
   }
 
+  // Filtro de búsqueda: exacta o parcial
+  let searchFilter: string;
+  if (exact) {
+    // Palabra exacta usando regex con word boundaries
+    searchFilter = "AND unaccent(lower(v.\"text\")) ~* ('\\m' || unaccent(lower(\$2)) || '\\M')";
+  } else {
+    // Búsqueda parcial (contiene)
+    searchFilter = "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'";
+  }
+
   const countSql =
     "SELECT COUNT(*) as total " +
     "FROM \"Verse\" v " +
@@ -286,7 +297,7 @@ if (path === "/api/search") {
     "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
     "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
     "WHERE bv.name = \$1 " +
-    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'" +
+    searchFilter +
     testamentFilter;
 
   const dataSql =
@@ -302,7 +313,7 @@ if (path === "/api/search") {
     "JOIN \"Book\" b ON c.\"bookId\" = b.id " +
     "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id " +
     "WHERE bv.name = \$1 " +
-    "AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'" +
+    searchFilter +
     testamentFilter + " " +
     "ORDER BY b.\"bookOrder\", c.\"number\", v.\"number\" " +
     "LIMIT $" + paramIndex + " OFFSET $" + (paramIndex + 1);
@@ -321,6 +332,7 @@ if (path === "/api/search") {
     query: queryText,
     version,
     testament,
+    exact, // ← incluir en respuesta
     total,
     page,
     limit,
