@@ -1,8 +1,8 @@
-name: 🌿 Supabase DB Backup
+name: 🅱️Supabase DB Backup to GitHub
 
 on:
   schedule:
-    - cron: "0 3 * * 0"  # Domingo 03:00 UTC
+    - cron: "0 3 * * 0" # Domingo 03:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -11,45 +11,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client gzip curl jq
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client gzip
 
       - name: Dump and compress database
         env:
           DATABASE_URL: ${{ secrets.DIRECT_URL }}
         run: |
-          echo "Starting database dump..."
-          pg_dump "$DATABASE_URL" -F c | gzip > backup-$(date +%F).dump.gz
-          echo "Database dump complete."
-
-      - name: Upload backup to Supabase Storage
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: |
-          echo "Uploading backup..."
-          curl -X POST "$SUPABASE_URL/storage/v1/object/backups" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            -F "file=@backup-$(date +%F).dump.gz"
+          echo "Creating compressed database dump..."
+          pg_dump "$DATABASE_URL" -F c | gzip > data/backup-$(date +%F).dump.gz
+          echo "Backup saved in data/"
 
       - name: Rotate old backups (keep last 4)
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          echo "Rotating backups (keep last 4)..."
-          BACKUPS=$(curl -s -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
-            -H "apikey: $SUPABASE_SERVICE_KEY" \
-            "$SUPABASE_URL/storage/v1/object/list/backups" | jq -r '.[] | .name' | sort)
-          COUNT=$(echo "$BACKUPS" | wc -l)
-          if [ $COUNT -le 4 ]; then
-            echo "No backups to delete."
-          else
-            DELETE=$(echo "$BACKUPS" | head -n $(($COUNT-4)))
-            for file in $DELETE; do
-              echo "Deleting $file"
-              curl -X DELETE "$SUPABASE_URL/storage/v1/object/backups/$file" \
-                -H "Authorization: Bearer $SUPABASE_SERVICE_KEY"
-            done
-          fi
+          cd data
+          ls -t backup-*.dump.gz | tail -n +5 | xargs -r rm
+
+      - name: Commit backup to GitHub
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add data/
+          git commit -m "Weekly database backup" || echo "No changes"
+          git push
