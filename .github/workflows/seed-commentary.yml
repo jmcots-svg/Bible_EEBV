@@ -50,7 +50,7 @@ jobs:
           ls -la prisma/data/commentary/ || echo "⚠️ Directorio no encontrado"
       
       - name: Run Commentary Seed
-        run: node prisma/seed_commentary.js
+        run: node seed_henry.js
       
       - name: Verify import
         run: |
