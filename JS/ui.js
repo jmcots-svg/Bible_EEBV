@@ -31,9 +31,49 @@ export function initFontSize(fontKnob, fontTrack, contentEl) {
 
     applyFontPos(fontPos);
 
-    fontTrack.addEventListener('click', () => {
-        applyFontPos((fontPos + 1) % 3);
+    /* ===================== */
+    /* FONT SIZE SWITCHER    */
+    /* ===================== */
+    
+    const fontTrack = document.getElementById('fontTrack');
+    const fontKnob = document.getElementById('fontKnob');
+    
+    const fontSizes = ['0.95rem', '1.1rem', '1.3rem'];
+    let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
+    
+    function applyFontSize(pos) {
+      fontPos = pos;
+      document.documentElement.style.setProperty('--font-reading', fontSizes[pos]);
+      fontKnob.textContent = 'A';
+      fontKnob.setAttribute('data-pos', pos);
+      fontTrack.setAttribute('data-pos', pos);
+      localStorage.setItem('fontPos', pos);
+    }
+    
+    // Inicializar
+    applyFontSize(fontPos);
+    
+    // Click en la pista - detectar zona
+    fontTrack.addEventListener('click', (e) => {
+      const rect = fontTrack.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const trackWidth = rect.width;
+      const zoneWidth = trackWidth / 3;
+      
+      let newPos;
+      if (clickX < zoneWidth) {
+        newPos = 0;  // Izquierda → pequeño
+      } else if (clickX < zoneWidth * 2) {
+        newPos = 1;  // Centro → mediano
+      } else {
+        newPos = 2;  // Derecha → grande
+      }
+      
+      if (newPos !== fontPos) {
+        applyFontSize(newPos);
+      }
     });
+    
 }
 
 export function initSettingsPanel(settingsBtn, settingsPanel, closeSettingsBtn) {
