@@ -1,3 +1,133 @@
+generator client {
+provider = "prisma-client-js"
+}
+
+datasource db {
+provider = "postgresql"
+url = env("DATABASE_URL")
+directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// BIBLIA
+// ============================================
+
+model BibleVersion {
+id Int @id @default(autoincrement())
+name String @unique
+fullName String
+hasStrongs Boolean @default(false)
+language String @default("es") // 👈 añadido
+books Book[]
+createdAt DateTime @default(now())
+
+@@index([language])
+}
+
+model Book {
+id Int @id @default(autoincrement())
+name String
+testament String
+abbr String?
+bookOrder Int?
+versionId Int
+chapters Chapter[]
+version BibleVersion @relation(fields: [versionId], references: [id])
+createdAt DateTime @default(now())
+
+@@unique([name, versionId])
+@@index([versionId, bookOrder])
+}
+
+model Chapter {
+id Int @id @default(autoincrement())
+number Int
+bookId Int
+book Book @relation(fields: [bookId], references: [id])
+verses Verse[]
+createdAt DateTime @default(now())
+
+@@unique([number, bookId])
+@@index([bookId, number])
+}
+
+model Verse {
+id Int @id @default(autoincrement())
+number Int
+text String
+chapterId Int
+chapter Chapter @relation(fields: [chapterId], references: [id])
+words Word[]
+createdAt DateTime @default(now())
+
+@@index([chapterId, number])
+@@index([chapterId])
+}
+
+model Word {
+id Int @id @default(autoincrement())
+text String
+strong String?
+position Int
+verseId Int
+verse Verse @relation(fields: [verseId], references: [id], onDelete: Cascade)
+
+@@index([verseId, position])
+@@index([strong])
+}
+
+// ============================================
+// DICCIONARIO STRONG — OPCIÓN C
+// ============================================
+model StrongEntry {
+strong String
+language String
+definitionLang String @default("en")
+
+lemma String?
+translit String?
+pronunciation String?
+morphology String?
+speechLang String?
+
+definition String?
+exegesis String?
+explanation String?
+kjvDefinition String?
+strongsDef String?
+strongsDerivation String?
+
+relations StrongRelation[] @relation("fromStrong")
+relatedFrom StrongRelation[] @relation("toStrong")
+
+createdAt DateTime @default(now())
+
+@@id([strong, definitionLang])
+@@index([language])
+@@index([lemma])
+@@index([definitionLang])
+}
+
+model StrongRelation {
+id Int @id @default(autoincrement())
+
+fromStrong String
+fromDefLang String @default("en")
+toStrong String
+toDefLang String @default("en")
+relationType String
+sourceLanguage String
+
+from StrongEntry @relation("fromStrong", fields: [fromStrong, fromDefLang], references: [strong, definitionLang])
+to StrongEntry @relation("toStrong", fields: [toStrong, toDefLang], references: [strong, definitionLang])
+
+@@unique([fromStrong, fromDefLang, toStrong, toDefLang, relationType])
+@@index([fromStrong])
+@@index([toStrong])
+@@index([relationType])
+}
+
+
 // ============================================
 // COMENTARIOS BÍBLICOS
 // ============================================
