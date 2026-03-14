@@ -36,9 +36,6 @@ export function initFontSize(fontKnob, fontTrack, contentEl) {
     /* ===================== */
     
     
-    const fontSizes = ['0.95rem', '1.1rem', '1.3rem'];
-    let fontPos = parseInt(localStorage.getItem('fontPos') ?? '1');
-    
     function applyFontSize(pos) {
       fontPos = pos;
       document.documentElement.style.setProperty('--font-reading', fontSizes[pos]);
