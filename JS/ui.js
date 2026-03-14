@@ -66,3 +66,33 @@ export function initSettingsPanel(settingsBtn, settingsPanel, closeSettingsBtn) 
         }
     });
 }
+
+// ui.js (añadir al final)
+
+export function setupCollapsibleFilters(toggleBtnId, collapsibleId, refLabelId) {
+    const btn = document.getElementById(toggleBtnId);
+    const panel = document.getElementById(collapsibleId);
+    const refLabel = document.getElementById(refLabelId);
+    if (!btn || !panel) return null;
+
+    let isOpen = true;
+
+    btn.addEventListener('click', () => {
+        isOpen = !isOpen;
+        panel.classList.toggle('collapsed', !isOpen);
+        btn.classList.toggle('collapsed', !isOpen);
+    });
+
+    return {
+        collapse: () => {
+            if (isOpen) {
+                isOpen = false;
+                panel.classList.add('collapsed');
+                btn.classList.add('collapsed');
+            }
+        },
+        updateRef: (text) => {
+            if (refLabel && text) refLabel.textContent = text;
+        }
+    };
+}
