@@ -1441,7 +1441,7 @@ async function loadStrongRefs(strongCode, page) {
     if (!panel) return;
 
     try {
-        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}`);
+        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=es`);
 
         if (!data || data.error) {
             panel.innerHTML = `<p class="strong-dict-empty">Sin información del diccionario para <strong>${strongCode}</strong>.</p>`;
