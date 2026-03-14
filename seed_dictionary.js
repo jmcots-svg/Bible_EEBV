@@ -7,6 +7,11 @@ const { XMLParser } = require('fast-xml-parser');
 const fs = require('fs');
 const path = require('path');
 
+// ============================================
+// CONFIGURACIÓN — cambia esto según el idioma
+// ============================================
+const DEFINITION_LANG = 'en'; // 'en' para inglés, 'es' para español
+
 const prisma = new PrismaClient();
 
 // ============================================
@@ -50,7 +55,6 @@ function parseHebrew(filepath) {
   const glossary = result?.osis?.osisText?.div;
   if (!glossary) throw new Error('❌ No se encontró div en hebreo');
 
-  // El primer div es el glossary, dentro están los entries
   const glossaryDiv = Array.isArray(glossary) ? glossary[0] : glossary;
   const entryDivs = glossaryDiv?.div || [];
 
@@ -60,7 +64,6 @@ function parseHebrew(filepath) {
   for (const div of entryDivs) {
     if (div['@_type'] !== 'entry') continue;
 
-    // El elemento <w> principal con ID
     const wList = Array.isArray(div.w) ? div.w : div.w ? [div.w] : [];
     const mainW = wList.find(w => w['@_ID']);
     if (!mainW) continue;
@@ -68,13 +71,12 @@ function parseHebrew(filepath) {
     const strong = normalizeStrong(mainW['@_ID']);
     if (!strong) continue;
 
-    const lemma       = cleanText(mainW['@_lemma']);
-    const translit    = cleanText(mainW['@_xlit']);
-    const pronounc    = cleanText(mainW['@_POS']);
-    const morphology  = cleanText(mainW['@_morph']);
-    const speechLang  = cleanText(mainW['@_lang'] || mainW['@_xml:lang']);
+    const lemma      = cleanText(mainW['@_lemma']);
+    const translit   = cleanText(mainW['@_xlit']);
+    const pronounc   = cleanText(mainW['@_POS']);
+    const morphology = cleanText(mainW['@_morph']);
+    const speechLang = cleanText(mainW['@_lang'] || mainW['@_xml:lang']);
 
-    // Definición: items de la lista
     const items = div?.list?.item || [];
     const itemArr = Array.isArray(items) ? items : [items];
     const definition = itemArr
@@ -82,7 +84,6 @@ function parseHebrew(filepath) {
       .filter(Boolean)
       .join(' | ') || null;
 
-    // Notas
     let exegesis    = null;
     let explanation = null;
     let kjvDef      = null;
@@ -98,9 +99,11 @@ function parseHebrew(filepath) {
       if (type === 'translation') kjvDef      = text;
     }
 
+    // ✅ definitionLang añadido
     entries.push({
       strong,
       language:          'H',
+      definitionLang:    DEFINITION_LANG,
       lemma,
       translit,
       pronunciation:     pronounc,
@@ -116,7 +119,7 @@ function parseHebrew(filepath) {
 
     // ---- RELACIONES ----
 
-    // 1. Referencias griegas <foreign><w gloss="G3962"/>
+    // 1. Referencias griegas
     const foreign = div.foreign;
     if (foreign) {
       const foreignW = Array.isArray(foreign.w) ? foreign.w : foreign.w ? [foreign.w] : [];
@@ -125,10 +128,13 @@ function parseHebrew(filepath) {
         if (gloss && String(gloss).startsWith('G')) {
           const toStrong = normalizeStrong(gloss);
           if (toStrong) {
+            // ✅ fromDefLang y toDefLang añadidos
             relations.push({
-              fromStrong:    strong,
+              fromStrong,
+              fromDefLang:    DEFINITION_LANG,
               toStrong,
-              relationType:  'greek_equiv',
+              toDefLang:      DEFINITION_LANG,
+              relationType:   'greek_equiv',
               sourceLanguage: 'HEBREW',
             });
           }
@@ -136,7 +142,7 @@ function parseHebrew(filepath) {
       }
     }
 
-    // 2. Referencias internas <w src="24"/> dentro de notas
+    // 2. Referencias internas dentro de notas
     for (const note of notes) {
       const noteW = Array.isArray(note.w) ? note.w : note.w ? [note.w] : [];
       for (const ref of noteW) {
@@ -144,10 +150,13 @@ function parseHebrew(filepath) {
         if (src) {
           const toStrong = normalizeStrong('H' + src);
           if (toStrong) {
+            // ✅ fromDefLang y toDefLang añadidos
             relations.push({
-              fromStrong:    strong,
+              fromStrong,
+              fromDefLang:    DEFINITION_LANG,
               toStrong,
-              relationType:  'related',
+              toDefLang:      DEFINITION_LANG,
+              relationType:   'related',
               sourceLanguage: 'HEBREW',
             });
           }
@@ -187,14 +196,11 @@ function parseGreek(filepath) {
     const strong = normalizeStrong(entry['@_strongs']);
     if (!strong) continue;
 
-    // Datos lingüísticos
     const greek    = entry.greek;
     const lemma    = cleanText(greek?.['@_unicode']);
     const translit = cleanText(greek?.['@_translit']);
-
     const pronounc = cleanText(entry.pronunciation?.['@_strongs']);
 
-    // Definiciones
     const strongsDef = cleanText(
       typeof entry.strongs_def === 'string'
         ? entry.strongs_def
@@ -213,9 +219,11 @@ function parseGreek(filepath) {
         : entry.kjv_def?.['#text'] || ''
     );
 
+    // ✅ definitionLang añadido
     entries.push({
       strong,
       language:          'G',
+      definitionLang:    DEFINITION_LANG,
       lemma,
       translit,
       pronunciation:     pronounc,
@@ -241,9 +249,12 @@ function parseGreek(filepath) {
       for (const ref of refs) {
         const toStrong = normalizeStrong(ref['@_strongs']);
         if (toStrong) {
+          // ✅ fromDefLang y toDefLang añadidos
           relations.push({
             fromStrong:    strong,
+            fromDefLang:   DEFINITION_LANG,
             toStrong,
+            toDefLang:     DEFINITION_LANG,
             relationType:  'derives_from',
             sourceLanguage: ref['@_language'] || 'GREEK',
           });
@@ -259,9 +270,12 @@ function parseGreek(filepath) {
     for (const see of seeList) {
       const toStrong = normalizeStrong(see['@_strongs']);
       if (toStrong) {
+        // ✅ fromDefLang y toDefLang añadidos
         relations.push({
           fromStrong:    strong,
+          fromDefLang:   DEFINITION_LANG,
           toStrong,
+          toDefLang:     DEFINITION_LANG,
           relationType:  'see_also',
           sourceLanguage: see['@_language'] || 'GREEK',
         });
@@ -300,14 +314,17 @@ async function importRelations(relations, validStrongs) {
   let total = 0;
   let skipped = 0;
 
-  // Filtrar huérfanas y duplicadas
   const seen = new Set();
   const valid = relations.filter(r => {
-    if (!validStrongs.has(r.fromStrong) || !validStrongs.has(r.toStrong)) {
+    // ✅ validStrongs ahora usa clave compuesta strong|definitionLang
+    const fromKey = `${r.fromStrong}|${r.fromDefLang}`;
+    const toKey   = `${r.toStrong}|${r.toDefLang}`;
+
+    if (!validStrongs.has(fromKey) || !validStrongs.has(toKey)) {
       skipped++;
       return false;
     }
-    const key = `${r.fromStrong}|${r.toStrong}|${r.relationType}`;
+    const key = `${r.fromStrong}|${r.fromDefLang}|${r.toStrong}|${r.toDefLang}|${r.relationType}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -336,38 +353,40 @@ async function importRelations(relations, validStrongs) {
 
 async function main() {
   console.log('🚀 Iniciando importación Strong Dictionary...\n');
+  console.log(`🌐 Idioma de definiciones: ${DEFINITION_LANG}\n`);
 
   const hebrewFile = path.join(__dirname, 'data', 'StrongsHebrew_norm.xml');
   const greekFile  = path.join(__dirname, 'data', 'StrongsGreek_norm.xml');
 
-  // Parsear
   const { entries: hEntries, relations: hRelations } = parseHebrew(hebrewFile);
   const { entries: gEntries, relations: gRelations } = parseGreek(greekFile);
 
   const allEntries   = [...hEntries, ...gEntries];
   const allRelations = [...hRelations, ...gRelations];
-  const validStrongs = new Set(allEntries.map(e => e.strong));
+
+  // ✅ Set con clave compuesta strong|definitionLang
+  const validStrongs = new Set(
+    allEntries.map(e => `${e.strong}|${e.definitionLang}`)
+  );
 
   console.log(`\n📊 Total entradas:   ${allEntries.length}`);
   console.log(`📊 Total relaciones: ${allRelations.length}\n`);
 
-  // Importar entradas
   console.log('💾 Importando entradas...');
   await importEntries(allEntries);
   console.log('✅ Entradas importadas\n');
 
-  // Importar relaciones
   console.log('🔗 Importando relaciones...');
   await importRelations(allRelations, validStrongs);
   console.log('✅ Relaciones importadas\n');
 
-  // Resumen final
   const totalEntries   = await prisma.strongEntry.count();
   const totalRelations = await prisma.strongRelation.count();
 
   console.log('🎉 ¡IMPORTACIÓN COMPLETADA!');
   console.log(`   StrongEntry:    ${totalEntries}`);
   console.log(`   StrongRelation: ${totalRelations}`);
+  console.log(`   Idioma:         ${DEFINITION_LANG}`);
 }
 
 main()
