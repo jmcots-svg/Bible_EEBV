@@ -377,30 +377,30 @@ if (path === "/api/search") {
       });
     }
 
-    // =====================================================
-    // /api/versions/strongs
-    // =====================================================
-    if (path === "/api/versions/strongs") {
-      const memKey = "versions-strongs";
-      const mem = getCached(memKey);
-      if (mem) {
-        const headers = makeHeaders("public, max-age=86400");
-        headers.set("X-Cache", "HIT(mem)");
-        return new Response(JSON.stringify(mem), { headers });
-      }
-
-      const { rows } = await pool.query(
-        `SELECT id, name, "fullName"
-         FROM "BibleVersion"
-         WHERE "hasStrongs" = true
-         ORDER BY id ASC`
-      );
-
-      setCache(memKey, rows);
-      return new Response(JSON.stringify(rows), {
-        headers: makeHeaders("public, max-age=86400"),
-      });
+  // =====================================================
+  // /api/versions/strongs
+  // =====================================================
+  if (path === "/api/versions/strongs") {
+    const memKey = "versions-strongs";
+    const mem = getCached(memKey);
+    if (mem) {
+      const headers = makeHeaders("public, max-age=86400");
+      headers.set("X-Cache", "HIT(mem)");
+      return new Response(JSON.stringify(mem), { headers });
     }
+  
+    const { rows } = await pool.query(
+      `SELECT id, name, "fullName", language   -- ← ¡AGREGAR language!
+       FROM "BibleVersion"
+       WHERE "hasStrongs" = true
+       ORDER BY id ASC`
+    );
+  
+    setCache(memKey, rows);
+    return new Response(JSON.stringify(rows), {
+      headers: makeHeaders("public, max-age=86400"),
+    });
+  }
 
     // =====================================================
     // /api/words
