@@ -89,21 +89,46 @@ export function renderSearchResults(data) {
         elements.reference.classList.add('visible');
     }
 
-    if (data.total === 0 || (exactMode && results.length === 0 && data.results.length === 0)) {
+    // Sin resultados en absoluto
+    if (data.total === 0) {
         elements.content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔍</p><h3>No se encontraron resultados</h3></div>`;
         return;
     }
 
+    // En modo exacto, sin coincidencias en esta página
     if (exactMode && results.length === 0) {
         elements.content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔎</p><h3>Sin coincidencias exactas en esta página</h3></div>`;
+        
+        // Mostrar paginación para poder navegar
+        if (data.totalPages > 1) {
+            let paginationHtml = `<div class="search-pagination">`;
+            if (data.page > 1) {
+                paginationHtml += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Anterior</button>`;
+            }
+            paginationHtml += `<span class="pagination-info">Página ${data.page} de ${data.totalPages}</span>`;
+            if (data.page < data.totalPages) {
+                paginationHtml += `<button class="pagination-btn" data-page="${data.page + 1}">Siguiente ➡</button>`;
+            }
+            paginationHtml += `</div>`;
+            elements.content.innerHTML += paginationHtml;
+            
+            elements.content.querySelectorAll('.pagination-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    onConcordanciaSearch(parseInt(btn.dataset.page));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            });
+        }
         return;
     }
 
-    const startResult = (data.page - 1) * data.limit + 1;
-    const endResult = Math.min(data.page * data.limit, data.total);
+    // Calcular contadores correctos
+    const totalToShow = exactMode ? results.length : data.total;
+    const startResult = exactMode ? 1 : (data.page - 1) * data.limit + 1;
+    const endResult = exactMode ? results.length : Math.min(data.page * data.limit, data.total);
 
     let html = `<div class="search-stats">
-        <span class="search-total">📊 ${data.total.toLocaleString()} resultado${data.total !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"</span>
+        <span class="search-total">📊 ${exactMode ? results.length : data.total.toLocaleString()} resultado${totalToShow !== 1 ? 's' : ''} para "<strong>${escapeHtml(data.query)}</strong>"${exactMode ? ' (en esta página)' : ''}</span>
         <span class="search-range">Mostrando ${startResult}-${endResult}</span>
     </div>`;
 
