@@ -355,8 +355,8 @@ async function main() {
   console.log('🚀 Iniciando importación Strong Dictionary...\n');
   console.log(`🌐 Idioma de definiciones: ${DEFINITION_LANG}\n`);
 
-  const hebrewFile = path.join(__dirname, 'data', 'StrongsHebrew_norm.xml');
-  const greekFile  = path.join(__dirname, 'data', 'StrongsGreek_norm.xml');
+  const hebrewFile = path.join(__dirname, 'data', 'StrongsHebrew_norm.es.xml');
+  const greekFile  = path.join(__dirname, 'data', 'StrongsGreek_norm.es.xml');
 
   const { entries: hEntries, relations: hRelations } = parseHebrew(hebrewFile);
   const { entries: gEntries, relations: gRelations } = parseGreek(greekFile);
