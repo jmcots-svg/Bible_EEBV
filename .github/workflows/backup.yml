@@ -8,20 +8,16 @@ on:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    container: postgres:17
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install PostgreSQL 17 client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
 
       - name: Dump database
         env:
           DATABASE_URL: ${{ secrets.DIRECT_URL }}
         run: |
-          pg_dump "$DATABASE_URL" -F c -f backup.dump
+          pg_dump "$DATABASE_URL" -F c -Z 9 -f backup.dump
 
       - name: Save backup
         run: |
