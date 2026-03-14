@@ -724,8 +724,9 @@ input[type="text"]:focus {
 }
 
 /* ===================== */
-/* BOTÓN AJUSTES (☰)     */
+/* PANEL FLOTANTE AJUSTES */
 /* ===================== */
+
 .settings-btn {
   background: none;
   border: none;
@@ -737,19 +738,18 @@ input[type="text"]:focus {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.7);  /* ← Gris claro como las pestañas */
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .settings-btn:hover {
   transform: rotate(15deg);
-  color: rgba(255, 255, 255, 0.95); /* ← Más claro al hover */
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .settings-btn:active {
   transform: rotate(-15deg);
 }
 
-/* Modo oscuro - un poco más brillante para que se vea */
 [data-theme="dark"] .settings-btn {
   color: rgba(255, 255, 255, 0.6);
 }
@@ -758,37 +758,134 @@ input[type="text"]:focus {
   color: rgba(255, 255, 255, 0.9);
 }
 
+/* Panel flotante - LA VENTANA */
+.settings-panel {
+  position: fixed;
+  top: 90px;
+  right: 20px;
+  background: var(--bg-container);      /* ← Fondo blanco/oscuro */
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  z-index: 2000;
+  max-width: 280px;
+  min-width: 250px;                      /* ← Ancho mínimo */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px) scale(0.95);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.settings-panel.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.settings-panel-content {
+  padding: 0;
+}
+
+.settings-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-container);       /* ← Asegurar fondo */
+  border-radius: 10px 10px 0 0;          /* ← Redondear arriba */
+}
+
+.settings-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.close-settings-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.close-settings-btn:hover {
+  color: var(--accent);
+}
+
+.settings-panel-body {
+  padding: 16px;
+  background: var(--bg-container);       /* ← Asegurar fondo */
+  border-radius: 0 0 10px 10px;          /* ← Redondear abajo */
+}
+
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.settings-item:last-child {
+  margin-bottom: 0;
+}
+
+.settings-item > span,
+.settings-item > label:first-child {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* ===================== */
-/* SWITCHES MEJORADOS    */
+/* SWITCHES EN EL PANEL  */
 /* ===================== */
 
-/* Pista del switch (el óvalo) - MODO DÍA */
-.slider {
+.settings-item .switch {
+  position: relative;
+  width: 50px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.settings-item .switch input {
+  display: none;
+}
+
+/* Pista del switch - MODO DÍA */
+.settings-item .slider {
   position: absolute;
   cursor: pointer;
   top: 0; 
   left: 0; 
   right: 0; 
   bottom: 0;
-  background-color: #d1d5db;           /* ← Gris suave visible */
+  background-color: #d1d5db;
   transition: .4s;
   border-radius: 34px;
-  /* Efecto 3D sutil */
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.1),  /* Sombra interior arriba */
-    inset 0 -1px 2px rgba(255, 255, 255, 0.5); /* Brillo interior abajo */
-}
-
-/* Pista cuando está activo (ON) - MODO DÍA */
-input:checked + .slider { 
-  background-color: #4a90e2; 
   box-shadow: 
     inset 0 2px 4px rgba(0, 0, 0, 0.15),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.3);
+    inset 0 -1px 2px rgba(255, 255, 255, 0.6);
 }
 
-/* La bolita del switch */
-.slider:before {
+.settings-item input:checked + .slider { 
+  background-color: #4a90e2; 
+}
+
+.settings-item .slider:before {
   position: absolute;
   content: "☀️";
   height: 20px;
@@ -802,80 +899,111 @@ input:checked + .slider {
   align-items: center;
   justify-content: center;
   font-size: 12px;
-  /* Efecto 3D en la bolita */
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),        /* Sombra exterior */
-    0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-input:checked + .slider:before { 
+.settings-item input:checked + .slider:before { 
   transform: translateX(24px); 
   content: "🌙"; 
 }
 
-/* ===================== */
-/* MODO OSCURO - SWITCHES */
-/* ===================== */
-[data-theme="dark"] .slider {
-  background-color: #4a5568;            /* Gris oscuro */
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.3),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.05);
+/* MODO OSCURO - Switch */
+[data-theme="dark"] .settings-item .slider {
+  background-color: #4a5568;
 }
 
-[data-theme="dark"] input:checked + .slider {
+[data-theme="dark"] .settings-item input:checked + .slider {
   background-color: #667eea;
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.2),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.1);
-}
-
-[data-theme="dark"] .slider:before {
-  background-color: #f1f5f9;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 /* ===================== */
-/* FONT TRACK MEJORADO   */
+/* FONT TRACK EN PANEL   */
 /* ===================== */
 
-/* Pista del selector de tamaño - MODO DÍA (dentro del panel) */
-.settings-panel .font-track {
-  background: #d1d5db;                  /* ← Gris visible */
+.settings-item .font-track {
+  position: relative;
+  width: 68px;
+  height: 26px;
+  min-width: 68px;
+  flex-shrink: 0;
+  background: #d1d5db;
+  border-radius: 34px;
+  cursor: pointer;
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.5);
+    inset 0 2px 4px rgba(0, 0, 0, 0.15),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.6);
 }
 
-.settings-panel .font-track[data-pos="2"] {
+.settings-item .font-track[data-pos="2"] {
   background-color: #4a90e2;
 }
 
-/* Bolita del font track */
-.settings-panel .font-knob {
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.2),
-    0 1px 2px rgba(0, 0, 0, 0.1);
+.settings-item .font-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: #1e3a5f;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.3s ease;
 }
 
-/* Modo oscuro */
-[data-theme="dark"] .settings-panel .font-track {
+.settings-item .font-knob[data-pos="0"] { transform: translateX(0px); }
+.settings-item .font-knob[data-pos="1"] { transform: translateX(23px); }
+.settings-item .font-knob[data-pos="2"] { transform: translateX(46px); }
+
+/* MODO OSCURO - Font Track */
+[data-theme="dark"] .settings-item .font-track {
   background: #4a5568;
-  box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.3),
-    inset 0 -1px 2px rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="dark"] .settings-panel .font-track[data-pos="2"] {
+[data-theme="dark"] .settings-item .font-track[data-pos="2"] {
   background-color: #667eea;
 }
 
-[data-theme="dark"] .settings-panel .font-knob {
+[data-theme="dark"] .settings-item .font-knob {
   background-color: #f1f5f9;
   color: #1e293b;
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.4),
-    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ===================== */
+/* OVERLAY               */
+/* ===================== */
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.settings-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ===================== */
+/* RESPONSIVE AJUSTES    */
+/* ===================== */
+
+@media (max-width: 600px) {
+  .settings-panel {
+    top: 80px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
 }
