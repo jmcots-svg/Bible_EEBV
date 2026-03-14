@@ -1,8 +1,8 @@
-name: Supabase Backup
+name: Supabase Weekly Backup
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # cada día a las 03:00
+    - cron: "0 3 * * 0"   # domingo 03:00
   workflow_dispatch:
 
 jobs:
@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install PostgreSQL client
         run: sudo apt-get install -y postgresql-client
@@ -28,8 +27,19 @@ jobs:
             -F c \
             -f backup.dump
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: supabase-backup
-          path: backup.dump
+      - name: Save backup
+        run: |
+          mkdir -p backups
+          mv backup.dump backups/backup-$(date +%F).dump
+
+      - name: Keep only last 4 backups
+        run: |
+          ls -t backups/backup-*.dump | tail -n +5 | xargs -r rm
+
+      - name: Commit backup
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git add backups/
+          git commit -m "Weekly database backup" || echo "No changes"
+          git push
