@@ -19,7 +19,7 @@ jobs:
 
       - name: Dump and compress database
         env:
-          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "Creating compressed database dump..."
           pg_dump "$DATABASE_URL" -F c | gzip > data/backup-$(date +%F).dump.gz
