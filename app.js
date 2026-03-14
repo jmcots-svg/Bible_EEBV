@@ -1168,10 +1168,21 @@ async function renderComparison() {
 
         // Obtener el idioma de definiciones según la versión Strong seleccionada
     function getStrongDefLang() {
-        const selectedOption = strongVersion.options[strongVersion.selectedIndex];
-        return selectedOption?.dataset?.lang || 'es'; // por defecto 'es'
-    }
+        try {
+        const opt = strongVersion?.options?.[strongVersion.selectedIndex];
+        const lang = opt?.dataset?.lang?.trim()?.toLowerCase();
 
+            // Aceptamos solo idiomas válidos según la DB
+            if (lang === "en" || lang === "es") {
+                return lang;
+            }
+        
+            // Fallback seguro
+            return "en";
+        } catch {
+            return "en";
+        }
+    }
     async function loadStrongBooks(version) {
         if (!version) return;
         let books = cache.books[version];
@@ -1450,7 +1461,9 @@ async function loadStrongRefs(strongCode, page) {
     if (!panel) return;
     const lang = getStrongDefLang(); 
     try {
-        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=${lang}`);
+            const data = await fetchJSON(
+        `${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=${lang}`
+    );
 
         if (!data || data.error) {
             panel.innerHTML = `<p class="strong-dict-empty">Sin información del diccionario para <strong>${strongCode}</strong>.</p>`;
