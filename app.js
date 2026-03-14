@@ -1,21 +1,8 @@
 // ⚠️ URL de tu backend
-//const API_URL = 'https://bible-eebv.jmcots-svg.deno.net';
-
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml, escapeRegExp, removeAccents } from './utils.js';
+import { cache, strongWordsCache } from './cache.js';
 
-//async function fetchJSON(url, signal = null) {
-//    const res = await fetch(url, { signal });
-//    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-//    return res.json();
-//}
-
-const cache = {
-    books: {},
-    chapters: {},
-    verses: {},
-    search: {}
-};
 
 document.addEventListener('DOMContentLoaded', () => {
 
