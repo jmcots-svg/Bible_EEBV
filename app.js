@@ -1165,6 +1165,12 @@ async function renderComparison() {
         }
     }
 
+        // Obtener el idioma de definiciones según la versión Strong seleccionada
+    function getStrongDefLang() {
+        const selectedOption = strongVersion.options[strongVersion.selectedIndex];
+        return selectedOption?.dataset?.lang || 'es'; // por defecto 'es'
+    }
+
     async function loadStrongBooks(version) {
         if (!version) return;
         let books = cache.books[version];
@@ -1309,6 +1315,7 @@ async function renderComparison() {
     // =====================
     // PANEL INFERIOR STRONG
     // =====================
+
 
 async function onStrongCodeClick(strongCode, clickedEl) {
     if (currentStrongCode === strongCode && strongBottomPanel.classList.contains('open')) {
