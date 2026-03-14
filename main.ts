@@ -494,20 +494,21 @@ if (path === "/api/strong-refs") {
     headers: makeHeaders("public, max-age=3600"),
   });
 }
+// =====================================================
+// /api/strong-dict/:code (CON FALLBACK A INGLÉS)
+// =====================================================
 
-
-
-    // =====================================================
-    // /api/strong-dict/:code
-    // =====================================================
-
-    if (path.startsWith("/api/strong-dict/")) {
+if (path.startsWith("/api/strong-dict/")) {
   const code = decodeURIComponent(
     path.replace("/api/strong-dict/", "")
   ).toUpperCase().trim();
 
-  // ✅ Leer idioma del query param, por defecto 'es'
-  const defLang = url.searchParams.get("lang") || "es";
+  // ✅ Leer idioma del query param, normalizar y validar
+  let defLang = (url.searchParams.get("lang") || "es").toLowerCase();
+  
+  // Aceptamos solo idiomas válidos
+  const validLangs = ["es", "en"];
+  if (!validLangs.includes(defLang)) defLang = "en";
 
   if (!code) {
     return new Response(JSON.stringify({ error: "Código Strong requerido" }), {
@@ -525,7 +526,9 @@ if (path === "/api/strong-refs") {
     return new Response(JSON.stringify(mem), { headers });
   }
 
-  // ✅ Filtrar por strong Y definitionLang
+  // =====================================================
+  // 1️⃣ INTENTAR BUSCAR EN IDIOMA SOLICITADO
+  // =====================================================
   const { rows: entryRows } = await pool.query(
     `SELECT
        strong, language, "definitionLang", lemma, translit, pronunciation,
@@ -536,16 +539,39 @@ if (path === "/api/strong-refs") {
     [code, defLang]
   );
 
-  if (entryRows.length === 0) {
+  let entry = entryRows[0];
+  let usedLang = defLang;
+
+  // =====================================================
+  // 2️⃣ FALLBACK AUTOMÁTICO A INGLÉS
+  // =====================================================
+  if (!entry && defLang !== "en") {
+    console.log(`[Strong] ${code}: idioma "${defLang}" no encontrado, usando fallback a inglés`);
+    
+    const { rows: enRows } = await pool.query(
+      `SELECT
+         strong, language, "definitionLang", lemma, translit, pronunciation,
+         morphology, "speechLang", definition, exegesis,
+         explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
+       FROM "StrongEntry"
+       WHERE strong = \$1 AND "definitionLang" = 'en'`,
+      [code]
+    );
+    
+    entry = enRows[0];
+    usedLang = "en";
+  }
+
+  if (!entry) {
     return new Response(JSON.stringify({ error: "not found" }), {
       status: 404,
       headers: makeHeaders("no-store"),
     });
   }
 
-  const entry = entryRows[0];
-
-  // ✅ JOIN de relaciones también filtra por definitionLang
+  // =====================================================
+  // 3️⃣ CARGAR RELACIONES CON EL IDIOMA FINAL
+  // =====================================================
   const { rows: relRows } = await pool.query(
     `SELECT
        sr."toStrong",
@@ -560,7 +586,7 @@ if (path === "/api/strong-refs") {
      WHERE sr."fromStrong" = \$1
        AND sr."fromDefLang" = \$2
      ORDER BY sr."relationType", sr."toStrong"`,
-    [code, defLang]
+    [code, usedLang]
   );
 
   const relations = relRows.map((r) => ({
@@ -582,19 +608,10 @@ if (path === "/api/strong-refs") {
   });
 }
 
-    // =====================================================
-    // 404
-    // =====================================================
-    return new Response(JSON.stringify({ error: "404" }), {
-      status: 404,
-      headers: makeHeaders("no-store"),
-    });
-
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-      status: 500,
-      headers: makeHeaders("no-store"),
-    });
-  }
+// =====================================================
+// 404
+// =====================================================
+return new Response(JSON.stringify({ error: "404" }), {
+  status: 404,
+  headers: makeHeaders("no-store"),
 });
