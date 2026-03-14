@@ -28,6 +28,11 @@ jobs:
         run: |
           ls -t backups/backup-*.dump | tail -n +5 | xargs -r rm
 
+      - name: Install git
+        run: |
+          apt-get update
+          apt-get install -y git
+
       - name: Commit backup
         run: |
           git config --global user.name "github-actions"
