@@ -2,7 +2,7 @@ name: Supabase Weekly Backup
 
 on:
   schedule:
-    - cron: "0 3 * * 0"   # domingo 03:00
+    - cron: "0 3 * * 0"
   workflow_dispatch:
 
 jobs:
@@ -17,15 +17,9 @@ jobs:
 
       - name: Dump database
         env:
-          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
         run: |
-          pg_dump \
-            -h ${{ secrets.SUPABASE_DB_HOST }} \
-            -p ${{ secrets.SUPABASE_DB_PORT }} \
-            -U ${{ secrets.SUPABASE_DB_USER }} \
-            -d ${{ secrets.SUPABASE_DB_NAME }} \
-            -F c \
-            -f backup.dump
+          pg_dump "$DATABASE_URL" -F c -f backup.dump
 
       - name: Save backup
         run: |
