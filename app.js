@@ -1357,12 +1357,13 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 }
 
 async function loadStrongRefs(strongCode, page) {
+    const lang = getStrongDefLang(); 
     const panel = document.getElementById('strongTabRefs') || strongBottomContent;
 
     try {
         const limit = 50;
         const data = await fetchJSON(
-            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}`
+            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}&lang=${lang}`
         );
 
         strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
@@ -1439,9 +1440,9 @@ async function loadStrongRefs(strongCode, page) {
     async function loadStrongDict(strongCode) {
     const panel = document.getElementById('strongTabDict');
     if (!panel) return;
-
+    const lang = getStrongDefLang(); 
     try {
-        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=es`);
+        const data = await fetchJSON(`${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=${lang}`);
 
         if (!data || data.error) {
             panel.innerHTML = `<p class="strong-dict-empty">Sin información del diccionario para <strong>${strongCode}</strong>.</p>`;
