@@ -1,4 +1,4 @@
-name: 📖 Seed Commentary
+name: 📖 Seed Commentary OSIS
 
 on:
   workflow_dispatch:
