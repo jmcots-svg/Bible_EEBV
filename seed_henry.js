@@ -211,10 +211,9 @@ async function main() {
   if (!source) {
     source = await prisma.commentarySource.create({
       data: {
-        name: 'MHC',
+        name: SOURCE_NAME,
         fullName: 'Comentario sobre toda la Biblia - Matthew Henry',
         author: 'Matthew Henry',
-        language: 'es',
         volumes: 6,
         description: 'Comentario completo sobre toda la Biblia',
         publishedYear: '1706-1721',
