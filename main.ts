@@ -632,8 +632,6 @@ if (path === "/api/commentary") {
   const sourceId = url.searchParams.get("sourceId");
   const language = url.searchParams.get("language") || "en";
   
-  console.log("📖 Commentary request:", { bookOrder, chapter, verse, sourceId, language });
-  
   if (!bookOrder || !chapter) {
     return new Response(JSON.stringify({ error: "Parámetros requeridos: bookOrder, chapter" }), {
       status: 400,
@@ -641,54 +639,58 @@ if (path === "/api/commentary") {
     });
   }
   
-  let query = `
-    SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
-           ce."verseStart", ce."verseEnd", ce."sectionType",
-           cs.name as source_name, cs."fullName" as source_full_name, cs.author
-    FROM "CommentaryEntry" ce
-    JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
-    WHERE ce."bookOrder" = \$1 
-      AND ce.chapter = \$2
-      AND ce.language = \$3
-  `;
-  
   const params: any[] = [bookOrder, chapter, language];
-  let paramIndex = 4;
+  let query = "";
   
-  if (sourceId) {
-    query += ` AND cs.id = 
-$$
-{paramIndex}`;
+  if (sourceId && verse) {
+    // Caso 1: Con sourceId y verse
+    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
+            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+            "FROM \"CommentaryEntry\" ce " +
+            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
+            "AND cs.id = \$4 " +
+            "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \$5 OR (ce.\"verseStart\" <= \$5 AND ce.\"verseEnd\" >= \$5)) " +
+            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+    params.push(Number(sourceId), Number(verse));
+    
+  } else if (sourceId) {
+    // Caso 2: Solo sourceId
+    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
+            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+            "FROM \"CommentaryEntry\" ce " +
+            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
+            "AND cs.id = \$4 " +
+            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
     params.push(Number(sourceId));
-    paramIndex++;
+    
+  } else if (verse) {
+    // Caso 3: Solo verse
+    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
+            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+            "FROM \"CommentaryEntry\" ce " +
+            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
+            "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \$4 OR (ce.\"verseStart\" <= \$4 AND ce.\"verseEnd\" >= \$4)) " +
+            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+    params.push(Number(verse));
+    
+  } else {
+    // Caso 4: Sin sourceId ni verse
+    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
+            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+            "FROM \"CommentaryEntry\" ce " +
+            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
+            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
   }
-  
-  if (verse) {
-    const verseNum = Number(verse);
-    query += `
-      AND (
-        ce."verseStart" IS NULL 
-        OR ce."verseStart" =
-$$
-{paramIndex}
-        OR (ce."verseStart" <= 
-$$
-{paramIndex} AND ce."verseEnd" >=
-$$
-{paramIndex})
-      )
-    `;
-    params.push(verseNum);
-  }
-  
-  query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
-  
-  console.log("📖 Query:", query);
-  console.log("📖 Params:", params);
   
   const { rows } = await pool.query(query, params);
-  
-  console.log("📖 Results:", rows.length);
   
   return new Response(JSON.stringify({
     bookOrder,
