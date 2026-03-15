@@ -132,7 +132,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const strongBottomCount   = document.getElementById('strongBottomCount');
     const strongBottomClose   = document.getElementById('strongBottomClose');
     const strongBottomContent = document.getElementById('strongBottomContent');
-    const languageSelect = document.getElementById('languageSelect');
 
     // Cache para Strong
     //let currentStrongCode = null;
