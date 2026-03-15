@@ -207,6 +207,8 @@ function applyTranslations(lang) {
     });
     const { updateComparacionLabels } = await import('./comparacion.js');
     updateComparacionLabels(lang);
+    const { updateConcordanciaLabels } = await import('./concordancia.js');
+    updateConcordanciaLabels(lang);
 }
 
 
