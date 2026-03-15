@@ -142,38 +142,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentMode = 'lectura';
 
-    // =====================
-    // 2. MODO NOCHE
-    // =====================
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-        if (themeCheckbox) themeCheckbox.checked = true;
-    }
-    if (themeCheckbox) {
-        themeCheckbox.addEventListener('change', () => {
-            const isDark = themeCheckbox.checked;
-            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        });
-    }
-
-    //IDIOMA
-    const savedLanguage = localStorage.getItem('appLanguage') || 'es';
-    if (languageSelect) {
-        languageSelect.value = savedLanguage;
-        languageSelect.addEventListener('change', (e) => {
-            const newLanguage = e.target.value;
-            localStorage.setItem('appLanguage', newLanguage);
-            console.log('Idioma cambiado a:', newLanguage);
-            // Aquí irá la lógica de traducción cuando la implementes
-        });
-    }
-
 // =====================
-// 2b. IDIOMA
+// 2. MODO NOCHE E IDIOMA
 // =====================
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    if (themeCheckbox) themeCheckbox.checked = true;
+}
+if (themeCheckbox) {
+    themeCheckbox.addEventListener('change', () => {
+        const isDark = themeCheckbox.checked;
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+}
 
+// IDIOMA
 const savedLanguage = localStorage.getItem('appLanguage') || 'es';
 
 if (languageSelect) {
@@ -221,6 +206,8 @@ function applyTranslations(lang) {
         if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang);
     });
 }
+
+
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
