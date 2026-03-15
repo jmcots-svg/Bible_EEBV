@@ -52,15 +52,4 @@ jobs:
       - name: Run Commentary Seed
         run: node seed_henry.js
       
-      - name: Verify import
-        run: |
-          echo "📊 Verificando importación..."
-          npx prisma db execute --stdin <<EOF
-          SELECT 
-            cs.name as source,
-            ce.language,
-            COUNT(*) as total_entries
-          FROM "CommentaryEntry" ce
-          JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
-          GROUP BY cs.name, ce.language;
-          EOF
+   
