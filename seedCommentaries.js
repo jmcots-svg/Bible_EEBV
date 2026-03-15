@@ -1,7 +1,7 @@
-import { PrismaClient } from "@prisma/client";
-import * as fs from "fs";
-import * as path from "path";
-import { XMLParser } from "fast-xml-parser";
+const { PrismaClient } = require("@prisma/client");
+const fs = require("fs");
+const path = require("path");
+const { XMLParser } = require("fast-xml-parser");
 
 const prisma = new PrismaClient();
 
@@ -9,21 +9,9 @@ const prisma = new PrismaClient();
 // CLI ARGS
 // ============================================
 
-interface CliArgs {
-  file: string;
-  sourceName: string;
-  sourceFullName: string;
-  author: string;
-  language: string;
-  description: string;
-  publishedYear: string;
-  volumes: number;
-  dryRun: boolean;
-}
-
-function parseCliArgs(): CliArgs {
+function parseCliArgs() {
   const args = process.argv.slice(2);
-  const parsed: Record<string, string> = {};
+  const parsed = {};
   let dryRun = false;
 
   for (const arg of args) {
@@ -59,33 +47,10 @@ function parseCliArgs(): CliArgs {
 }
 
 // ============================================
-// TIPOS
-// ============================================
-
-interface ParsedRef {
-  bookName: string;
-  osisAbbr: string;
-  bookOrder: number;
-  chapter: number;
-  verseStart: number | null;
-  verseEnd: number | null;
-}
-
-interface ParsedEntry {
-  ref: ParsedRef;
-  title: string | null;
-  content: string;
-  contentHtml: string;
-  divId: string;
-  sectionType: string;
-  volume: number;
-}
-
-// ============================================
 // MAPEO LIBROS → OSIS
 // ============================================
 
-const BOOK_NAME_TO_OSIS: Record<string, { osisAbbr: string; bookOrder: number }> = {
+const BOOK_NAME_TO_OSIS = {
   "genesis": { osisAbbr: "Gen", bookOrder: 1 },
   "exodus": { osisAbbr: "Exod", bookOrder: 2 },
   "leviticus": { osisAbbr: "Lev", bookOrder: 3 },
@@ -160,7 +125,7 @@ const BOOK_NAME_TO_OSIS: Record<string, { osisAbbr: string; bookOrder: number }>
 // PARSING DE REFERENCIA
 // ============================================
 
-function parseRef(ref: string): ParsedRef | null {
+function parseRef(ref) {
   if (ref.startsWith("[")) return null;
 
   const match = ref.match(
@@ -191,7 +156,7 @@ function parseRef(ref: string): ParsedRef | null {
 // LIMPIEZA OSIS → HTML
 // ============================================
 
-function decodeHtmlEntities(text: string): string {
+function decodeHtmlEntities(text) {
   return text
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
@@ -200,8 +165,8 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&apos;/g, "'");
 }
 
-function resolveHiTags(html: string): string {
-  const tagMap: Record<string, { open: string; close: string }> = {
+function resolveHiTags(html) {
+  const tagMap = {
     "⟨STRONG⟩": { open: "<strong>", close: "</strong>" },
     "⟨EM⟩": { open: "<em>", close: "</em>" },
     "⟨SUB⟩": { open: "<sub>", close: "</sub>" },
@@ -210,13 +175,14 @@ function resolveHiTags(html: string): string {
     "⟨SPAN⟩": { open: "<span>", close: "</span>" },
   };
 
-  const stack: string[] = [];
+  const markers = Object.keys(tagMap);
+  const stack = [];
   let result = "";
   let i = 0;
 
   while (i < html.length) {
     let foundMarker = false;
-    for (const marker of Object.keys(tagMap)) {
+    for (const marker of markers) {
       if (html.substring(i, i + marker.length) === marker) {
         stack.push(marker);
         result += tagMap[marker].open;
@@ -245,7 +211,7 @@ function resolveHiTags(html: string): string {
   return result;
 }
 
-function osisToHtml(raw: string): string {
+function osisToHtml(raw) {
   let html = decodeHtmlEntities(raw);
 
   html = html.replace(/<milestone[^>]*\/>/g, "");
@@ -281,9 +247,8 @@ function osisToHtml(raw: string): string {
   );
   html = html.replace(/<\/reference>/g, "</a>");
 
-  html = html.replace(
-    /<note(?:\s+n="([^"]*)")?>/g,
-    (_, n) => `<span class="footnote"${n ? ` data-note="${n}"` : ""}>`
+  html = html.replace(/<note(?:\s+n="([^"]*)")?>/g, (_, n) =>
+    `<span class="footnote"${n ? ` data-note="${n}"` : ""}>`
   );
   html = html.replace(/<\/note>/g, "</span>");
 
@@ -316,7 +281,7 @@ function osisToHtml(raw: string): string {
   return html;
 }
 
-function htmlToPlainText(html: string): string {
+function htmlToPlainText(html) {
   let text = html;
   text = text.replace(/<br\s*\/?>/g, "\n");
   text = text.replace(/<\/p>/g, "\n\n");
@@ -334,14 +299,14 @@ function htmlToPlainText(html: string): string {
 // FILTRADO Y DETECCIÓN
 // ============================================
 
-function shouldSkipEntry(ref: string, content: string): boolean {
+function shouldSkipEntry(ref, content) {
   if (ref.startsWith("[")) return true;
   const decoded = decodeHtmlEntities(content);
   if (decoded.includes("No Commentary on these verses is yet included")) return true;
   return false;
 }
 
-function detectSectionType(parsedRef: ParsedRef, content: string): string {
+function detectSectionType(parsedRef, content) {
   if (parsedRef.chapter === 0) return "preface";
   const decoded = decodeHtmlEntities(content);
   if (
@@ -354,7 +319,7 @@ function detectSectionType(parsedRef: ParsedRef, content: string): string {
   return "commentary";
 }
 
-function extractTitle(html: string): string | null {
+function extractTitle(html) {
   const match = html.match(/<h3>([^<]+)<\/h3>/);
   return match ? match[1].trim() : null;
 }
@@ -363,12 +328,7 @@ function extractTitle(html: string): string | null {
 // PARSEO XML
 // ============================================
 
-interface RawEntry {
-  "@_ref": string;
-  "#text"?: string;
-}
-
-function parseCommentaryXml(filePath: string): RawEntry[] {
+function parseCommentaryXml(filePath) {
   const xml = fs.readFileSync(filePath, "utf-8");
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -388,15 +348,11 @@ function parseCommentaryXml(filePath: string): RawEntry[] {
 // VERIFICACIÓN PREVIA (DRY RUN)
 // ============================================
 
-async function verifyBeforeSeed(
-  args: CliArgs,
-  entries: ParsedEntry[]
-): Promise<boolean> {
+async function verifyBeforeSeed(args, entries) {
   console.log("\n═══════════════════════════════════════════");
   console.log("🔍 VERIFICACIÓN PREVIA");
   console.log("═══════════════════════════════════════════");
 
-  // 1. Verificar source existente
   const existingSource = await prisma.commentarySource.findUnique({
     where: { name: args.sourceName },
   });
@@ -411,7 +367,7 @@ async function verifyBeforeSeed(
       console.log(`\n❌ CONFLICTO DE AUTOR:`);
       console.log(`   Existente: "${existingSource.author}"`);
       console.log(`   Nuevo:     "${args.author}"`);
-      console.log(`   ⚠️  Se actualizará el autor si procedes.`);
+      console.log(`   ⚠️  Se actualizará si procedes.`);
     }
 
     if (existingSource.fullName !== args.sourceFullName) {
@@ -420,12 +376,8 @@ async function verifyBeforeSeed(
       console.log(`   Nuevo:     "${args.sourceFullName}"`);
     }
 
-    // Contar entries existentes
     const existingCount = await prisma.commentaryEntry.count({
-      where: {
-        sourceId: existingSource.id,
-        language: args.language,
-      },
+      where: { sourceId: existingSource.id, language: args.language },
     });
 
     if (existingCount > 0) {
@@ -438,15 +390,11 @@ async function verifyBeforeSeed(
     console.log(`\n✅ CommentarySource "${args.sourceName}" es nuevo. Se creará.`);
   }
 
-  // 2. Estadísticas de entries parseados
   const books = new Set(entries.map((e) => e.ref.osisAbbr));
-  const types = entries.reduce(
-    (acc, e) => {
-      acc[e.sectionType] = (acc[e.sectionType] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+  const types = entries.reduce((acc, e) => {
+    acc[e.sectionType] = (acc[e.sectionType] || 0) + 1;
+    return acc;
+  }, {});
 
   console.log("\n📊 ESTADÍSTICAS DEL ARCHIVO:");
   console.log(`   Total entries válidos: ${entries.length}`);
@@ -457,7 +405,6 @@ async function verifyBeforeSeed(
     console.log(`     - ${type}: ${count}`);
   }
 
-  // 3. Muestra de entries
   console.log("\n📝 MUESTRA DE ENTRIES (primeros 5):");
   const sample = entries.slice(0, 5);
   for (const entry of sample) {
@@ -469,7 +416,6 @@ async function verifyBeforeSeed(
     console.log(`     "${preview}..."`);
   }
 
-  // 4. Verificar que bookAbbr coinciden con BookAbbreviation en DB
   console.log("\n🔗 VERIFICACIÓN DE LIBROS EN DB:");
   let allBooksValid = true;
   for (const bookAbbr of books) {
@@ -485,15 +431,10 @@ async function verifyBeforeSeed(
   }
 
   if (!allBooksValid) {
-    console.log(
-      "\n⚠️  Algunos libros no tienen entrada en BookAbbreviation."
-    );
-    console.log(
-      "   Los comentarios se insertarán igual, pero la vinculación podría fallar."
-    );
+    console.log("\n⚠️  Algunos libros no tienen entrada en BookAbbreviation.");
+    console.log("   Los comentarios se insertarán igual, pero la vinculación podría fallar.");
   }
 
-  // 5. Resumen
   console.log("\n═══════════════════════════════════════════");
   console.log("📋 RESUMEN DE LA OPERACIÓN:");
   console.log(`   Fuente:    ${args.sourceName} — "${args.sourceFullName}"`);
@@ -506,9 +447,7 @@ async function verifyBeforeSeed(
 
   if (args.dryRun) {
     console.log("\n🏁 DRY RUN completado. No se insertó nada en la DB.");
-    console.log(
-      '   Para insertar, ejecuta de nuevo con dryRun = false.\n'
-    );
+    console.log('   Para insertar, ejecuta de nuevo con dryRun = false.\n');
     return false;
   }
 
@@ -519,12 +458,11 @@ async function verifyBeforeSeed(
 // SEED PRINCIPAL
 // ============================================
 
-async function seedCommentary(args: CliArgs) {
+async function seedCommentary(args) {
   console.log("═══════════════════════════════════════════");
   console.log("📖 SEED: Comentario Bíblico");
   console.log("═══════════════════════════════════════════");
 
-  // 1. Verificar archivo
   const filePath = path.resolve(args.file);
   if (!fs.existsSync(filePath)) {
     console.error(`❌ Archivo no encontrado: ${filePath}`);
@@ -532,17 +470,15 @@ async function seedCommentary(args: CliArgs) {
   }
   console.log(`📄 Archivo: ${filePath}`);
 
-  // 2. Parsear XML
   console.log("⏳ Parseando XML...");
   const rawEntries = parseCommentaryXml(filePath);
   console.log(`   Total entries en XML: ${rawEntries.length}`);
 
-  // 3. Procesar entries
   console.log("⏳ Procesando entries...");
-  const entries: ParsedEntry[] = [];
+  const entries = [];
   let skipped = 0;
   let parseErrors = 0;
-  const warnings: string[] = [];
+  const warnings = [];
 
   for (const raw of rawEntries) {
     const ref = raw["@_ref"];
@@ -597,7 +533,7 @@ async function seedCommentary(args: CliArgs) {
   console.log(`   ⚠️  Errores:  ${parseErrors}`);
 
   if (warnings.length > 0) {
-    console.log(`\n   ⚠️  Warnings de parseo (primeros 10):`);
+    console.log(`\n   ⚠️  Warnings (primeros 10):`);
     warnings.slice(0, 10).forEach((w) => console.log(`      - ${w}`));
   }
 
@@ -606,13 +542,11 @@ async function seedCommentary(args: CliArgs) {
     process.exit(1);
   }
 
-  // 4. Verificación previa
   const shouldProceed = await verifyBeforeSeed(args, entries);
   if (!shouldProceed) {
     process.exit(0);
   }
 
-  // 5. Crear/actualizar source
   console.log("\n⏳ Creando/actualizando CommentarySource...");
   const source = await prisma.commentarySource.upsert({
     where: { name: args.sourceName },
@@ -635,16 +569,11 @@ async function seedCommentary(args: CliArgs) {
   });
   console.log(`   ✅ Source ID: ${source.id}`);
 
-  // 6. Eliminar entries anteriores
   const deleted = await prisma.commentaryEntry.deleteMany({
-    where: {
-      sourceId: source.id,
-      language: args.language,
-    },
+    where: { sourceId: source.id, language: args.language },
   });
-  console.log(`   🗑️  Entries anteriores eliminados: ${deleted.count}`);
+  console.log(`   🗑️  Anteriores eliminados: ${deleted.count}`);
 
-  // 7. Insertar en batches
   console.log("\n⏳ Insertando entries...");
   const BATCH_SIZE = 100;
   let inserted = 0;
@@ -677,7 +606,6 @@ async function seedCommentary(args: CliArgs) {
     }
   }
 
-  // 8. Verificación post-insert
   const finalCount = await prisma.commentaryEntry.count({
     where: { sourceId: source.id, language: args.language },
   });
