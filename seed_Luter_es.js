@@ -1,17 +1,14 @@
-// seed_calvin.js
+// seed_luther_es.js
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
 const prisma = new PrismaClient();
 
-const LANGUAGE = process.env.COMMENTARY_LANG || 'en';
-const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'CALVIN';
+const LANGUAGE = process.env.COMMENTARY_LANG || 'es';
+// ⭐ Apuntamos a la fuente existente, no creamos una nueva
+const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'LUTHER';
 
-// ============================================
-// BOOK_MAP — idéntico al de Luther
-// (copia y pega el mismo de seed_luther.js)
-// ============================================
 const BOOK_MAP = {
   'Genesis': { abbr: 'Gen', order: 1 },
   'Exodus': { abbr: 'Exod', order: 2 },
@@ -101,9 +98,6 @@ const BOOK_MAP = {
   'Revelation of John': { abbr: 'Rev', order: 66 },
 };
 
-// ============================================
-// parseRef — igual que Luther
-// ============================================
 function parseRef(ref) {
   if (!ref) return null;
   if (ref.includes('Heading') || ref.includes('0:0')) return null;
@@ -124,9 +118,6 @@ function parseRef(ref) {
   };
 }
 
-// ============================================
-// decodeHtmlEntities — igual que Luther
-// ============================================
 function decodeHtmlEntities(text) {
   if (!text) return '';
   return text
@@ -138,9 +129,6 @@ function decodeHtmlEntities(text) {
     .replace(/&apos;/g, "'");
 }
 
-// ============================================
-// extractPlainText — igual que Luther
-// ============================================
 function extractPlainText(html) {
   if (!html) return '';
   let decoded = decodeHtmlEntities(html);
@@ -154,11 +142,7 @@ function extractPlainText(html) {
   return text;
 }
 
-// ============================================
-// ⭐ ÚNICA DIFERENCIA REAL: nombre de función
-//    y referencia al archivo Calvin.xml
-// ============================================
-function parseCalvinXML(xmlContent) {
+function parseLutherESXML(xmlContent) {
   const entries = [];
   const unmappedRefs = new Set();
 
@@ -197,9 +181,6 @@ function parseCalvinXML(xmlContent) {
   return entries;
 }
 
-// ============================================
-// importEntries — igual que Luther
-// ============================================
 async function importEntries(entries, sourceId) {
   const BATCH = 100;
   let total = 0;
@@ -218,8 +199,9 @@ async function importEntries(entries, sourceId) {
       verseEnd: entry.verseEnd,
       content: entry.content,
       contentHtml: entry.contentHtml,
-      // ⭐ Prefijo "calvin-" en lugar de "luther-"
-      divId: `calvin-${entry.bookAbbr}-${entry.chapter}-${entry.verseStart}-${i + idx}`,
+      // ⭐ Mismo patrón que EN pero con prefijo "luther-es-"
+      // para no colisionar con: luther-Matt-6-28-135
+      divId: `luther-es-${entry.bookAbbr}-${entry.chapter}-${entry.verseStart}-${i + idx}`,
       sectionType: 'commentary',
       volume: 1,
     }));
@@ -242,53 +224,39 @@ async function importEntries(entries, sourceId) {
   return { total, errors };
 }
 
-// ============================================
-// MAIN — solo cambian textos descriptivos
-// ============================================
 async function main() {
   console.log('══════════════════════════════════════');
-  console.log("🚀 Importando John Calvin's Commentary on Genesis");
+  console.log("🚀 Importando Comentario de Martín Lutero (Español)");
   console.log('══════════════════════════════════════');
   console.log(`   Idioma: ${LANGUAGE}`);
   console.log(`   Fuente: ${SOURCE_NAME}\n`);
 
-  // 1. Crear o encontrar la fuente
-  let source = await prisma.commentarySource.findUnique({
+  // 1. ⭐ Buscar fuente existente — NO crear una nueva
+  const source = await prisma.commentarySource.findUnique({
     where: { name: SOURCE_NAME },
   });
 
   if (!source) {
-    source = await prisma.commentarySource.create({
-      data: {
-        name: SOURCE_NAME,                          // 'CALVIN'
-        fullName: "Calvin's Commentaries",
-        author: 'John Calvin',
-        volumes: 1,
-        description:
-          "John Calvin's Commentaries on the Bible, translated from Latin by Rev. John King",
-        publishedYear: '1554-1563',
-        isPublicDomain: true,
-      },
-    });
-    console.log('✅ Fuente creada:', source.name);
-  } else {
-    console.log('ℹ️  Fuente existente:', source.name);
+    console.error(`❌ Fuente "${SOURCE_NAME}" no encontrada en la DB.`);
+    console.error('   Asegúrate de que el seed EN de Luther ya fue ejecutado.');
+    process.exit(1);
   }
 
+  console.log(`✅ Fuente encontrada: ${source.name} (id: ${source.id})`);
+
   // 2. Leer y parsear el archivo XML
-  // ⭐ Nombre del archivo: Calvin.xml
-  const filepath = path.join(__dirname, 'data', 'Calvin.xml');
+  const filepath = path.join(__dirname, 'data', 'Luther_ES.xml');
 
   if (!fs.existsSync(filepath)) {
     console.error(`❌ Archivo no encontrado: ${filepath}`);
     process.exit(1);
   }
 
-  console.log('📖 Leyendo Calvin.xml...');
+  console.log('📖 Leyendo Luther_ES.xml...');
   const xmlContent = fs.readFileSync(filepath, 'utf-8');
 
   console.log('🔍 Parseando entradas...');
-  const entries = parseCalvinXML(xmlContent);
+  const entries = parseLutherESXML(xmlContent);
 
   console.log(`\n   ✅ Encontradas ${entries.length} entradas válidas\n`);
 
