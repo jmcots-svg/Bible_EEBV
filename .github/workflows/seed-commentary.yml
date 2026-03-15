@@ -44,10 +44,10 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
       
-    - name: Verify XML files exist
-      run: |
-        echo "📁 Verificando archivos de comentarios..."
-        ls -la data/ || echo "⚠️ Directorio no encontrado"
+      - name: Verify XML files exist
+        run: |
+          echo "📁 Verificando archivos de comentarios..."
+          ls -la data/ || echo "⚠️ Directorio no encontrado"
       
       - name: Run Commentary Seed
         run: node seed_henry.js
