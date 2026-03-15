@@ -3,6 +3,7 @@
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml, highlightText } from './utils.js';
 import { cache, strongWordsCache } from './cache.js';
+import { t } from './translations.js';  // 🆕 AGREGAR
 
 // Variables de estado del módulo
 let currentStrongCode = null;
@@ -16,9 +17,9 @@ export function initStrong(els, cbs) {
     // Eventos
     elements.strongVersion.addEventListener('change', () => {
         loadStrongBooks(elements.strongVersion.value);
-        elements.strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+        elements.strongChapter.innerHTML = `<option value="">-- ${t('selectChapter')} --</option>`;
         elements.strongChapter.disabled = true;
-        elements.strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+        elements.strongVerse.innerHTML = `<option value="">${t('allChapter')}</option>`;
         elements.strongVerse.disabled = true;
     });
     
@@ -32,6 +33,21 @@ export function initStrong(els, cbs) {
     });
     
     elements.strongBottomClose.addEventListener('click', closeStrongPanel);
+}
+
+// 🆕 AGREGAR ESTA FUNCIÓN
+export function updateStrongLabels(lang) {
+    const labels = {
+        'strongVersion': 'version',
+        'strongBook': 'book',
+        'strongChapter': 'chapter',
+        'strongVerse': 'verse'
+    };
+    
+    Object.entries(labels).forEach(([id, key]) => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.textContent = t(key, lang);
+    });
 }
 
 export async function loadStrongVersions() {
@@ -52,7 +68,9 @@ export async function loadStrongVersions() {
         }
     } catch (e) {
         console.error('Error cargando versiones Strong:', e);
-        elements.strongVersion.innerHTML = '<option value="">Error al cargar</option>';
+        const lang = localStorage.getItem('appLanguage') || 'es';
+        const errorMsg = lang === 'ca' ? 'Error al carregar' : lang === 'en' ? 'Error loading' : 'Error al cargar';
+        elements.strongVersion.innerHTML = `<option value="">${errorMsg}</option>`;
     }
 }
 
@@ -69,12 +87,19 @@ function getStrongDefLang() {
 
 async function loadStrongBooks(version) {
     if (!version) return;
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const selectBookText = t('selectBook', lang);
+    const oldTestText = t('oldTestament', lang);
+    const newTestText = t('newTestament', lang);
+    const selectChapText = t('selectChapter', lang);
+    const allChapText = t('allChapter', lang);
+    
     let books = cache.books[version];
     if (!books) {
         books = await fetchJSON(`${API_URL}/api/books?version=${version}`);
         cache.books[version] = books;
     }
-    elements.strongBook.innerHTML = '<option value="">-- Selecciona libro --</option>';
+    elements.strongBook.innerHTML = `<option value="">${selectBookText}</option>`;
     const ot = books.filter(b => b.testament === 'OT');
     const nt = books.filter(b => b.testament === 'NT');
     
@@ -90,46 +115,61 @@ async function loadStrongBooks(version) {
         return group;
     };
     
-    elements.strongBook.appendChild(createGroup('📜 Antiguo Testamento', ot));
-    elements.strongBook.appendChild(createGroup('✝️ Nuevo Testamento', nt));
+    elements.strongBook.appendChild(createGroup(oldTestText, ot));
+    elements.strongBook.appendChild(createGroup(newTestText, nt));
     elements.strongBook.disabled = false;
-    elements.strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    elements.strongChapter.innerHTML = `<option value="">${selectChapText}</option>`;
     elements.strongChapter.disabled = true;
-    elements.strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    elements.strongVerse.innerHTML = `<option value="">${allChapText}</option>`;
     elements.strongVerse.disabled = true;
 }
 
 async function loadStrongChapters() {
     const bookId = elements.strongBook.value;
     if (!bookId) return;
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const selectChapText = t('selectChapter', lang);
+    const allChapText = t('allChapter', lang);
+    const chapterText = lang === 'ca' ? 'Capítol' : lang === 'en' ? 'Chapter' : 'Capítulo';
+    
     let chapters = cache.chapters[bookId];
     if (!chapters) {
         chapters = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
         cache.chapters[bookId] = chapters;
     }
-    elements.strongChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    elements.strongChapter.innerHTML = `<option value="">${selectChapText}</option>`;
     chapters.forEach(ch => {
         const opt = document.createElement('option');
         opt.value = ch.id;
-        opt.textContent = `Capítulo ${ch.number}`;
+        opt.textContent = `${chapterText} ${ch.number}`;
         opt.dataset.number = ch.number;
         elements.strongChapter.appendChild(opt);
     });
     elements.strongChapter.disabled = false;
-    elements.strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    elements.strongVerse.innerHTML = `<option value="">${allChapText}</option>`;
     elements.strongVerse.disabled = true;
 }
 
 async function onStrongChapterChange() {
     const chId = elements.strongChapter.value;
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    
     if (!chId) {
-        elements.content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+        const placeholderText = t('placeholderStrong', lang);
+        elements.content.innerHTML = `<p class="placeholder">${placeholderText}</p>`;
         if (elements.reference) elements.reference.classList.remove('visible');
         return;
     }
-    elements.strongVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    
+    const allChapText = t('allChapter', lang);
+    const verseText = lang === 'ca' ? 'Versicle' : lang === 'en' ? 'Verse' : 'Versículo';
+    const loadingMsg = lang === 'ca' ? '🔤 Carregant paraules amb Strong...' : 
+                       lang === 'en' ? '🔤 Loading words with Strong...' : 
+                       '🔤 Cargando palabras con Strong...';
+    
+    elements.strongVerse.innerHTML = `<option value="">${allChapText}</option>`;
     elements.strongVerse.disabled = true;
-    elements.content.innerHTML = '<p class="loading">🔤 Cargando palabras con Strong...</p>';
+    elements.content.innerHTML = `<p class="loading">${loadingMsg}</p>`;
 
     try {
         let wordsData = strongWordsCache[chId];
@@ -141,14 +181,17 @@ async function onStrongChapterChange() {
         wordsData.forEach(v => {
             const opt = document.createElement('option');
             opt.value = v.verseNumber;
-            opt.textContent = `Versículo ${v.verseNumber}`;
+            opt.textContent = `${verseText} ${v.verseNumber}`;
             elements.strongVerse.appendChild(opt);
         });
         elements.strongVerse.disabled = false;
 
         renderStrongVerses(wordsData);
     } catch (e) {
-        callbacks.showError('Error al cargar palabras Strong');
+        const errorMsg = lang === 'ca' ? 'Error al carregar paraules Strong' : 
+                        lang === 'en' ? 'Error loading Strong words' : 
+                        'Error al cargar palabras Strong';
+        callbacks.showError(errorMsg);
     }
 }
 
@@ -164,6 +207,7 @@ export function renderStrongChapter() {
 }
 
 function renderStrongVerses(versesData) {
+    const lang = localStorage.getItem('appLanguage') || 'es';
     const bName = elements.strongBook.selectedIndex >= 0 
         ? elements.strongBook.options[elements.strongBook.selectedIndex].text : '';
     const chNum = elements.strongChapter.selectedIndex >= 0 
@@ -211,6 +255,16 @@ function renderStrongVerses(versesData) {
 }
 
 async function onStrongCodeClick(strongCode, clickedEl) {
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const dictText = lang === 'ca' ? '📖 Diccionari' : lang === 'en' ? '📖 Dictionary' : '📖 Diccionario';
+    const refsText = lang === 'ca' ? '🔍 References' : lang === 'en' ? '🔍 References' : '🔍 Referencias';
+    const loadingDictMsg = lang === 'ca' ? '📖 Carregant diccionari...' : 
+                           lang === 'en' ? '📖 Loading dictionary...' : 
+                           '📖 Cargando diccionario...';
+    const loadingRefsMsg = lang === 'ca' ? '🔍 Cercant referencias...' : 
+                           lang === 'en' ? '🔍 Searching references...' : 
+                           '🔍 Buscando referencias...';
+    
     if (currentStrongCode === strongCode && elements.strongBottomPanel.classList.contains('open')) {
         closeStrongPanel();
         return;
@@ -225,14 +279,14 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 
     elements.strongBottomContent.innerHTML = `
         <div class="strong-tabs">
-            <button class="strong-tab active" data-tab="dict">📖 Diccionario</button>
-            <button class="strong-tab" data-tab="refs">🔍 Referencias</button>
+            <button class="strong-tab active" data-tab="dict">${dictText}</button>
+            <button class="strong-tab" data-tab="refs">${refsText}</button>
         </div>
         <div class="strong-tab-panel" id="strongTabDict">
-            <div class="strong-bottom-loading">📖 Cargando diccionario...</div>
+            <div class="strong-bottom-loading">${loadingDictMsg}</div>
         </div>
         <div class="strong-tab-panel" id="strongTabRefs" style="display:none">
-            <div class="strong-bottom-loading">🔍 Buscando referencias...</div>
+            <div class="strong-bottom-loading">${loadingRefsMsg}</div>
         </div>
     `;
 
@@ -253,21 +307,27 @@ async function onStrongCodeClick(strongCode, clickedEl) {
 }
 
 async function loadStrongRefs(strongCode, page) {
-    const lang = getStrongDefLang();
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const defLang = getStrongDefLang();
     const panel = document.getElementById('strongTabRefs') || elements.strongBottomContent;
 
     try {
         const limit = 50;
         const data = await fetchJSON(
-            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}&lang=${lang}`
+            `${API_URL}/api/strong-refs?strong=${encodeURIComponent(strongCode)}&page=${page}&limit=${limit}&lang=${defLang}`
         );
 
-        elements.strongBottomCount.textContent = `${data.total.toLocaleString()} referencia${data.total !== 1 ? 's' : ''}`;
+        const refText = lang === 'ca' ? 'referència' : lang === 'en' ? 'reference' : 'referencia';
+        const refsText = lang === 'ca' ? 'referencias' : lang === 'en' ? 'references' : 'referencias';
+        elements.strongBottomCount.textContent = `${data.total.toLocaleString()} ${data.total !== 1 ? refsText : refText}`;
 
         let html = '<div class="strong-ref-list-detailed">';
 
         if (data.total === 0) {
-            html = '<div class="search-no-results"><h3>No se encontraron referencias</h3></div>';
+            const noResultsMsg = lang === 'ca' ? 'No s\'han trobat referencias' : 
+                                lang === 'en' ? 'No references found' : 
+                                'No se encontraron referencias';
+            html = `<div class="search-no-results"><h3>${noResultsMsg}</h3></div>`;
         } else {
             data.results.forEach(ref => {
                 const icon = ref.testament === 'OT' ? '📜' : '✝️';
@@ -298,10 +358,14 @@ async function loadStrongRefs(strongCode, page) {
         html += '</div>';
 
         if (data.totalPages > 1) {
+            const prevText = lang === 'ca' ? '⬅ Ant' : lang === 'en' ? '⬅ Prev' : '⬅ Ant';
+            const nextText = lang === 'ca' ? 'Seg ➡' : lang === 'en' ? 'Next ➡' : 'Sig ➡';
+            const pageText = lang === 'ca' ? 'Pàg' : lang === 'en' ? 'Page' : 'Pág';
+            
             html += `<div class="search-pagination">`;
-            if (data.page > 1) html += `<button class="pagination-btn" data-page="${data.page - 1}">⬅ Ant</button>`;
-            html += `<span class="pagination-info">Pág ${data.page}/${data.totalPages}</span>`;
-            if (data.page < data.totalPages) html += `<button class="pagination-btn" data-page="${data.page + 1}">Sig ➡</button>`;
+            if (data.page > 1) html += `<button class="pagination-btn" data-page="${data.page - 1}">${prevText}</button>`;
+            html += `<span class="pagination-info">${pageText} ${data.page}/${data.totalPages}</span>`;
+            if (data.page < data.totalPages) html += `<button class="pagination-btn" data-page="${data.page + 1}">${nextText}</button>`;
             html += `</div>`;
         }
 
@@ -316,34 +380,49 @@ async function loadStrongRefs(strongCode, page) {
 
         panel.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                panel.innerHTML = '<div class="strong-bottom-loading">🔍 Cargando...</div>';
+                const loadingMsg = lang === 'ca' ? '🔍 Carregant...' : lang === 'en' ? '🔍 Loading...' : '🔍 Cargando...';
+                panel.innerHTML = `<div class="strong-bottom-loading">${loadingMsg}</div>`;
                 loadStrongRefs(strongCode, parseInt(btn.dataset.page));
                 panel.scrollTo({ top: 0, behavior: 'smooth' });
             });
         });
 
     } catch (e) {
-        panel.innerHTML = `<p class="error">❌ Error al cargar referencias</p>`;
+        const errorMsg = lang === 'ca' ? '❌ Error al carregar referencias' : 
+                        lang === 'en' ? '❌ Error loading references' : 
+                        '❌ Error al cargar referencias';
+        panel.innerHTML = `<p class="error">${errorMsg}</p>`;
     }
 }
 
 async function loadStrongDict(strongCode) {
     const panel = document.getElementById('strongTabDict');
     if (!panel) return;
-    const lang = getStrongDefLang();
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const defLang = getStrongDefLang();
     
     try {
         const data = await fetchJSON(
-            `${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=${lang}`
+            `${API_URL}/api/strong-dict/${encodeURIComponent(strongCode)}?lang=${defLang}`
         );
 
         if (!data || data.error) {
-            panel.innerHTML = `<p class="strong-dict-empty">Sin información del diccionario para <strong>${strongCode}</strong>.</p>`;
+            const emptyMsg = lang === 'ca' ? 'Sense informació del diccionari per' : 
+                            lang === 'en' ? 'No dictionary information for' : 
+                            'Sin información del diccionario para';
+            panel.innerHTML = `<p class="strong-dict-empty">${emptyMsg} <strong>${strongCode}</strong>.</p>`;
             return;
         }
 
         const isHebrew = data.language === 'H';
-        const langLabel = isHebrew ? '🔤 Hebreo' : '🔤 Griego';
+        const langLabel = isHebrew ? '🔤 Hebreu' : '🔤 Grec';
+        const kjvLabel = 'KJV';
+        const defLabel = lang === 'ca' ? 'Definició' : lang === 'en' ? 'Definition' : 'Definición';
+        const strongsDefLabel = 'Strong\'s Definition';
+        const derivLabel = lang === 'ca' ? 'Derivació' : lang === 'en' ? 'Derivation' : 'Derivación';
+        const exegLabel = lang === 'ca' ? 'Exègesis' : lang === 'en' ? 'Exegesis' : 'Exégesis';
+        const explainLabel = lang === 'ca' ? 'Explicació' : lang === 'en' ? 'Explanation' : 'Explicación';
+        const alsoLabel = lang === 'ca' ? 'Veure també' : lang === 'en' ? 'See also' : 'Ver también';
 
         let html = `<div class="strong-dict-entry">`;
 
@@ -374,7 +453,7 @@ async function loadStrongDict(strongCode) {
         // KJV
         if (data.kjvDefinition) {
             html += `<div class="strong-dict-section kjv">
-                        <span class="strong-dict-label">KJV</span>
+                        <span class="strong-dict-label">${kjvLabel}</span>
                         <p>${escapeHtml(data.kjvDefinition)}</p>
                      </div>`;
         }
@@ -382,7 +461,7 @@ async function loadStrongDict(strongCode) {
         // Definición
         if (data.definition) {
             html += `<div class="strong-dict-section">
-                        <span class="strong-dict-label">Definición</span>
+                        <span class="strong-dict-label">${defLabel}</span>
                         <p>${escapeHtml(data.definition)}</p>
                      </div>`;
         }
@@ -390,7 +469,7 @@ async function loadStrongDict(strongCode) {
         // Strong's Def
         if (data.strongsDef) {
             html += `<div class="strong-dict-section">
-                        <span class="strong-dict-label">Strong's Definition</span>
+                        <span class="strong-dict-label">${strongsDefLabel}</span>
                         <p>${escapeHtml(data.strongsDef)}</p>
                      </div>`;
         }
@@ -398,7 +477,7 @@ async function loadStrongDict(strongCode) {
         // Derivación
         if (data.strongsDerivation) {
             html += `<div class="strong-dict-section">
-                        <span class="strong-dict-label">Derivación</span>
+                        <span class="strong-dict-label">${derivLabel}</span>
                         <p>${escapeHtml(data.strongsDerivation)}</p>
                      </div>`;
         }
@@ -406,7 +485,7 @@ async function loadStrongDict(strongCode) {
         // Exégesis
         if (data.exegesis) {
             html += `<div class="strong-dict-section exegesis">
-                        <span class="strong-dict-label">Exégesis</span>
+                        <span class="strong-dict-label">${exegLabel}</span>
                         <p>${escapeHtml(data.exegesis)}</p>
                      </div>`;
         }
@@ -414,7 +493,7 @@ async function loadStrongDict(strongCode) {
         // Explicación
         if (data.explanation) {
             html += `<div class="strong-dict-section">
-                        <span class="strong-dict-label">Explicación</span>
+                        <span class="strong-dict-label">${explainLabel}</span>
                         <p>${escapeHtml(data.explanation)}</p>
                      </div>`;
         }
@@ -422,15 +501,16 @@ async function loadStrongDict(strongCode) {
         // Relaciones
         if (data.relations && data.relations.length > 0) {
             html += `<div class="strong-dict-section">
-                        <span class="strong-dict-label">Ver también</span>
+                        <span class="strong-dict-label">${alsoLabel}</span>
                         <div class="strong-dict-relations">`;
             data.relations.forEach(rel => {
-                const label = {
-                    see_also: 'ver también',
-                    derives_from: 'deriva de',
-                    greek_equiv: 'equiv. griego',
-                    related: 'relacionado'
-                }[rel.relationType] ?? rel.relationType;
+                const relLabels = {
+                    see_also: lang === 'ca' ? 'veure també' : lang === 'en' ? 'see also' : 'ver también',
+                    derives_from: lang === 'ca' ? 'deriva de' : lang === 'en' ? 'derives from' : 'deriva de',
+                    greek_equiv: lang === 'ca' ? 'equiv. grec' : lang === 'en' ? 'greek equiv.' : 'equiv. griego',
+                    related: lang === 'ca' ? 'relacionat' : lang === 'en' ? 'related' : 'relacionado'
+                };
+                const label = relLabels[rel.relationType] ?? rel.relationType;
 
                 html += `<button class="strong-dict-rel-btn" data-strong="${escapeHtml(rel.toStrong)}"
                                   title="${escapeHtml(rel.to?.kjvDefinition || '')}">
@@ -449,6 +529,9 @@ async function loadStrongDict(strongCode) {
         panel.querySelectorAll('.strong-dict-rel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const code = btn.dataset.strong;
+                const loadingMsg = lang === 'ca' ? '📖 Carregant diccionari...' : 
+                                  lang === 'en' ? '📖 Loading dictionary...' : 
+                                  '📖 Cargando diccionario...';
                 elements.strongBottomCode.textContent = code;
                 currentStrongCode = code;
                 elements.strongBottomContent.querySelectorAll('.strong-tab').forEach(t => {
@@ -456,8 +539,7 @@ async function loadStrongDict(strongCode) {
                 });
                 document.getElementById('strongTabDict').style.display = '';
                 document.getElementById('strongTabRefs').style.display = 'none';
-                document.getElementById('strongTabDict').innerHTML =
-                    '<div class="strong-bottom-loading">📖 Cargando diccionario...</div>';
+                document.getElementById('strongTabDict').innerHTML = `<div class="strong-bottom-loading">${loadingMsg}</div>`;
                 elements.strongBottomCount.textContent = 'Cargando...';
                 loadStrongDict(code);
                 loadStrongRefs(code, 1);
@@ -465,7 +547,10 @@ async function loadStrongDict(strongCode) {
         });
 
     } catch (e) {
-        panel.innerHTML = `<p class="error">❌ Error al cargar el diccionario</p>`;
+        const errorMsg = lang === 'ca' ? '❌ Error al carregar el diccionari' : 
+                        lang === 'en' ? '❌ Error loading dictionary' : 
+                        '❌ Error al cargar el diccionario';
+        panel.innerHTML = `<p class="error">${errorMsg}</p>`;
         console.error('Error loadStrongDict:', e);
     }
 }
