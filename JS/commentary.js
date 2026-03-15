@@ -6,7 +6,7 @@ import { fetchJSON, escapeHtml } from './utils.js';
 // Estado del módulo
 let currentReference = null;
 let currentSourceId = null;
-let navigationStack = []; // Para el botón "volver"
+let navigationStack = [];
 let elements = {};
 let callbacks = {};
 
@@ -14,25 +14,15 @@ export function initCommentary(els, cbs) {
     elements = els;
     callbacks = cbs;
     
-    // Evento cerrar panel
     if (elements.commentaryBottomClose) {
         elements.commentaryBottomClose.addEventListener('click', closeCommentaryPanel);
     }
 }
 
-/**
- * Parsear una referencia bíblica del formato "Book Chapter:Verse" o "Book Chapter"
- * Ejemplos: "Exodus 3:2" → { book: "Exodus", chapter: 3, verse: 2 }
- *           "Exodus 3" → { book: "Exodus", chapter: 3, verse: null }
- */
 function parseReference(refText) {
     if (!refText) return null;
     
-    // Limpiar el texto (quitar "(Strong)" u otros sufijos)
     const cleaned = refText.replace(/\s*\(.*?\)\s*$/, '').trim();
-    
-    // Regex para capturar: "Nombre Libro Capítulo:Versículo" o "Nombre Libro Capítulo"
-    // Soporta nombres de libros con números como "1 Samuel", "2 Kings"
     const match = cleaned.match(/^(.+?)\s+(\d+)(?::(\d+))?$/);
     
     if (!match) return null;
@@ -44,9 +34,6 @@ function parseReference(refText) {
     };
 }
 
-/**
- * Obtener bookOrder a partir del nombre del libro y versión
- */
 async function getBookOrder(bookName, versionName) {
     try {
         const books = await fetchJSON(`${API_URL}/api/books?version=${versionName}`);
@@ -58,25 +45,16 @@ async function getBookOrder(bookName, versionName) {
     }
 }
 
-/**
- * Detectar idioma basado en la versión de la Biblia
- */
-function getLanguageFromVersion(versionName) {
-    const englishVersions = ['KJV', 'ESV', 'NIV', 'NASB', 'ASV', 'WEB'];
-    const spanishVersions = ['RV60', 'RV95', 'LBLA', 'NVI', 'RVR1960'];
-    
-    if (englishVersions.some(v => versionName.toUpperCase().includes(v))) {
-        return 'en';
-    }
-    if (spanishVersions.some(v => versionName.toUpperCase().includes(v))) {
-        return 'es';
-    }
+// ✅ NUEVA FUNCIÓN: Obtener idioma desde localStorage (Ajustes)
+function getCommentaryLanguage() {
+    const savedLang = localStorage.getItem('appLanguage');
+    // Mapear a los códigos que usa tu API
+    if (savedLang === 'es') return 'es';
+    if (savedLang === 'en') return 'en';
     return 'en'; // Default
 }
 
-/**
- * Abrir panel de comentarios para una referencia
- */
+// ✅ FUNCIÓN ACTUALIZADA
 export async function openCommentaryForReference(refText, versionName) {
     const parsed = parseReference(refText);
     if (!parsed) {
@@ -90,18 +68,18 @@ export async function openCommentaryForReference(refText, versionName) {
         return;
     }
     
+    // ✅ CAMBIO CLAVE: Usar el idioma de los Ajustes, no de la versión
     currentReference = {
         ...parsed,
         bookOrder,
         versionName,
-        language: getLanguageFromVersion(versionName),
+        language: getCommentaryLanguage(), // ← CAMBIO AQUÍ
         displayText: refText
     };
     
     navigationStack = [];
     currentSourceId = null;
     
-    // Mostrar panel y cargar fuentes
     showPanel();
     await loadCommentarySources();
 }
@@ -125,23 +103,24 @@ function updateHeader() {
     elements.commentaryBottomRef.textContent = `${currentReference.book} ${currentReference.chapter}${verseText}`;
 }
 
-/**
- * Cargar lista de fuentes de comentarios disponibles
- */
 async function loadCommentarySources() {
     const content = elements.commentaryBottomContent;
+    const lang = getCommentaryLanguage(); // ✅ Obtener idioma actual
+    
     content.innerHTML = '<div class="commentary-loading">📚 Buscando comentarios disponibles...</div>';
     
     try {
         const params = new URLSearchParams({
             bookOrder: currentReference.bookOrder,
             chapter: currentReference.chapter,
-            language: currentReference.language
+            language: lang // ✅ Usar idioma de Ajustes
         });
         
         if (currentReference.verse) {
             params.append('verse', currentReference.verse);
         }
+        
+        console.log(`[Commentary] Buscando fuentes: ${params.toString()}`); // Debug
         
         const sources = await fetchJSON(`${API_URL}/api/commentary/sources?${params}`);
         
@@ -149,7 +128,7 @@ async function loadCommentarySources() {
             content.innerHTML = `
                 <div class="commentary-empty">
                     <p>📭 No hay comentarios disponibles para esta referencia.</p>
-                    <p class="commentary-empty-hint">Idioma: ${currentReference.language === 'en' ? 'Inglés' : 'Español'}</p>
+                    <p class="commentary-empty-hint">Idioma: ${lang === 'en' ? 'English' : 'Español'}</p>
                 </div>
             `;
             return;
@@ -188,35 +167,35 @@ function renderSourcesList(sources) {
     
     elements.commentaryBottomContent.innerHTML = html;
     
-    // Eventos
     elements.commentaryBottomContent.querySelectorAll('.commentary-source-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const sourceId = parseInt(btn.dataset.sourceId);
-            navigationStack.push('sources'); // Guardar estado para "volver"
+            navigationStack.push('sources');
             loadCommentaryEntries(sourceId);
         });
     });
 }
 
-/**
- * Cargar entradas de un comentario específico
- */
 async function loadCommentaryEntries(sourceId) {
     currentSourceId = sourceId;
     const content = elements.commentaryBottomContent;
+    const lang = getCommentaryLanguage(); // ✅ Obtener idioma actual
+    
     content.innerHTML = '<div class="commentary-loading">📖 Cargando comentario...</div>';
     
     try {
         const params = new URLSearchParams({
             bookOrder: currentReference.bookOrder,
             chapter: currentReference.chapter,
-            language: currentReference.language,
+            language: lang, // ✅ Usar idioma de Ajustes
             sourceId: sourceId
         });
         
         if (currentReference.verse) {
             params.append('verse', currentReference.verse);
         }
+        
+        console.log(`[Commentary] Cargando entradas: ${params.toString()}`); // Debug
         
         const data = await fetchJSON(`${API_URL}/api/commentary?${params}`);
         
@@ -296,5 +275,4 @@ function setupBackButton() {
     }
 }
 
-// Exportar para uso externo
 export { parseReference };
