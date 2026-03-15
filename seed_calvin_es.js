@@ -1,4 +1,4 @@
-// seed_luther_es.js
+// seed_calvin_es.js
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
@@ -6,8 +6,8 @@ const path = require('path');
 const prisma = new PrismaClient();
 
 const LANGUAGE = process.env.COMMENTARY_LANG || 'es';
-// ⭐ Apuntamos a la fuente existente, no creamos una nueva
-const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'LUTHER';
+// ⭐ Apuntamos a la fuente existente de Calvino
+const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'CALVIN';
 
 const BOOK_MAP = {
   'Genesis': { abbr: 'Gen', order: 1 },
@@ -142,7 +142,7 @@ function extractPlainText(html) {
   return text;
 }
 
-function parseLutherESXML(xmlContent) {
+function parseCalvinESXML(xmlContent) {
   const entries = [];
   const unmappedRefs = new Set();
 
@@ -199,9 +199,8 @@ async function importEntries(entries, sourceId) {
       verseEnd: entry.verseEnd,
       content: entry.content,
       contentHtml: entry.contentHtml,
-      // ⭐ Mismo patrón que EN pero con prefijo "luther-es-"
-      // para no colisionar con: luther-Matt-6-28-135
-      divId: `luther-es-${entry.bookAbbr}-${entry.chapter}-${entry.verseStart}-${i + idx}`,
+      // ⭐ divId con prefijo "calvin-es-"
+      divId: `calvin-es-${entry.bookAbbr}-${entry.chapter}-${entry.verseStart}-${i + idx}`,
       sectionType: 'commentary',
       volume: 1,
     }));
@@ -226,37 +225,37 @@ async function importEntries(entries, sourceId) {
 
 async function main() {
   console.log('══════════════════════════════════════');
-  console.log("🚀 Importando Comentario de Martín Lutero (Español)");
+  console.log("🚀 Importando Comentario de Juan Calvino (Español)");
   console.log('══════════════════════════════════════');
   console.log(`   Idioma: ${LANGUAGE}`);
   console.log(`   Fuente: ${SOURCE_NAME}\n`);
 
-  // 1. ⭐ Buscar fuente existente — NO crear una nueva
+  // 1. ⭐ Buscar fuente existente — NO creamos una nueva
   const source = await prisma.commentarySource.findUnique({
     where: { name: SOURCE_NAME },
   });
 
   if (!source) {
     console.error(`❌ Fuente "${SOURCE_NAME}" no encontrada en la DB.`);
-    console.error('   Asegúrate de que el seed EN de Luther ya fue ejecutado.');
+    console.error('   Asegúrate de que el seed EN de Calvin ya fue ejecutado.');
     process.exit(1);
   }
 
   console.log(`✅ Fuente encontrada: ${source.name} (id: ${source.id})`);
 
   // 2. Leer y parsear el archivo XML
-  const filepath = path.join(__dirname, 'data', 'Luther_ES.xml');
+  const filepath = path.join(__dirname, 'data', 'Calvin_ES.xml');
 
   if (!fs.existsSync(filepath)) {
     console.error(`❌ Archivo no encontrado: ${filepath}`);
     process.exit(1);
   }
 
-  console.log('📖 Leyendo Luther_ES.xml...');
+  console.log('📖 Leyendo Calvin_ES.xml...');
   const xmlContent = fs.readFileSync(filepath, 'utf-8');
 
   console.log('🔍 Parseando entradas...');
-  const entries = parseLutherESXML(xmlContent);
+  const entries = parseCalvinESXML(xmlContent);
 
   console.log(`\n   ✅ Encontradas ${entries.length} entradas válidas\n`);
 
