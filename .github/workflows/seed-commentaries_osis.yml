@@ -108,7 +108,7 @@ jobs:
 
       - name: "🚀 Ejecutar seed"
         run: |
-          npx ts-node seedCommentaries.ts \
+          node seedCommentaries.js \
             --file="data/${{ inputs.file }}" \
             --sourceName="${{ inputs.sourceName }}" \
             --sourceFullName="${{ inputs.sourceFullName }}" \
