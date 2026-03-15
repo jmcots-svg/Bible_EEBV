@@ -350,7 +350,7 @@ if (path === "/api/search") {
     // =====================================================
     if (path === "/api/cache/clear") {
       const token = url.searchParams.get("token");
-      const SECRET = Deno.env.get("CACHE_SECRET") ?? "mi-secreto-seguro";
+      const SECRET = Deno.env.get("CACHE_SECRET");
 
       if (token !== SECRET) {
         return new Response(JSON.stringify({ error: "No autorizado" }), {
@@ -361,21 +361,38 @@ if (path === "/api/search") {
 
       Object.keys(serverCache).forEach((k) => delete serverCache[k]);
 
-      const keysToDelete: Deno.KvKey[] = [
-        ["versions"],
-        ["books", "RV60"],
-        ["books", "LBLA"],
-        ["books", "NUEVA_VERSION"],
-      ];
+       const keysToDelete: Deno.KvKey[] = [
+    ["versions"],
+    ["versions-strongs"],
+  ];
 
-      for (const key of keysToDelete) {
-        await kv.delete(key);
-      }
+  // 🔥 AQUÍ: Obtener todas las versiones de la DB
+  const { rows: versions } = await pool.query(
+    `SELECT name FROM "BibleVersion" ORDER BY name ASC`
+  );
 
-      return new Response(JSON.stringify({ ok: true, message: "Caché limpiada correctamente" }), {
-        headers: makeHeaders("no-store"),
-      });
-    }
+  // Agregar cada versión a las claves a eliminar
+  for (const v of versions) {
+    keysToDelete.push(["books", v.name]);
+    console.log(`[Cache Clear] Agregando clave para eliminar: ["books", "${v.name}"]`);
+  }
+
+  // Eliminar todas las claves de KV
+  for (const key of keysToDelete) {
+    await kv.delete(key);
+    console.log(`[Cache Clear] ✓ Eliminada: ${JSON.stringify(key)}`);
+  }
+
+  return new Response(
+    JSON.stringify({ 
+      ok: true, 
+      message: `Caché limpiada correctamente (${keysToDelete.length} claves)`,
+      deletedKeys: keysToDelete.length,
+      versions: versions.map(v => v.name)
+    }), 
+    { headers: makeHeaders("no-store") }
+  );
+}
 
   // =====================================================
   // /api/versions/strongs
