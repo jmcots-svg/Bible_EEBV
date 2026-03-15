@@ -6,6 +6,12 @@ const path = require('path');
 
 const prisma = new PrismaClient();
 
+// ============================================
+// CONFIGURACIÓN - AÑADE ESTAS LÍNEAS
+// ============================================
+const LANGUAGE = process.env.COMMENTARY_LANG || 'en';
+const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'MHC';
+
 // Mapeo de abreviaturas a bookOrder
 const BOOK_MAP = {
   'Gen': { order: 1, name: 'Génesis' },
