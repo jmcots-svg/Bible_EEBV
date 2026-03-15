@@ -14,6 +14,8 @@ import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } f
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel } from './strong.js';
 import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData } from './comparacion.js';
 import { initConcordancia, getCurrentSearchData, renderSearchResults } from './concordancia.js';
+import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
+
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -845,5 +847,38 @@ strongChapter.addEventListener('change', () => {
     updateComparisonOrientationHint(); // Llamada inicial al cargar la página.
     window.addEventListener('resize', updateComparisonOrientationHint); // Escucha cambios de tamaño/orientación.
 
+
+// =====================
+// INICIALIZAR COMENTARIOS
+// =====================
+initCommentary({
+    commentaryBottomPanel: document.getElementById('commentaryBottomPanel'),
+    commentaryBottomRef: document.getElementById('commentaryBottomRef'),
+    commentaryBottomClose: document.getElementById('commentaryBottomClose'),
+    commentaryBottomContent: document.getElementById('commentaryBottomContent')
+}, {});
+
+// =====================
+// HACER CLICKEABLE EL TÍTULO (reference)
+// =====================
+if (reference) {
+    reference.style.cursor = 'pointer';
+    reference.title = 'Click para ver comentarios';
+    
+    reference.addEventListener('click', () => {
+        // Solo funciona en modo lectura
+        if (currentMode !== 'lectura') return;
+        
+        const refText = reference.textContent?.trim();
+        if (!refText) return;
+        
+        const versionName = versionSelect.value;
+        openCommentaryForReference(refText, versionName);
+    });
+}
+
+// En los cambios de modo, cerrar el panel de comentarios:
+// Dentro del listener de modeTabs, añadir:
+closeCommentaryPanel();
 
 }); // ← fin DOMContentLoaded
