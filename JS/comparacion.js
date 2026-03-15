@@ -3,6 +3,7 @@
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml } from './utils.js';
 import { cache } from './cache.js';
+import { t } from './translations.js';  // 🆕 AGREGAR
 
 let elements = {};
 let callbacks = {};
@@ -29,6 +30,22 @@ export function getCurrentCompData() {
     return currentCompData;
 }
 
+// 🆕 AGREGAR ESTA FUNCIÓN
+export function updateComparacionLabels(lang) {
+    const labels = {
+        'compVersionA': 'versionA',
+        'compVersionB': 'versionB',
+        'compBook': 'book',
+        'compChapter': 'chapter',
+        'compVerse': 'verse'
+    };
+    
+    Object.entries(labels).forEach(([id, key]) => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.textContent = t(key, lang);
+    });
+}
+
 export async function loadCompBooks() {
     const version = elements.compVersionA.value;
     if (!version) return;
@@ -37,7 +54,15 @@ export async function loadCompBooks() {
         books = await fetchJSON(`${API_URL}/api/books?version=${version}`);
         cache.books[version] = books;
     }
-    elements.compBook.innerHTML = '<option value="">-- Selecciona libro --</option>';
+    
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const selectBookText = t('selectBook', lang);
+    const oldTestText = t('oldTestament', lang);
+    const newTestText = t('newTestament', lang);
+    const selectChapText = t('selectChapter', lang);
+    const allChapText = t('allChapter', lang);
+    
+    elements.compBook.innerHTML = `<option value="">${selectBookText}</option>`;
     const ot = books.filter(b => b.testament === 'OT');
     const nt = books.filter(b => b.testament === 'NT');
 
@@ -53,12 +78,12 @@ export async function loadCompBooks() {
         return group;
     };
 
-    elements.compBook.appendChild(createGroup('📜 Antiguo Testamento', ot));
-    elements.compBook.appendChild(createGroup('✝️ Nuevo Testamento', nt));
+    elements.compBook.appendChild(createGroup(oldTestText, ot));
+    elements.compBook.appendChild(createGroup(newTestText, nt));
     elements.compBook.disabled = false;
-    elements.compChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    elements.compChapter.innerHTML = `<option value="">${selectChapText}</option>`;
     elements.compChapter.disabled = true;
-    elements.compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
     elements.compVerse.disabled = true;
 }
 
@@ -70,16 +95,22 @@ async function loadCompChapters() {
         chapters = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
         cache.chapters[bookId] = chapters;
     }
-    elements.compChapter.innerHTML = '<option value="">-- Selecciona capítulo --</option>';
+    
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const selectChapText = t('selectChapter', lang);
+    const allChapText = t('allChapter', lang);
+    const chapterText = lang === 'ca' ? 'Capítol' : lang === 'en' ? 'Chapter' : 'Capítulo';
+    
+    elements.compChapter.innerHTML = `<option value="">${selectChapText}</option>`;
     chapters.forEach(ch => {
         const opt = document.createElement('option');
         opt.value = ch.id;
-        opt.textContent = `Capítulo ${ch.number}`;
+        opt.textContent = `${chapterText} ${ch.number}`;
         opt.dataset.number = ch.number;
         elements.compChapter.appendChild(opt);
     });
     elements.compChapter.disabled = false;
-    elements.compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
     elements.compVerse.disabled = true;
 }
 
@@ -92,11 +123,16 @@ async function loadCompVerses() {
         verses = await fetchJSON(`${API_URL}/api/verses?chapterId=${chId}`);
         cache.verses[cacheKey] = verses;
     }
-    elements.compVerse.innerHTML = '<option value="">Todo el capítulo</option>';
+    
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const allChapText = t('allChapter', lang);
+    const verseText = lang === 'ca' ? 'Versicle' : lang === 'en' ? 'Verse' : 'Versículo';
+    
+    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
     verses.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v.number;
-        opt.textContent = `Versículo ${v.number}`;
+        opt.textContent = `${verseText} ${v.number}`;
         elements.compVerse.appendChild(opt);
     });
     elements.compVerse.disabled = false;
@@ -109,11 +145,20 @@ export async function renderComparison() {
     const chIdA = elements.compChapter.value;
     const vNum = elements.compVerse.value;
     if (!versionA || !versionB || !chIdA) return;
+    
+    const lang = localStorage.getItem('appLanguage') || 'es';
+    const errorMsg = lang === 'ca' ? '❌ Selecciona dues versions diferents' : 
+                     lang === 'en' ? '❌ Select two different versions' : 
+                     '❌ Selecciona dos versiones diferentes';
+    const comparingMsg = lang === 'ca' ? '⚖️ Comparant versions...' : 
+                         lang === 'en' ? '⚖️ Comparing versions...' : 
+                         '⚖️ Comparando versiones...';
+    
     if (versionA === versionB) {
-        elements.content.innerHTML = '<p class="error">❌ Selecciona dos versiones diferentes</p>';
+        elements.content.innerHTML = `<p class="error">${errorMsg}</p>`;
         return;
     }
-    elements.content.innerHTML = '<p class="loading">⚖️ Comparando versiones...</p>';
+    elements.content.innerHTML = `<p class="loading">${comparingMsg}</p>`;
     try {
         const bookName = elements.compBook.options[elements.compBook.selectedIndex]?.text;
         const chNum = elements.compChapter.options[elements.compChapter.selectedIndex]?.dataset.number;
