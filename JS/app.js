@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const reference      = document.getElementById('reference');
     const mainTitle      = document.getElementById('mainTitle');
     const themeCheckbox  = document.getElementById('themeCheckbox');
+    const languageSelect = document.getElementById('languageSelect');
 
     // Comparación
     const compOrientationHint = document.getElementById('compOrientationHint');
@@ -153,6 +154,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const isDark = themeCheckbox.checked;
             document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
+    }
+
+    //IDIOMA
+    const savedLanguage = localStorage.getItem('appLanguage') || 'es';
+    if (languageSelect) {
+        languageSelect.value = savedLanguage;
+        languageSelect.addEventListener('change', (e) => {
+            const newLanguage = e.target.value;
+            localStorage.setItem('appLanguage', newLanguage);
+            console.log('Idioma cambiado a:', newLanguage);
+            // Aquí irá la lógica de traducción cuando la implementes
         });
     }
 
