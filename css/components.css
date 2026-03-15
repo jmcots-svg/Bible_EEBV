@@ -131,6 +131,42 @@ input:checked + .slider:before { transform: translateX(24px); content: "🌙"; }
 .font-track[data-pos="1"] { background-color: rgba(255,255,255,0.35); }
 .font-track[data-pos="2"] { background-color: #4a90e2; }
 
+/* Estilo para el selector de idioma */
+.language-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.language-select:hover {
+  border-color: #999;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.language-select:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 4px rgba(0, 102, 204, 0.3);
+}
+
+/* Si estás en modo oscuro */
+[data-theme="dark"] .language-select {
+  background: #333;
+  color: #fff;
+  border-color: #555;
+}
+
+[data-theme="dark"] .language-select:hover {
+  border-color: #777;
+}
+
 /* ===================== */
 /* 4. TABS DE MODO       */
 /* ===================== */
