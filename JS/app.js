@@ -205,6 +205,8 @@ function applyTranslations(lang) {
     tabs.forEach((tab, i) => {
         if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang);
     });
+    const { updateComparacionLabels } = await import('./comparacion.js');
+    updateComparacionLabels(lang);
 }
 
 
