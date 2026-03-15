@@ -42,6 +42,13 @@ export const translations = {
     selectChapComp: "-- Selecciona capítulo --",
     orientationHint: "🔄 Gira para comparar",
     placeholderComp: "Selecciona dos versiones y un capítulo para comparar",
+    selectDifferentVersions: "❌ Selecciona dos versiones diferentes",
+    comparingVersions: "⚖️ Comparando versiones...",
+    notAvailable: "No disponible",
+    bookNotFound: "No se encontró el libro equivalente en",
+    chapterNotFound: "No se encontró capítulo",
+    bookOrderNotFound: "No se encontró bookOrder para el libro seleccionado",
+    inVersion: "en",
 
     // Concordancia
     filterBy: "Filtrar por",
@@ -139,6 +146,14 @@ export const translations = {
     selectChapComp: "-- Select chapter --",
     orientationHint: "🔄 Rotate to compare",
     placeholderComp: "Select two versions and a chapter to compare",
+    selectDifferentVersions: "❌ Select two different versions",
+comparingVersions: "⚖️ Comparing versions...",
+notAvailable: "Not available",
+bookNotFound: "Equivalent book not found in",
+chapterNotFound: "Chapter not found",
+bookOrderNotFound: "bookOrder not found for the selected book",
+inVersion: "in",
+    
 
     // Concordancia
     filterBy: "Filter by",
@@ -236,6 +251,13 @@ export const translations = {
     selectChapComp: "-- Selecciona capítol --",
     orientationHint: "🔄 Gira per comparar",
     placeholderComp: "Selecciona dues versions i un capítol per comparar",
+    selectDifferentVersions: "❌ Selecciona dues versions diferents",
+comparingVersions: "⚖️ Comparant versions...",
+notAvailable: "No disponible",
+bookNotFound: "No s'ha trobat el llibre equivalent a",
+chapterNotFound: "No s'ha trobat el capítol",
+bookOrderNotFound: "No s'ha trobat bookOrder per al llibre seleccionat",
+inVersion: "a",
 
     // Concordancia
     filterBy: "Filtrar per",
