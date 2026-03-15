@@ -3,7 +3,7 @@
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml, highlightText, highlightExactWord, isExactWordMatch } from './utils.js';
 import { cache } from './cache.js';
-import { t } from './translations.js';  // 🆕 AGREGAR
+import { t } from './translations.js';
 
 let elements = {};
 let callbacks = {};
@@ -11,11 +11,15 @@ let searchAbort = null;
 let currentSearchPage = 1;
 let currentSearchData = null;
 
+// ── Helper para obtener idioma actual ──
+function getLang() {
+    return localStorage.getItem('appLanguage') || 'es';
+}
+
 export function initConcordancia(els, cbs) {
     elements = els;
     callbacks = cbs;
 
-    // Eventos
     elements.concSearchBtn.addEventListener('click', () => onConcordanciaSearch(1));
     elements.concQuery.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
@@ -29,20 +33,20 @@ export function getCurrentSearchData() {
     return currentSearchData;
 }
 
-// 🆕 AGREGAR ESTA FUNCIÓN
 export function updateConcordanciaLabels(lang) {
+    // ── Labels de los campos ──
     const labels = {
         'concVersion': 'version',
         'concTestament': 'filterBy',
         'concQuery': 'buscarPalabra'
     };
-    
+
     Object.entries(labels).forEach(([id, key]) => {
         const label = document.querySelector(`label[for="${id}"]`);
         if (label) label.textContent = t(key, lang);
     });
-    
-    // Actualizar opciones de testamento
+
+    // ── Opciones de testamento ──
     const testamentSelect = document.getElementById('concTestament');
     if (testamentSelect) {
         const opts = {
@@ -54,25 +58,23 @@ export function updateConcordanciaLabels(lang) {
             if (opts[opt.value]) opt.textContent = opts[opt.value];
         });
     }
-    
-    // Actualizar label checkbox
+
+    // ── Label del checkbox ──
     const exactLabel = document.querySelector('label.exact-toggle-label');
     if (exactLabel) {
         exactLabel.textContent = t('exactWord', lang);
     }
-    
-    // Actualizar botón de búsqueda
+
+    // ── Botón de búsqueda ──
     const searchBtn = document.getElementById('concSearchBtn');
     if (searchBtn) {
         searchBtn.textContent = t('search', lang);
     }
-    
-    // Actualizar placeholder
+
+    // ── Placeholder del input ──
     const queryInput = document.getElementById('concQuery');
     if (queryInput) {
-        queryInput.placeholder = lang === 'ca' ? 'Ej: amor, fe, esperança...' : 
-                                 lang === 'en' ? 'Ex: love, faith, hope...' : 
-                                 'Ej: amor, fe, esperanza...';
+        queryInput.placeholder = t('placeholderExamples', lang);
     }
 }
 
@@ -81,22 +83,16 @@ export async function onConcordanciaSearch(page = 1) {
     const version = elements.concVersion.value;
     const testament = elements.concTestament.value;
     const exact = elements.concExact && elements.concExact.checked;
-    const lang = localStorage.getItem('appLanguage') || 'es';
-
-    const errorMsg = lang === 'ca' ? 'Escriu almenys 2 caràcters per cercar' : 
-                     lang === 'en' ? 'Write at least 2 characters to search' : 
-                     'Escribe al menos 2 caracteres para buscar';
-    const searchingMsg = lang === 'ca' ? '🔍 Cercant a tota la Bíblia...' : 
-                         lang === 'en' ? '🔍 Searching entire Bible...' : 
-                         '🔍 Buscando en toda la Biblia...';
+    const lang = getLang();
 
     if (!query || query.length < 2) {
-        callbacks.showError(errorMsg);
+        callbacks.showError(t('minCharsSearch', lang));
         return;
     }
 
     currentSearchPage = page;
-    elements.content.innerHTML = `<p class="loading">${searchingMsg}</p>`;
+    elements.content.innerHTML = `<p class="loading">${t('searchingBible', lang)}</p>`;
+
     if (elements.reference) {
         elements.reference.textContent = '';
         elements.reference.classList.remove('visible');
@@ -126,10 +122,7 @@ export async function onConcordanciaSearch(page = 1) {
         renderSearchResults(data);
     } catch (e) {
         if (e.name === "AbortError") return;
-        const errorMsg = lang === 'ca' ? 'Error al fer la cerca' : 
-                        lang === 'en' ? 'Error performing search' : 
-                        'Error al realizar la búsqueda';
-        callbacks.showError(errorMsg);
+        callbacks.showError(t('errorSearching', lang));
     } finally {
         elements.concSearchBtn.disabled = false;
         elements.concSearchBtn.textContent = t('search', lang);
@@ -137,72 +130,88 @@ export async function onConcordanciaSearch(page = 1) {
 }
 
 export function renderSearchResults(data) {
-    const lang = localStorage.getItem('appLanguage') || 'es';
+    const lang = getLang();
     const results = data.results;
 
+    // ── Referencia superior ──
     if (elements.reference) {
-        const exactText = data.exact ? 
-            (lang === 'ca' ? ' (exacta)' : lang === 'en' ? ' (exact)' : ' (exacta)') : '';
-        elements.reference.textContent = `Resultados para "${data.query}"${exactText}`;
+        const exactText = data.exact ? t('exactSuffix', lang) : '';
+        elements.reference.textContent = `${t('resultsForQuery', lang)} "${data.query}"${exactText}`;
         elements.reference.classList.add('visible');
     }
 
+    // ── Sin resultados ──
     if (data.total === 0) {
-        const noResultsMsg = lang === 'ca' ? 'No s\'han trobat resultats' : 
-                            lang === 'en' ? 'No results found' : 
-                            'No se encontraron resultados';
-        elements.content.innerHTML = `<div class="search-no-results"><p class="search-icon">🔍</p><h3>${noResultsMsg}</h3></div>`;
+        elements.content.innerHTML = `
+            <div class="search-no-results">
+                <p class="search-icon">🔍</p>
+                <h3>${t('noResultsFound', lang)}</h3>
+            </div>`;
         return;
     }
 
+    // ── Estadísticas ──
     const startResult = (data.page - 1) * data.limit + 1;
     const endResult = Math.min(data.page * data.limit, data.total);
-    const resultText = lang === 'ca' ? 'resultats' : lang === 'en' ? 'results' : 'resultados';
-    const showingText = lang === 'ca' ? 'Mostrant' : lang === 'en' ? 'Showing' : 'Mostrando';
-    const exactText = data.exact ? 
-        (lang === 'ca' ? ' (paraula exacta)' : lang === 'en' ? ' (exact word)' : ' (palabra exacta)') : '';
+    const exactText = data.exact ? t('exactWordSuffix', lang) : '';
 
-    let html = `<div class="search-stats">
-        <span class="search-total">📊 ${data.total.toLocaleString()} ${resultText} para "<strong>${escapeHtml(data.query)}</strong>"${exactText}</span>
-        <span class="search-range">${showingText} ${startResult}-${endResult}</span>
-    </div>`;
+    let html = `
+        <div class="search-stats">
+            <span class="search-total">
+                📊 ${data.total.toLocaleString()} ${t('resultsFor', lang)} "<strong>${escapeHtml(data.query)}</strong>"${exactText}
+            </span>
+            <span class="search-range">
+                ${t('showing', lang)} ${startResult}-${endResult}
+            </span>
+        </div>`;
 
+    // ── Tarjetas de resultados ──
     results.forEach(r => {
-        const highlightedText = data.exact 
-            ? highlightExactWord(r.text, data.query) 
+        const highlightedText = data.exact
+            ? highlightExactWord(r.text, data.query)
             : highlightText(r.text, data.query);
         const testamentIcon = r.testament === 'OT' ? '📜' : '✝️';
 
-        html += `<div class="search-result-card">
-            <div class="search-result-header">
-                <a href="#" class="search-result-ref search-nav-link"
-                   data-book="${escapeHtml(r.book)}" data-chapter="${r.chapter}" data-verse="${r.verse}">
-                    ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
-                </a>
-            </div>
-            <p class="search-result-text">${highlightedText}</p>
-        </div>`;
+        html += `
+            <div class="search-result-card">
+                <div class="search-result-header">
+                    <a href="#" class="search-result-ref search-nav-link"
+                       data-book="${escapeHtml(r.book)}" 
+                       data-chapter="${r.chapter}" 
+                       data-verse="${r.verse}">
+                        ${testamentIcon} ${r.book} ${r.chapter}:${r.verse}
+                    </a>
+                </div>
+                <p class="search-result-text">${highlightedText}</p>
+            </div>`;
     });
 
+    // ── Paginación ──
     if (data.totalPages > 1) {
-        const prevText = lang === 'ca' ? '⬅ Anterior' : lang === 'en' ? '⬅ Previous' : '⬅ Anterior';
-        const nextText = lang === 'ca' ? 'Següent ➡' : lang === 'en' ? 'Next ➡' : 'Siguiente ➡';
-        const pageText = lang === 'ca' ? 'Pàgina' : lang === 'en' ? 'Page' : 'Página';
-        
         html += `<div class="search-pagination">`;
+
         if (data.page > 1) {
-            html += `<button class="pagination-btn" data-page="${data.page - 1}">${prevText}</button>`;
+            html += `<button class="pagination-btn" data-page="${data.page - 1}">
+                ${t('previousPage', lang)}
+            </button>`;
         }
-        html += `<span class="pagination-info">${pageText} ${data.page} de ${data.totalPages}</span>`;
+
+        html += `<span class="pagination-info">
+            ${t('page', lang)} ${data.page} ${t('pageOf', lang)} ${data.totalPages}
+        </span>`;
+
         if (data.page < data.totalPages) {
-            html += `<button class="pagination-btn" data-page="${data.page + 1}">${nextText}</button>`;
+            html += `<button class="pagination-btn" data-page="${data.page + 1}">
+                ${t('nextPage', lang)}
+            </button>`;
         }
+
         html += `</div>`;
     }
 
     elements.content.innerHTML = html;
 
-    // Eventos de paginación
+    // ── Eventos de paginación ──
     elements.content.querySelectorAll('.pagination-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             onConcordanciaSearch(parseInt(btn.dataset.page));
@@ -210,11 +219,15 @@ export function renderSearchResults(data) {
         });
     });
 
-    // Eventos de navegación a versículo
+    // ── Eventos de navegación a versículo ──
     elements.content.querySelectorAll('.search-nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
-            callbacks.navigateToVerse(link.dataset.book, link.dataset.chapter, link.dataset.verse);
+            callbacks.navigateToVerse(
+                link.dataset.book,
+                link.dataset.chapter,
+                link.dataset.verse
+            );
         });
     });
 }
