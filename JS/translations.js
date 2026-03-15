@@ -60,6 +60,20 @@ export const translations = {
     errorNavigation: "Error al navegar al versículo",
     changingVersion: "Cambiando de versión...",
     openingReading: "📖 Abriendo en modo lectura...",
+
+    //placeholders
+    changingVersion: "Cambiando de versión...",
+    selectChapter: "Selecciona un capítulo",
+    selectVersionsComp: "Selecciona dos versiones y un capítulo para comparar",
+    selectBookStrong: "Selecciona un libro para ver los códigos Strong",
+    placeholderComp: "Selecciona dos versiones y un capítulo para comparar",
+    placeholderConcordancia: "Escribe una palabra o frase para buscar en toda la Biblia",
+    loadingChapter: "Cargando capítulo...",
+    loadingContent: "Cargando contenido...",
+    errorLoadingBooks: "Error al cargar libros",
+    errorLoadingChapters: "Error al cargar capítulos",
+    errorLoadingVerses: "Error al cargar versículos",
+    errorLoadingContent: "Error al buscar el contenido",
   },
   en: {
     // Header
@@ -121,6 +135,20 @@ export const translations = {
     errorNavigation: "Error navigating to verse",
     changingVersion: "Changing version...",
     openingReading: "📖 Opening in reading mode...",
+
+    //placeholders
+    changingVersion: "Changing version...",
+    selectChapter: "Select a chapter",
+    selectVersionsComp: "Select two versions and a chapter to compare",
+    selectBookStrong: "Select a book to view Strong codes",
+    placeholderComp: "Select two versions and a chapter to compare",
+    placeholderConcordancia: "Write a word or phrase to search the entire Bible",
+    loadingChapter: "Loading chapter...",
+    loadingContent: "Loading content...",
+    errorLoadingBooks: "Error loading books",
+    errorLoadingChapters: "Error loading chapters",
+    errorLoadingVerses: "Error loading verses",
+    errorLoadingContent: "Error searching content",
   },
   ca: {
     // Header
@@ -182,6 +210,20 @@ export const translations = {
     errorNavigation: "Error al navegar al versicle",
     changingVersion: "Canviant de versió...",
     openingReading: "📖 Obrint en mode lectura...",
+
+    // placeholders
+    changingVersion: "Canviant de versió...",
+    selectChapter: "Selecciona un capítol",
+    selectVersionsComp: "Selecciona dues versions i un capítol per comparar",
+    selectBookStrong: "Selecciona un llibre per veure els codis Strong",
+    placeholderComp: "Selecciona dues versions i un capítol per comparar",
+    placeholderConcordancia: "Escriu una paraula o frase per cercar a tota la Bíblia",
+    loadingChapter: "Carregant capítol...",
+    loadingContent: "Carregant contingut...",
+    errorLoadingBooks: "Error al carregar llibres",
+    errorLoadingChapters: "Error al carregar capítols",
+    errorLoadingVerses: "Error al carregar versicles",
+    errorLoadingContent: "Error al cercar contingut",
   }
 };
 
