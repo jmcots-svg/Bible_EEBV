@@ -11,9 +11,9 @@ on:
         options:
           - es
       source:
-        description: 'Nombre de la fuente'
+        description: 'Nombre de la fuente (debe existir en DB)'
         required: true
-        default: 'LUTHER_ES'
+        default: 'LUTHER'
 
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
