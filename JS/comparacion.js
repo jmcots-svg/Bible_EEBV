@@ -3,17 +3,21 @@
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml } from './utils.js';
 import { cache } from './cache.js';
-import { t } from './translations.js';  // 🆕 AGREGAR
+import { t } from './translations.js';
 
 let elements = {};
 let callbacks = {};
 let currentCompData = null;
 
+// ── Helper para obtener idioma actual ──
+function getLang() {
+    return localStorage.getItem('appLanguage') || 'es';
+}
+
 export function initComparacion(els, cbs) {
     elements = els;
     callbacks = cbs;
 
-    // Eventos
     elements.compVersionA.addEventListener('change', () => {
         loadCompBooks();
         if (elements.compChapter.value) renderComparison();
@@ -30,7 +34,6 @@ export function getCurrentCompData() {
     return currentCompData;
 }
 
-// 🆕 AGREGAR ESTA FUNCIÓN
 export function updateComparacionLabels(lang) {
     const labels = {
         'compVersionA': 'versionA',
@@ -39,30 +42,41 @@ export function updateComparacionLabels(lang) {
         'compChapter': 'chapter',
         'compVerse': 'verse'
     };
-    
+
     Object.entries(labels).forEach(([id, key]) => {
         const label = document.querySelector(`label[for="${id}"]`);
         if (label) label.textContent = t(key, lang);
     });
+
+    // ── Actualizar placeholders de selects ──
+    updateSelectPlaceholders(lang);
+}
+
+// ── Actualiza las primeras opciones (placeholder) de cada select ──
+function updateSelectPlaceholders(lang) {
+    const updateFirstOption = (selectEl, translationKey) => {
+        if (selectEl && selectEl.options.length > 0 && selectEl.options[0].value === '') {
+            selectEl.options[0].textContent = t(translationKey, lang);
+        }
+    };
+
+    updateFirstOption(elements.compBook, 'selectBook');
+    updateFirstOption(elements.compChapter, 'selectChapter');
+    updateFirstOption(elements.compVerse, 'allChapter');
 }
 
 export async function loadCompBooks() {
     const version = elements.compVersionA.value;
     if (!version) return;
+
+    const lang = getLang();
+
     let books = cache.books[version];
     if (!books) {
         books = await fetchJSON(`${API_URL}/api/books?version=${version}`);
         cache.books[version] = books;
     }
-    
-    const lang = localStorage.getItem('appLanguage') || 'es';
-    const selectBookText = t('selectBook', lang);
-    const oldTestText = t('oldTestament', lang);
-    const newTestText = t('newTestament', lang);
-    const selectChapText = t('selectChapter', lang);
-    const allChapText = t('allChapter', lang);
-    
-    elements.compBook.innerHTML = `<option value="">${selectBookText}</option>`;
+
     const ot = books.filter(b => b.testament === 'OT');
     const nt = books.filter(b => b.testament === 'NT');
 
@@ -78,61 +92,62 @@ export async function loadCompBooks() {
         return group;
     };
 
-    elements.compBook.appendChild(createGroup(oldTestText, ot));
-    elements.compBook.appendChild(createGroup(newTestText, nt));
+    elements.compBook.innerHTML = `<option value="">${t('selectBook', lang)}</option>`;
+    elements.compBook.appendChild(createGroup(t('oldTestament', lang), ot));
+    elements.compBook.appendChild(createGroup(t('newTestament', lang), nt));
     elements.compBook.disabled = false;
-    elements.compChapter.innerHTML = `<option value="">${selectChapText}</option>`;
+
+    elements.compChapter.innerHTML = `<option value="">${t('selectChapter', lang)}</option>`;
     elements.compChapter.disabled = true;
-    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
+
+    elements.compVerse.innerHTML = `<option value="">${t('allChapter', lang)}</option>`;
     elements.compVerse.disabled = true;
 }
 
 async function loadCompChapters() {
     const bookId = elements.compBook.value;
     if (!bookId) return;
+
+    const lang = getLang();
+
     let chapters = cache.chapters[bookId];
     if (!chapters) {
         chapters = await fetchJSON(`${API_URL}/api/chapters?bookId=${bookId}`);
         cache.chapters[bookId] = chapters;
     }
-    
-    const lang = localStorage.getItem('appLanguage') || 'es';
-    const selectChapText = t('selectChapter', lang);
-    const allChapText = t('allChapter', lang);
-    const chapterText = lang === 'ca' ? 'Capítol' : lang === 'en' ? 'Chapter' : 'Capítulo';
-    
-    elements.compChapter.innerHTML = `<option value="">${selectChapText}</option>`;
+
+    elements.compChapter.innerHTML = `<option value="">${t('selectChapter', lang)}</option>`;
     chapters.forEach(ch => {
         const opt = document.createElement('option');
         opt.value = ch.id;
-        opt.textContent = `${chapterText} ${ch.number}`;
+        opt.textContent = `${t('chapter', lang)} ${ch.number}`;
         opt.dataset.number = ch.number;
         elements.compChapter.appendChild(opt);
     });
     elements.compChapter.disabled = false;
-    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
+
+    elements.compVerse.innerHTML = `<option value="">${t('allChapter', lang)}</option>`;
     elements.compVerse.disabled = true;
 }
 
 async function loadCompVerses() {
     const chId = elements.compChapter.value;
     if (!chId) return;
+
+    const lang = getLang();
+
     const cacheKey = `${chId}-all`;
     let verses = cache.verses[cacheKey];
     if (!verses) {
         verses = await fetchJSON(`${API_URL}/api/verses?chapterId=${chId}`);
         cache.verses[cacheKey] = verses;
     }
-    
-    const lang = localStorage.getItem('appLanguage') || 'es';
-    const allChapText = t('allChapter', lang);
-    const verseText = lang === 'ca' ? 'Versicle' : lang === 'en' ? 'Verse' : 'Versículo';
-    
-    elements.compVerse.innerHTML = `<option value="">${allChapText}</option>`;
+
+    elements.compVerse.innerHTML = `<option value="">${t('allChapter', lang)}</option>`;
     verses.forEach(v => {
         const opt = document.createElement('option');
         opt.value = v.number;
-        opt.textContent = `${verseText} ${v.number}`;
+        opt.textContent = `${t('verse', lang).replace(' (opcional)', '').replace(' (optional)', '').replace(' (opcional)', '')} ${v.number}`;
         elements.compVerse.appendChild(opt);
     });
     elements.compVerse.disabled = false;
@@ -145,20 +160,16 @@ export async function renderComparison() {
     const chIdA = elements.compChapter.value;
     const vNum = elements.compVerse.value;
     if (!versionA || !versionB || !chIdA) return;
-    
-    const lang = localStorage.getItem('appLanguage') || 'es';
-    const errorMsg = lang === 'ca' ? '❌ Selecciona dues versions diferents' : 
-                     lang === 'en' ? '❌ Select two different versions' : 
-                     '❌ Selecciona dos versiones diferentes';
-    const comparingMsg = lang === 'ca' ? '⚖️ Comparant versions...' : 
-                         lang === 'en' ? '⚖️ Comparing versions...' : 
-                         '⚖️ Comparando versiones...';
-    
+
+    const lang = getLang();
+
     if (versionA === versionB) {
-        elements.content.innerHTML = `<p class="error">${errorMsg}</p>`;
+        elements.content.innerHTML = `<p class="error">${t('selectDifferentVersions', lang)}</p>`;
         return;
     }
-    elements.content.innerHTML = `<p class="loading">${comparingMsg}</p>`;
+
+    elements.content.innerHTML = `<p class="loading">${t('comparingVersions', lang)}</p>`;
+
     try {
         const bookName = elements.compBook.options[elements.compBook.selectedIndex]?.text;
         const chNum = elements.compChapter.options[elements.compChapter.selectedIndex]?.dataset.number;
@@ -171,7 +182,7 @@ export async function renderComparison() {
         }
         const bookA = booksA.find(b => String(b.id) === String(elements.compBook.value));
         const bookOrder = bookA?.bookOrder;
-        if (!bookOrder) throw new Error(`No se encontró bookOrder para el libro seleccionado`);
+        if (!bookOrder) throw new Error(t('bookOrderNotFound', lang));
 
         // Buscar libro en versión B por bookOrder
         let booksB = cache.books[versionB];
@@ -180,7 +191,7 @@ export async function renderComparison() {
             cache.books[versionB] = booksB;
         }
         const bookB = booksB.find(b => b.bookOrder === bookOrder);
-        if (!bookB) throw new Error(`No se encontró el libro equivalente en ${versionB}`);
+        if (!bookB) throw new Error(`${t('bookNotFound', lang)} ${versionB}`);
 
         let chaptersB = cache.chapters[bookB.id];
         if (!chaptersB) {
@@ -188,7 +199,7 @@ export async function renderComparison() {
             cache.chapters[bookB.id] = chaptersB;
         }
         const chapterB = chaptersB.find(ch => String(ch.number) === String(chNum));
-        if (!chapterB) throw new Error(`No se encontró capítulo ${chNum} en ${versionB}`);
+        if (!chapterB) throw new Error(`${t('chapterNotFound', lang)} ${chNum} ${t('inVersion', lang)} ${versionB}`);
 
         const cacheKeyA = `${chIdA}-all`;
         const cacheKeyB = `${chapterB.id}-all`;
@@ -213,6 +224,8 @@ export async function renderComparison() {
 }
 
 function renderComparisonView(versesA, versesB, versionA, versionB, bookName, chNum, vNum) {
+    const lang = getLang();
+
     if (elements.reference) {
         elements.reference.textContent = `${bookName} ${chNum}${vNum ? ':' + vNum : ''}`;
         elements.reference.classList.add('visible');
@@ -224,7 +237,7 @@ function renderComparisonView(versesA, versesB, versionA, versionB, bookName, ch
         const vB = versesB.find(v => v.number === vA.number);
         return `<div class="comp-row">
             <div class="comp-cell"><span class="verse-number">${vA.number}</span>${vA.text}</div>
-            <div class="comp-cell"><span class="verse-number">${vB?.number ?? vA.number}</span>${vB?.text ?? '<em>No disponible</em>'}</div>
+            <div class="comp-cell"><span class="verse-number">${vB?.number ?? vA.number}</span>${vB?.text ?? `<em>${t('notAvailable', lang)}</em>`}</div>
         </div>`;
     }).join('');
 
