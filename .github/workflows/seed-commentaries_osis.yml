@@ -1,4 +1,4 @@
-name: Seed Calvin Commentary
+name: Seed Luther ES Commentary
 
 on:
   workflow_dispatch:
@@ -6,14 +6,14 @@ on:
       language:
         description: 'Idioma del comentario'
         required: true
-        default: 'en'
+        default: 'es'
         type: choice
         options:
-          - en
+          - es
       source:
         description: 'Nombre de la fuente'
         required: true
-        default: 'CALVIN'        # ⭐ Cambiado
+        default: 'LUTHER_ES'
 
 env:
   DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -22,7 +22,7 @@ env:
   COMMENTARY_SOURCE: ${{ github.event.inputs.source }}
 
 jobs:
-  seed-calvin:                   # ⭐ Cambiado
+  seed-luther-es:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,15 +43,15 @@ jobs:
 
       - name: Verify XML file exists
         run: |
-          echo "📁 Verificando archivo Calvin.xml..."
-          if [ -f "data/Calvin.xml" ]; then
-            echo "✅ Calvin.xml encontrado"
-            ls -lh data/Calvin.xml
+          echo "📁 Verificando archivo Luther_ES.xml..."
+          if [ -f "data/Luther_ES.xml" ]; then
+            echo "✅ Luther_ES.xml encontrado"
+            ls -lh data/Luther_ES.xml
           else
-            echo "❌ Calvin.xml NO encontrado"
+            echo "❌ Luther_ES.xml NO encontrado"
             ls -la data/ || echo "⚠️ Directorio data/ no existe"
             exit 1
           fi
 
-      - name: Run Calvin Commentary Seed
-        run: node seed_calvin.js  # ⭐ Cambiado
+      - name: Run Luther ES Commentary Seed
+        run: node seed_luther_es.js
