@@ -1,0 +1,59 @@
+name: Seed Scofield Commentary (EN & ES)
+
+on:
+  workflow_dispatch:
+    # Sin inputs, porque el script ya está configurado para procesar ambos idiomas.
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+jobs:
+  seed-scofield:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Verify XML files exist
+        run: |
+          echo "📁 Verificando archivos de Scofield..."
+          MISSING=0
+          
+          if [ -f "data/Scofield_listo.xml" ]; then
+            echo "✅ Scofield_listo.xml (EN) encontrado"
+            ls -lh data/Scofield_listo.xml
+          else
+            echo "❌ Scofield_listo.xml (EN) NO encontrado"
+            MISSING=1
+          fi
+
+          if [ -f "data/Scofield_listo_ES.xml" ]; then
+            echo "✅ Scofield_listo_ES.xml (ES) encontrado"
+            ls -lh data/Scofield_listo_ES.xml
+          else
+            echo "❌ Scofield_listo_ES.xml (ES) NO encontrado"
+            MISSING=1
+          fi
+
+          if [ $MISSING -eq 1 ]; then
+            echo "⚠️ Faltan archivos en el directorio data/. Abortando."
+            ls -la data/ || echo "Directorio data/ no existe"
+            exit 1
+          fi
+
+      - name: Run Scofield Commentary Seed
+        run: node seed_scofield.js
