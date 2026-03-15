@@ -101,9 +101,9 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT id, name, "fullName"
-         FROM "BibleVersion"
-         ORDER BY id ASC`
+        `SELECT id, name, "fullName", language
+          FROM "BibleVersion"
+          ORDER BY language ASC, id ASC`
       );
 
       setCache(memKey, rows);
