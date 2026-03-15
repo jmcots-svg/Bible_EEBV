@@ -10,8 +10,10 @@ const SOURCE_NAME = process.env.COMMENTARY_SOURCE || 'LUTHER';
 
 // ============================================
 // MAPEO: Nombre del libro → abreviatura OSIS y orden
+// Incluye variantes con números romanos (I, II, III)
 // ============================================
 const BOOK_MAP = {
+  // --- Antiguo Testamento ---
   'Genesis': { abbr: 'Gen', order: 1 },
   'Exodus': { abbr: 'Exod', order: 2 },
   'Leviticus': { abbr: 'Lev', order: 3 },
@@ -21,11 +23,17 @@ const BOOK_MAP = {
   'Judges': { abbr: 'Judg', order: 7 },
   'Ruth': { abbr: 'Ruth', order: 8 },
   '1 Samuel': { abbr: '1Sam', order: 9 },
+  'I Samuel': { abbr: '1Sam', order: 9 },
   '2 Samuel': { abbr: '2Sam', order: 10 },
+  'II Samuel': { abbr: '2Sam', order: 10 },
   '1 Kings': { abbr: '1Kgs', order: 11 },
+  'I Kings': { abbr: '1Kgs', order: 11 },
   '2 Kings': { abbr: '2Kgs', order: 12 },
+  'II Kings': { abbr: '2Kgs', order: 12 },
   '1 Chronicles': { abbr: '1Chr', order: 13 },
+  'I Chronicles': { abbr: '1Chr', order: 13 },
   '2 Chronicles': { abbr: '2Chr', order: 14 },
+  'II Chronicles': { abbr: '2Chr', order: 14 },
   'Ezra': { abbr: 'Ezra', order: 15 },
   'Nehemiah': { abbr: 'Neh', order: 16 },
   'Esther': { abbr: 'Esth', order: 17 },
@@ -52,39 +60,68 @@ const BOOK_MAP = {
   'Haggai': { abbr: 'Hag', order: 37 },
   'Zechariah': { abbr: 'Zech', order: 38 },
   'Malachi': { abbr: 'Mal', order: 39 },
+  
+  // --- Nuevo Testamento ---
   'Matthew': { abbr: 'Matt', order: 40 },
   'Mark': { abbr: 'Mark', order: 41 },
   'Luke': { abbr: 'Luke', order: 42 },
   'John': { abbr: 'John', order: 43 },
   'Acts': { abbr: 'Acts', order: 44 },
   'Romans': { abbr: 'Rom', order: 45 },
+  
+  // Corintios - todas las variantes
   '1 Corinthians': { abbr: '1Cor', order: 46 },
+  'I Corinthians': { abbr: '1Cor', order: 46 },
   '2 Corinthians': { abbr: '2Cor', order: 47 },
+  'II Corinthians': { abbr: '2Cor', order: 47 },
+  
   'Galatians': { abbr: 'Gal', order: 48 },
   'Ephesians': { abbr: 'Eph', order: 49 },
   'Philippians': { abbr: 'Phil', order: 50 },
   'Colossians': { abbr: 'Col', order: 51 },
+  
+  // Tesalonicenses - todas las variantes
   '1 Thessalonians': { abbr: '1Thess', order: 52 },
+  'I Thessalonians': { abbr: '1Thess', order: 52 },
   '2 Thessalonians': { abbr: '2Thess', order: 53 },
+  'II Thessalonians': { abbr: '2Thess', order: 53 },
+  
+  // Timoteo - todas las variantes
   '1 Timothy': { abbr: '1Tim', order: 54 },
+  'I Timothy': { abbr: '1Tim', order: 54 },
   '2 Timothy': { abbr: '2Tim', order: 55 },
+  'II Timothy': { abbr: '2Tim', order: 55 },
+  
   'Titus': { abbr: 'Titus', order: 56 },
   'Philemon': { abbr: 'Phlm', order: 57 },
   'Hebrews': { abbr: 'Heb', order: 58 },
   'James': { abbr: 'Jas', order: 59 },
+  
+  // Pedro - todas las variantes
   '1 Peter': { abbr: '1Pet', order: 60 },
+  'I Peter': { abbr: '1Pet', order: 60 },
   '2 Peter': { abbr: '2Pet', order: 61 },
+  'II Peter': { abbr: '2Pet', order: 61 },
+  
+  // Juan - todas las variantes
   '1 John': { abbr: '1John', order: 62 },
+  'I John': { abbr: '1John', order: 62 },
   '2 John': { abbr: '2John', order: 63 },
+  'II John': { abbr: '2John', order: 63 },
   '3 John': { abbr: '3John', order: 64 },
+  'III John': { abbr: '3John', order: 64 },
+  
   'Jude': { abbr: 'Jude', order: 65 },
+  
+  // Apocalipsis - todas las variantes
   'Revelation': { abbr: 'Rev', order: 66 },
   'Revelations': { abbr: 'Rev', order: 66 },
+  'Revelation of John': { abbr: 'Rev', order: 66 },
 };
 
 // ============================================
 // Parsear la referencia del atributo "ref"
-// Ejemplos: "Genesis 1:1", "Psalm 82:1", "Matthew 5:1"
+// Ejemplos: "Genesis 1:1", "Psalm 82:1", "I Corinthians 1:1"
 // ============================================
 function parseRef(ref) {
   if (!ref) return null;
@@ -95,6 +132,7 @@ function parseRef(ref) {
   }
 
   // Patrón: "BookName Chapter:Verse" o "BookName Chapter:VerseStart-VerseEnd"
+  // Soporta nombres con espacios como "I Corinthians", "Song of Solomon", "Revelation of John"
   const match = ref.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
   if (!match) return null;
 
@@ -154,6 +192,7 @@ function extractPlainText(html) {
 // ============================================
 function parseLutherXML(xmlContent) {
   const entries = [];
+  const unmappedRefs = new Set();
   
   // Regex para capturar cada <entry ref="...">...</entry>
   const entryRegex = /<entry\s+ref="([^"]*)">([\s\S]*?)<\/entry>/g;
@@ -165,7 +204,13 @@ function parseLutherXML(xmlContent) {
     
     // Parsear la referencia
     const parsedRef = parseRef(ref);
-    if (!parsedRef) continue; // Saltar entradas 0:0 y headings
+    if (!parsedRef) {
+      // Registrar refs no parseadas (excepto las que ignoramos intencionalmente)
+      if (!ref.includes('Heading') && !ref.includes('0:0')) {
+        unmappedRefs.add(ref);
+      }
+      continue;
+    }
     
     // Extraer contenido limpio
     const plainText = extractPlainText(content);
@@ -184,6 +229,12 @@ function parseLutherXML(xmlContent) {
     });
   }
   
+  // Reportar referencias no mapeadas
+  if (unmappedRefs.size > 0) {
+    console.log('\n⚠️  Referencias no mapeadas (primeras 10):');
+    [...unmappedRefs].slice(0, 10).forEach(r => console.log(`   - ${r}`));
+  }
+  
   return entries;
 }
 
@@ -194,7 +245,6 @@ async function importEntries(entries, sourceId) {
   const BATCH = 100;
   let total = 0;
   let errors = 0;
-  let skipped = 0;
 
   for (let i = 0; i < entries.length; i += BATCH) {
     const batch = entries.slice(i, i + BATCH);
@@ -229,7 +279,7 @@ async function importEntries(entries, sourceId) {
   }
   
   console.log('');
-  return { total, errors, skipped };
+  return { total, errors };
 }
 
 // ============================================
@@ -272,13 +322,13 @@ async function main() {
     process.exit(1);
   }
 
-  console.log('\n📖 Leyendo Luther.xml...');
+  console.log('📖 Leyendo Luther.xml...');
   const xmlContent = fs.readFileSync(filepath, 'utf-8');
   
   console.log('🔍 Parseando entradas...');
   const entries = parseLutherXML(xmlContent);
   
-  console.log(`   ✅ Encontradas ${entries.length} entradas válidas\n`);
+  console.log(`\n   ✅ Encontradas ${entries.length} entradas válidas\n`);
 
   // 3. Mostrar resumen por libro
   const bookSummary = {};
@@ -290,7 +340,13 @@ async function main() {
   }
   
   console.log('📚 Resumen por libro:');
-  for (const [abbr, count] of Object.entries(bookSummary)) {
+  const sortedBooks = Object.entries(bookSummary).sort((a, b) => {
+    const orderA = Object.values(BOOK_MAP).find(v => v.abbr === a[0])?.order || 99;
+    const orderB = Object.values(BOOK_MAP).find(v => v.abbr === b[0])?.order || 99;
+    return orderA - orderB;
+  });
+  
+  for (const [abbr, count] of sortedBooks) {
     console.log(`   ${abbr}: ${count} entradas`);
   }
   console.log('');
