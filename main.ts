@@ -667,6 +667,116 @@ if (path === "/api/commentary") {
 }
 
 // =====================================================
+// /api/commentary/sources - Listar fuentes disponibles para una cita
+// =====================================================
+if (path === "/api/commentary/sources") {
+  const bookOrder = Number(url.searchParams.get("bookOrder"));
+  const chapter = Number(url.searchParams.get("chapter"));
+  const verse = url.searchParams.get("verse");
+  const language = url.searchParams.get("language") || "en";
+  
+  if (!bookOrder || !chapter) {
+    return new Response(JSON.stringify({ error: "Parámetros requeridos: bookOrder, chapter" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+  
+  let query = `
+    SELECT DISTINCT cs.id, cs.name, cs."fullName", cs.author, cs.description,
+           COUNT(ce.id) as entry_count
+    FROM "CommentarySource" cs
+    JOIN "CommentaryEntry" ce ON ce."sourceId" = cs.id
+    WHERE ce."bookOrder" = \$1 
+      AND ce.chapter = \$2
+      AND ce.language = \$3
+  `;
+  
+  const params: any[] = [bookOrder, chapter, language];
+  
+  if (verse) {
+    query += `
+      AND (ce."verseStart" IS NULL 
+           OR (ce."verseStart" <= \$4 AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= \$4)))
+    `;
+    params.push(Number(verse));
+  }
+  
+  query += ` GROUP BY cs.id, cs.name, cs."fullName", cs.author, cs.description
+             ORDER BY cs.name ASC`;
+  
+  const { rows } = await pool.query(query, params);
+  
+  return new Response(JSON.stringify(rows), {
+    headers: makeHeaders("public, max-age=3600"),
+  });
+}
+
+// =====================================================
+// /api/commentary - Obtener comentarios (MEJORADO)
+// =====================================================
+if (path === "/api/commentary") {
+  const bookOrder = Number(url.searchParams.get("bookOrder"));
+  const chapter = Number(url.searchParams.get("chapter"));
+  const verse = url.searchParams.get("verse");
+  const sourceId = url.searchParams.get("sourceId");
+  const language = url.searchParams.get("language") || "en";
+  
+  if (!bookOrder || !chapter) {
+    return new Response(JSON.stringify({ error: "Parámetros requeridos: bookOrder, chapter" }), {
+      status: 400,
+      headers: makeHeaders("no-store"),
+    });
+  }
+  
+  let query = `
+    SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
+           ce."verseStart", ce."verseEnd", ce."sectionType",
+           cs.name as source_name, cs."fullName" as source_full_name, cs.author
+    FROM "CommentaryEntry" ce
+    JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
+    WHERE ce."bookOrder" = \$1 
+      AND ce.chapter = \$2
+      AND ce.language = \$3
+  `;
+  
+  const params: any[] = [bookOrder, chapter, language];
+  let paramIndex = 4;
+  
+  if (sourceId) {
+    query += ` AND cs.id = 
+$$
+{paramIndex}`;
+    params.push(Number(sourceId));
+    paramIndex++;
+  }
+  
+  if (verse) {
+    query += `
+      AND (ce."verseStart" IS NULL 
+           OR (ce."verseStart" <=
+$$
+{paramIndex} AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= $${paramIndex})))
+    `;
+    params.push(Number(verse));
+  }
+  
+  query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
+  
+  const { rows } = await pool.query(query, params);
+  
+  return new Response(JSON.stringify({
+    bookOrder,
+    chapter,
+    verse: verse ? Number(verse) : null,
+    total: rows.length,
+    entries: rows
+  }), {
+    headers: makeHeaders("public, max-age=86400"),
+  });
+}
+
+// =====================================================
 // 404
 // =====================================================
 return new Response(JSON.stringify({ error: "404" }), {
