@@ -12,7 +12,6 @@ import {
 } from './utils.js';
 import { cache, strongWordsCache } from './cache.js';
 import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
-import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel } from './strong.js';
 import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, updateComparacionLabels } from './comparacion.js';
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
