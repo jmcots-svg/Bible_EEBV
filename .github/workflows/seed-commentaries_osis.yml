@@ -1,0 +1,120 @@
+name: 📖 Seed Commentary
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: "Nombre del archivo XML en /data (ej: calvin.xml)"
+        required: true
+        type: string
+      sourceName:
+        description: "Código corto (ej: CALVIN, LUTHER)"
+        required: true
+        type: string
+      sourceFullName:
+        description: "Nombre completo del comentario"
+        required: true
+        type: string
+      author:
+        description: "Autor del comentario"
+        required: true
+        type: string
+      language:
+        description: "Idioma del comentario"
+        required: true
+        type: choice
+        options:
+          - en
+          - es
+          - la
+          - de
+          - fr
+          - ca
+        default: en
+      description:
+        description: "Descripción breve del comentario"
+        required: false
+        type: string
+        default: ""
+      publishedYear:
+        description: "Año(s) de publicación (ej: 1554-1563)"
+        required: false
+        type: string
+        default: ""
+      volumes:
+        description: "Número de volúmenes"
+        required: false
+        type: number
+        default: 1
+      dryRun:
+        description: "Solo verificar sin insertar (dry run)"
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  seed-commentary:
+    name: "📖 ${{ inputs.dryRun && 'Verificar' || 'Cargar' }} ${{ inputs.sourceName }} (${{ inputs.language }})"
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🔧 Generate Prisma Client
+        run: npx prisma generate
+
+      - name: 📋 Verificar archivo XML existe
+        run: |
+          FILE="data/${{ inputs.file }}"
+          if [ ! -f "$FILE" ]; then
+            echo "❌ ERROR: No se encontró el archivo $FILE"
+            echo "📂 Archivos disponibles en /data:"
+            ls -la data/ || echo "  (carpeta data/ no existe)"
+            exit 1
+          fi
+          echo "✅ Archivo encontrado: $FILE"
+          echo "📏 Tamaño: $(du -h $FILE | cut -f1)"
+          echo "📄 Entries aproximados: $(grep -c '<entry ' $FILE || echo 'N/A')"
+
+      - name: "🔍 Verificar configuración"
+        run: |
+          echo "═══════════════════════════════════════════"
+          echo "📖 CONFIGURACIÓN DEL SEED"
+          echo "═══════════════════════════════════════════"
+          echo "  Archivo:     data/${{ inputs.file }}"
+          echo "  Código:      ${{ inputs.sourceName }}"
+          echo "  Nombre:      ${{ inputs.sourceFullName }}"
+          echo "  Autor:       ${{ inputs.author }}"
+          echo "  Idioma:      ${{ inputs.language }}"
+          echo "  Descripción: ${{ inputs.description }}"
+          echo "  Año:         ${{ inputs.publishedYear }}"
+          echo "  Volúmenes:   ${{ inputs.volumes }}"
+          echo "  Dry Run:     ${{ inputs.dryRun }}"
+          echo "═══════════════════════════════════════════"
+
+      - name: "🚀 Ejecutar seed"
+        run: |
+          npx ts-node seedCommentaries.ts \
+            --file="data/${{ inputs.file }}" \
+            --sourceName="${{ inputs.sourceName }}" \
+            --sourceFullName="${{ inputs.sourceFullName }}" \
+            --author="${{ inputs.author }}" \
+            --language="${{ inputs.language }}" \
+            --description="${{ inputs.description }}" \
+            --publishedYear="${{ inputs.publishedYear }}" \
+            --volumes="${{ inputs.volumes }}" \
+            ${{ inputs.dryRun && '--dryRun' || '' }}
