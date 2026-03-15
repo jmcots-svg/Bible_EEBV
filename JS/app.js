@@ -13,9 +13,10 @@ import {
 import { cache, strongWordsCache } from './cache.js';
 import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel } from './strong.js';
-import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData } from './comparacion.js';
-import { initConcordancia, getCurrentSearchData, renderSearchResults } from './concordancia.js';
+import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, updateComparacionLabels } from './comparacion.js';
+import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
+import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels } from './strong.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -207,6 +208,7 @@ function applyTranslations(lang) {
     });
     updateComparacionLabels(lang);
     updateConcordanciaLabels(lang);
+    updateStrongLabels(lang);
 }
 
 
