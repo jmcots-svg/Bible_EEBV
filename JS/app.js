@@ -1,5 +1,6 @@
 // ⚠️ URL de tu backend
 import { API_URL } from './config.js';
+import { translations, t } from './translations.js';
 import { 
     fetchJSON, 
     escapeHtml, 
@@ -169,6 +170,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // =====================
+// 2b. IDIOMA
+// =====================
+const languageSelect = document.getElementById('languageSelect');
+const savedLanguage = localStorage.getItem('appLanguage') || 'es';
+
+if (languageSelect) {
+    languageSelect.value = savedLanguage;
+    languageSelect.addEventListener('change', (e) => {
+        const newLanguage = e.target.value;
+        localStorage.setItem('appLanguage', newLanguage);
+        console.log('Idioma cambiado a:', newLanguage);
+        applyTranslations(newLanguage);
+    });
+}
+
+// Aplicar traducción inicial
+applyTranslations(savedLanguage);
+
+function applyTranslations(lang) {
+    // Título principal
+    document.getElementById('mainTitle').textContent = t('mainTitle', lang);
+    
+    // Encabezado ajustes
+    const settingsHeader = document.querySelector('.settings-panel-header h3');
+    if (settingsHeader) settingsHeader.textContent = t('settingsTitle', lang);
+    
+    // Labels de filtros (Lectura)
+    const labels = {
+        'version': 'version',
+        'book': 'book',
+        'chapter': 'chapter',
+        'verse': 'verse'
+    };
+    
+    Object.entries(labels).forEach(([id, key]) => {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.textContent = t(key, lang);
+    });
+    
+    // Label idioma
+    const langLabel = document.querySelector(`label[for="languageSelect"]`);
+    if (langLabel) langLabel.textContent = t('language', lang);
+    
+    // Tabs
+    const tabs = document.querySelectorAll('.tab-text');
+    const tabKeys = ['lectura', 'comparacion', 'concordancia', 'strong'];
+    tabs.forEach((tab, i) => {
+        if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang);
+    });
+}
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
