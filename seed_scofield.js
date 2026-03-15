@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 const SOURCE_NAME = 'SCOFIELD';
 
-// Archivos a procesar (Inglés y Español)
+// Archivos a procesar (Inglés primero, luego Español)
 const FILES_TO_PROCESS = [
   { lang: 'en', filename: 'Scofield_listo.xml' },
   { lang: 'es', filename: 'Scofield_listo_ES.xml' }
@@ -166,7 +166,7 @@ function parseScofieldXML(xmlContent) {
     }
 
     const plainText = extractPlainText(content);
-    if (!plainText || plainText.length < 20) continue; // Reducido a 20 porque Scofield a veces tiene notas cortas
+    if (!plainText || plainText.length < 20) continue; 
     if (plainText.includes('No Commentary on these verses')) continue;
 
     entries.push({
@@ -175,11 +175,6 @@ function parseScofieldXML(xmlContent) {
       content: plainText,
       contentHtml: decodeHtmlEntities(content).trim(),
     });
-  }
-
-  if (unmappedRefs.size > 0) {
-    console.log('\n⚠️  Referencias no mapeadas (primeras 10):');
-    [...unmappedRefs].slice(0, 10).forEach(r => console.log(`   - ${r}`));
   }
 
   return entries;
@@ -203,7 +198,6 @@ async function importEntries(entries, sourceId, lang) {
       verseEnd: entry.verseEnd,
       content: entry.content,
       contentHtml: entry.contentHtml,
-      // ⭐ divId único usando scofield, el idioma y la referencia
       divId: `scofield-${lang}-${entry.bookAbbr}-${entry.chapter}-${entry.verseStart}-${i + idx}`,
       sectionType: 'commentary',
       volume: 1,
@@ -232,15 +226,17 @@ async function main() {
   console.log("🚀 Importando Comentario de Scofield (EN y ES)");
   console.log('═════════════════════════════════════════════════');
 
-  // 1. ⭐ CREAR o BUSCAR la fuente SCOFIELD
-  // Como no existía, usamos upsert para que si la corres 2 veces, no falle.
+  // 1. ⭐ CREAR o BUSCAR la fuente SCOFIELD asegurando campos obligatorios
   const source = await prisma.commentarySource.upsert({
     where: { name: SOURCE_NAME },
     update: {},
     create: { 
       name: SOURCE_NAME,
-      // Si tu schema requiere otros campos en CommentarySource (ej. authorName), agrégalos aquí:
-      // author: "C.I. Scofield" 
+      fullName: 'Scofield Reference Bible Notes',
+      author: 'C.I. Scofield',
+      description: 'Dispensational and theological reference notes by C.I. Scofield.',
+      isPublicDomain: true,
+      volumes: 1
     },
   });
 
@@ -268,32 +264,6 @@ async function main() {
 
     console.log(`   ✅ Encontradas ${entries.length} entradas válidas\n`);
 
-    // Resumen por libro
-    const bookSummary = {};
-    for (const entry of entries) {
-      bookSummary[entry.bookAbbr] = (bookSummary[entry.bookAbbr] || 0) + 1;
-    }
-
-    console.log('📚 Resumen por libro:');
-    const sortedBooks = Object.entries(bookSummary).sort((a, b) => {
-      const orderA = Object.values(BOOK_MAP).find(v => v.abbr === a[0])?.order || 99;
-      const orderB = Object.values(BOOK_MAP).find(v => v.abbr === b[0])?.order || 99;
-      return orderA - orderB;
-    });
-    
-    // Imprimir los primeros 5 y los últimos 5 para no saturar la consola
-    if (sortedBooks.length > 10) {
-      sortedBooks.slice(0, 5).forEach(([abbr, count]) => console.log(`   ${abbr}: ${count} entradas`));
-      console.log(`   ... (${sortedBooks.length - 10} libros más) ...`);
-      sortedBooks.slice(-5).forEach(([abbr, count]) => console.log(`   ${abbr}: ${count} entradas`));
-    } else {
-      for (const [abbr, count] of sortedBooks) {
-        console.log(`   ${abbr}: ${count} entradas`);
-      }
-    }
-    console.log('');
-
-    // Importar
     if (entries.length > 0) {
       console.log('💾 Importando entradas a la base de datos...');
       const { total, errors } = await importEntries(entries, source.id, lang);
