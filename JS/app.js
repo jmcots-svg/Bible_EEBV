@@ -208,9 +208,45 @@ function applyTranslations(lang) {
     updateComparacionLabels(lang);
     updateConcordanciaLabels(lang);
     updateStrongLabels(lang);
+    updatePlaceholders(lang);
 }
 
-
+function updatePlaceholders(lang) {
+    // Placeholders en modo lectura
+    if (!chapterSelect.value && !bookSelect.value) {
+        content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
+    } else if (!chapterSelect.value && bookSelect.value) {
+        content.innerHTML = `<p class="placeholder">${t('placeholderChapter', lang)}</p>`;
+    }
+    
+    // Placeholder en modo comparación
+    const compPlaceholder = document.querySelector('[data-mode="comparacion"] .placeholder');
+    if (compPlaceholder) {
+        compPlaceholder.textContent = t('selectVersions', lang);
+    }
+    
+    // Placeholder en modo concordancia
+    const concPlaceholder = document.querySelector('[data-mode="concordancia"] .placeholder');
+    if (concPlaceholder) {
+        concPlaceholder.textContent = t('placeholderSearch', lang);
+    }
+    
+    // Placeholder en modo strong
+    const strongPlaceholder = document.querySelector('[data-mode="strong"] .placeholder');
+    if (strongPlaceholder) {
+        strongPlaceholder.textContent = t('placeholderStrong', lang);
+    }
+    
+    // Actualizar mensajes en resetSelects
+    const bookOption = document.querySelector('#book option:first-child');
+    if (bookOption) bookOption.textContent = t('selectBook', lang);
+    
+    const chapterOption = document.querySelector('#chapter option:first-child');
+    if (chapterOption) chapterOption.textContent = t('selectChapter', lang);
+    
+    const verseOption = document.querySelector('#verse option:first-child');
+    if (verseOption) verseOption.textContent = t('allChapter', lang);
+}
     
 // =====================
 // 3. TABS - CAMBIO DE MODO
@@ -382,9 +418,10 @@ strongChapter.addEventListener('change', () => {
     }
 
     async function onVersionChange() {
+        const lang = localStorage.getItem('appLanguage') || 'es';
         const version = versionSelect.value;
         resetSelects(['book', 'chapter', 'verse']);
-        content.innerHTML = '<p class="placeholder">Cambiando de versión...</p>';
+        content.innerHTML = `<p class="placeholder">${t('changingVersion', lang)}</p>`;
         await loadBooks(version);
     }
 
@@ -433,11 +470,12 @@ strongChapter.addEventListener('change', () => {
     let isFetching = false;
 
     async function onChapterChange() {
+        const lang = localStorage.getItem('appLanguage') || 'es';
         if (isFetching) return;
         const chId = chapterSelect.value;
         resetSelects(['verse']);
         if (!chId) {
-            content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+            content.innerHTML = `<p class="placeholder">${t('placeholderChapter', lang)}</p>`;
             if (reference) reference.classList.remove('visible');
             return;
         }
@@ -445,7 +483,7 @@ strongChapter.addEventListener('change', () => {
         if (cache.verses[cacheKey]) { renderVerseSelect(cache.verses[cacheKey]); onSearch(); return; }
         try {
             isFetching = true;
-            content.innerHTML = '<p class="loading">Cargando capítulo...</p>';
+            content.innerHTML = `<p class="loading">${t('loadingChapter', lang)}</p>`;
             if (versesAbort) versesAbort.abort();
             versesAbort = new AbortController();
             const verses = await fetchJSON(`${API_URL}/api/verses?chapterId=${chId}`, versesAbort.signal);
@@ -470,10 +508,11 @@ strongChapter.addEventListener('change', () => {
     }
 
     async function onSearch() {
+        const lang = localStorage.getItem('appLanguage') || 'es';
         const chId = chapterSelect.value;
         const vNum = verseSelect.value;
         if (!chId) return;
-        content.innerHTML = '<p class="loading">Cargando contenido...</p>';
+        content.innerHTML = `<p class="loading">${t('loadingContent', lang)}</p>`;
         if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
         const cacheKeyAll = `${chId}-all`;
         let versesToRender = [];
@@ -579,12 +618,18 @@ strongChapter.addEventListener('change', () => {
     // 7. UTILIDADES
     // =====================
     function resetSelects(ids) {
+        const lang = localStorage.getItem('appLanguage') || 'es';
+        const loadingText = t('loadingBooks', lang);
+        const selectBookText = t('selectBook', lang);
+        const selectChapText = t('selectChapter', lang);
+        const allChapText = t('allChapter', lang);
+        
         ids.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            if (id === 'book')    el.innerHTML = '<option value="">Cargando...</option>';
-            if (id === 'chapter') el.innerHTML = '<option value="">-- Selecciona libro --</option>';
-            if (id === 'verse')   el.innerHTML = '<option value="">Todo el capítulo</option>';
+            if (id === 'book')    el.innerHTML = `<option value="">${loadingText}</option>`;
+            if (id === 'chapter') el.innerHTML = `<option value="">${selectBookText}</option>`;
+            if (id === 'verse')   el.innerHTML = `<option value="">${allChapText}</option>`;
             el.disabled = true;
         });
     }
