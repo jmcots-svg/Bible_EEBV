@@ -246,10 +246,25 @@ async function main() {
   for (const vol of volumes) {
     const dataDir = path.join(__dirname, 'data');
     
-    if (!fs.existsSync(filepath)) {
-      console.warn(`⚠️  Archivo no encontrado: ${vol.file}`);
-      continue;
-    }
+// ✅ CORRECTO:
+for (const vol of volumes) {
+  const filepath = path.join(__dirname, 'data', vol.file);  // ← Añadir esta línea
+  
+  if (!fs.existsSync(filepath)) {
+    console.warn(`⚠️ Archivo no encontrado: ${vol.file}`);
+    continue;
+  }
+  
+  const entries = await parseCommentaryXML(filepath, source.id, vol.num);
+  
+  if (entries.length > 0) {
+    console.log('💾 Importando...');
+    const { total, errors } = await importEntries(entries);
+    totalEntries += total;
+    totalErrors += errors;
+  }
+  console.log('');
+}
     
     const entries = await parseCommentaryXML(filepath, source.id, vol.num);
     
