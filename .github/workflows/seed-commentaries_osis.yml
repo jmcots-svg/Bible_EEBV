@@ -1,120 +1,57 @@
-name: 📖 Seed Commentary OSIS
+name: Seed Luther Commentary
 
 on:
   workflow_dispatch:
     inputs:
-      file:
-        description: "Nombre del archivo XML en /data (ej: calvin.xml)"
-        required: true
-        type: string
-      sourceName:
-        description: "Código corto (ej: CALVIN, LUTHER)"
-        required: true
-        type: string
-      sourceFullName:
-        description: "Nombre completo del comentario"
-        required: true
-        type: string
-      author:
-        description: "Autor del comentario"
-        required: true
-        type: string
       language:
-        description: "Idioma del comentario"
+        description: 'Idioma del comentario'
         required: true
+        default: 'en'
         type: choice
         options:
           - en
-          - es
-          - la
-          - de
-          - fr
-          - ca
-        default: en
-      description:
-        description: "Descripción breve del comentario"
-        required: false
-        type: string
-        default: ""
-      publishedYear:
-        description: "Año(s) de publicación (ej: 1554-1563)"
-        required: false
-        type: string
-        default: ""
-      volumes:
-        description: "Número de volúmenes"
-        required: false
-        type: number
-        default: 1
-      dryRun:
-        description: "Solo verificar sin insertar (dry run)"
+      source:
+        description: 'Nombre de la fuente'
         required: true
-        type: boolean
-        default: true
+        default: 'LUTHER'
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  DIRECT_URL: ${{ secrets.DIRECT_URL }}
+  COMMENTARY_LANG: ${{ github.event.inputs.language }}
+  COMMENTARY_SOURCE: ${{ github.event.inputs.source }}
 
 jobs:
-  seed-commentary:
-    name: "📖 ${{ inputs.dryRun && 'Verificar' || 'Cargar' }} ${{ inputs.sourceName }} (${{ inputs.language }})"
+  seed-luther:
     runs-on: ubuntu-latest
-
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DIRECT_URL: ${{ secrets.DIRECT_URL }}
-
+    
     steps:
-      - name: 📥 Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: 🟢 Setup Node.js
+      
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: 📦 Install dependencies
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
         run: npm ci
-
-      - name: 🔧 Generate Prisma Client
+      
+      - name: Generate Prisma Client
         run: npx prisma generate
-
-      - name: 📋 Verificar archivo XML existe
+      
+      - name: Verify XML file exists
         run: |
-          FILE="data/${{ inputs.file }}"
-          if [ ! -f "$FILE" ]; then
-            echo "❌ ERROR: No se encontró el archivo $FILE"
-            echo "📂 Archivos disponibles en /data:"
-            ls -la data/ || echo "  (carpeta data/ no existe)"
+          echo "📁 Verificando archivo Luther.xml..."
+          if [ -f "data/Luther.xml" ]; then
+            echo "✅ Luther.xml encontrado"
+            ls -lh data/Luther.xml
+          else
+            echo "❌ Luther.xml NO encontrado"
+            ls -la data/ || echo "⚠️ Directorio data/ no existe"
             exit 1
           fi
-          echo "✅ Archivo encontrado: $FILE"
-          echo "📏 Tamaño: $(du -h $FILE | cut -f1)"
-          echo "📄 Entries aproximados: $(grep -c '<entry ' $FILE || echo 'N/A')"
-
-      - name: "🔍 Verificar configuración"
-        run: |
-          echo "═══════════════════════════════════════════"
-          echo "📖 CONFIGURACIÓN DEL SEED"
-          echo "═══════════════════════════════════════════"
-          echo "  Archivo:     data/${{ inputs.file }}"
-          echo "  Código:      ${{ inputs.sourceName }}"
-          echo "  Nombre:      ${{ inputs.sourceFullName }}"
-          echo "  Autor:       ${{ inputs.author }}"
-          echo "  Idioma:      ${{ inputs.language }}"
-          echo "  Descripción: ${{ inputs.description }}"
-          echo "  Año:         ${{ inputs.publishedYear }}"
-          echo "  Volúmenes:   ${{ inputs.volumes }}"
-          echo "  Dry Run:     ${{ inputs.dryRun }}"
-          echo "═══════════════════════════════════════════"
-
-      - name: "🚀 Ejecutar seed"
-        run: |
-          node seedCommentaries.js \
-            --file="data/${{ inputs.file }}" \
-            --sourceName="${{ inputs.sourceName }}" \
-            --sourceFullName="${{ inputs.sourceFullName }}" \
-            --author="${{ inputs.author }}" \
-            --language="${{ inputs.language }}" \
-            --description="${{ inputs.description }}" \
-            --publishedYear="${{ inputs.publishedYear }}" \
-            --volumes="${{ inputs.volumes }}" \
-            ${{ inputs.dryRun && '--dryRun' || '' }}
+      
+      - name: Run Luther Commentary Seed
+        run: node seed_luther.js
