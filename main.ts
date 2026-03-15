@@ -620,16 +620,19 @@ const { rows: relRows } = await pool.query(
   });
 }
 
-// En tu backend, añadir:
+
 
 // =====================================================
-// /api/commentary
+// /api/commentary - Obtener comentarios (CORREGIDO)
 // =====================================================
 if (path === "/api/commentary") {
   const bookOrder = Number(url.searchParams.get("bookOrder"));
   const chapter = Number(url.searchParams.get("chapter"));
   const verse = url.searchParams.get("verse");
-  const source = url.searchParams.get("source") || "MHC";
+  const sourceId = url.searchParams.get("sourceId");
+  const language = url.searchParams.get("language") || "en";
+  
+  console.log("📖 Commentary request:", { bookOrder, chapter, verse, sourceId, language });
   
   if (!bookOrder || !chapter) {
     return new Response(JSON.stringify({ error: "Parámetros requeridos: bookOrder, chapter" }), {
@@ -639,33 +642,65 @@ if (path === "/api/commentary") {
   }
   
   let query = `
-    SELECT ce.*, cs.name as source_name, cs."fullName" as source_full_name
+    SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
+           ce."verseStart", ce."verseEnd", ce."sectionType",
+           cs.name as source_name, cs."fullName" as source_full_name, cs.author
     FROM "CommentaryEntry" ce
     JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
     WHERE ce."bookOrder" = \$1 
       AND ce.chapter = \$2
-      AND cs.name = \$3
+      AND ce.language = \$3
   `;
   
-  const params = [bookOrder, chapter, source];
+  const params: any[] = [bookOrder, chapter, language];
+  let paramIndex = 4;
+  
+  if (sourceId) {
+    query += ` AND cs.id = 
+$$
+{paramIndex}`;
+    params.push(Number(sourceId));
+    paramIndex++;
+  }
   
   if (verse) {
+    const verseNum = Number(verse);
     query += `
-      AND (ce."verseStart" IS NULL 
-           OR (ce."verseStart" <= \$4 AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= \$4)))
+      AND (
+        ce."verseStart" IS NULL 
+        OR ce."verseStart" =
+$$
+{paramIndex}
+        OR (ce."verseStart" <= 
+$$
+{paramIndex} AND ce."verseEnd" >=
+$$
+{paramIndex})
+      )
     `;
-    params.push(Number(verse));
+    params.push(verseNum);
   }
   
   query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
   
+  console.log("📖 Query:", query);
+  console.log("📖 Params:", params);
+  
   const { rows } = await pool.query(query, params);
   
-  return new Response(JSON.stringify(rows), {
+  console.log("📖 Results:", rows.length);
+  
+  return new Response(JSON.stringify({
+    bookOrder,
+    chapter,
+    verse: verse ? Number(verse) : null,
+    total: rows.length,
+    entries: rows
+  }), {
     headers: makeHeaders("public, max-age=86400"),
   });
 }
-
+    
 // =====================================================
 // /api/commentary/sources - Listar fuentes disponibles para una cita
 // =====================================================
