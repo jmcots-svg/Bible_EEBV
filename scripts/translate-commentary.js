@@ -143,12 +143,29 @@ async function getAllEntries(lang) {
   return allEntries;
 }
 
-function chunkArray(array, size) {
-  const result = [];
-  for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size));
+function createDynamicBatches(entries, maxCharsPerBatch = 10000) { // 👈 10.000 es el límite seguro de lectura/escritura
+  const batches = [];
+  let currentBatch = [];
+  let currentChars = 0;
+
+  for (const entry of entries) {
+    const entryLength = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
+
+    if (currentChars + entryLength > maxCharsPerBatch && currentBatch.length > 0) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentChars = 0;
+    }
+
+    currentBatch.push(entry);
+    currentChars += entryLength;
   }
-  return result;
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  return batches;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -180,10 +197,13 @@ async function main() {
     }
 
     // Lotes de 4 en 4
-    const BATCH_SIZE = 4;
-    const entryBatches = chunkArray(pendingEntries, BATCH_SIZE);
+    //const BATCH_SIZE = 4;
+    //const entryBatches = chunkArray(pendingEntries, BATCH_SIZE);
+    // 👈 MAGIA: Lotes dinámicos (agrupa hasta 10.000 caracteres por petición)
+    const entryBatches = createDynamicBatches(pendingEntries, 10000);
+    console.log(`📦 Se han creado ${entryBatches.length} lotes dinámicos adaptados a la IA.`);
     
-    // Concurrencia de 2. Velocidad crucero segura.
+    // Concurrencia de 5. Velocidad crucero (para segura poner 2)
     const limit = pLimit(5); 
     let processed = 0;
     let dbBuffer = [];
