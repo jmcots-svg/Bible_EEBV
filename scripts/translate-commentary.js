@@ -20,10 +20,6 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// ═══════════════════════════════════════════════════════════════════
-// AGRUPACIÓN POR PROYECTOS (Magia pura)
-// ═══════════════════════════════════════════════════════════════════
-// Sabiendo que las primeras 10 son P1-P10, y las siguientes 10 son P1-P10
 const NUM_PROJECTS = Math.floor(GEMINI_KEYS.length / 2) || GEMINI_KEYS.length;
 const PROJECTS = [];
 
@@ -31,15 +27,9 @@ for (let i = 0; i < NUM_PROJECTS; i++) {
   const projectKeys = [];
   if (GEMINI_KEYS[i]) projectKeys.push(GEMINI_KEYS[i]);
   if (GEMINI_KEYS[i + NUM_PROJECTS]) projectKeys.push(GEMINI_KEYS[i + NUM_PROJECTS]);
-  
   PROJECTS.push({ id: i + 1, keys: projectKeys, currentKeyIdx: 0 });
 }
 
-console.log(`🏗️ Arquitectura detectada: ${PROJECTS.length} Proyectos de Google Cloud con ${PROJECTS[0].keys.length} keys por proyecto.`);
-
-// ═══════════════════════════════════════════════════════════════════
-// MODELOS EN ORDEN DE PRIORIDAD
-// ═══════════════════════════════════════════════════════════════════
 const MODELS = [
   { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
   { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
@@ -47,14 +37,12 @@ const MODELS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// RATE LIMITER v5 - CONSCIENTE DE PROYECTOS
+// RATE LIMITER
 // ═══════════════════════════════════════════════════════════════════
 class ProjectAwareRateLimiter {
   constructor(projects, models) {
     this.projects = projects;
     this.models = models;
-    
-    // Tracking por PROYECTO y MODELO (ya no por key individual)
     this.projectStats = new Map();
     
     this.projects.forEach(p => {
@@ -82,7 +70,6 @@ class ProjectAwareRateLimiter {
     const oneMinAgo = now - 60000;
     stats.requestTimestamps = stats.requestTimestamps.filter(ts => ts > oneMinAgo);
     
-    // Dejamos margen de 1 por seguridad
     if (stats.requestTimestamps.length >= model.rpm - 1) return false;
     
     if (now - stats.dayStart > 86400000) {
@@ -94,23 +81,17 @@ class ProjectAwareRateLimiter {
     return true;
   }
 
-  // Obtiene una key del proyecto, rotando entre las que tenga ese proyecto
   _reserveFromProject(project, model) {
     const stats = this.projectStats.get(project.id).get(model.name);
-    
-    // RESERVA
     stats.requestTimestamps.push(Date.now());
     stats.requestsToday++;
     
-    // Rotar key dentro del proyecto (intercala entre Key 1 y Key 11)
     const key = project.keys[project.currentKeyIdx];
     project.currentKeyIdx = (project.currentKeyIdx + 1) % project.keys.length;
-    
     return key;
   }
 
   getBestKeyAndModel() {
-    // Cascada: Primero intenta el mejor modelo en TODOS los proyectos
     for (const model of this.models) {
       for (let i = 0; i < this.projects.length; i++) {
         const pIdx = (this.currentProjectIdx + i) % this.projects.length;
@@ -124,7 +105,6 @@ class ProjectAwareRateLimiter {
       }
     }
 
-    // Si todo está lleno, calcula la espera mínima general
     let minWait = Infinity;
     const now = Date.now();
     for (const project of this.projects) {
@@ -146,23 +126,18 @@ class ProjectAwareRateLimiter {
   recordRateLimit(projectId, modelName) {
     const stats = this.projectStats.get(projectId).get(modelName);
     stats.exhaustedUntil = Date.now() + 65000;
-    
     const shortModel = modelName.includes('3.1') ? '3.1' : (modelName.includes('lite') ? '2.5L' : '2.5');
-    console.log(`   🔴 Rate Limit | PROYECTO ${projectId} | Modelo ${shortModel} → cooldown 65s para ambas keys`);
+    console.log(`   🔴 Rate Limit | PROYECTO ${projectId} | Modelo ${shortModel} → cooldown 65s`);
   }
 }
 
 const rateLimiter = new ProjectAwareRateLimiter(PROJECTS, MODELS);
 
 // ═══════════════════════════════════════════════════════════════════
-// ESTADÍSTICAS GLOBALES
+// ESTADÍSTICAS
 // ═══════════════════════════════════════════════════════════════════
 const stats = {
-  byModel: {
-    'gemini-3.1-flash-lite-preview': 0,
-    'gemini-2.5-flash-lite': 0,
-    'gemini-2.5-flash': 0,
-  },
+  byModel: { 'gemini-3.1-flash-lite-preview': 0, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash': 0 },
   google: 0,
 };
 
@@ -175,17 +150,14 @@ async function translateWithGoogleTranslate(text, targetLang = "es") {
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.substring(0, 4500))}`;
     const response = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
     return response.data[0].map(item => item[0]).filter(Boolean).join("");
-  } catch {
-    return text;
-  }
+  } catch { return text; }
 }
 
 async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
   const results = [];
   for (const entry of entriesBatch) {
     results.push({
-      id: entry.id,
-      title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
+      id: entry.id, title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
       content: entry.content ? await translateWithGoogleTranslate(entry.content, targetLang) : "",
       contentHtml: entry.contentHtml ? await translateWithGoogleTranslate(entry.contentHtml, targetLang) : ""
     });
@@ -196,7 +168,7 @@ async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR BATCH
+// TRADUCTOR BATCH "MODO PACIENTE"
 // ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
   const payload = entriesBatch.map(entry => ({
@@ -206,18 +178,21 @@ async function translateBatchOptimized(entriesBatch) {
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
   const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return only valid JSON array.`;
 
-  for (let attempt = 1; attempt <= 6; attempt++) {
+  let maxAttempts = 5;
+  let currentAttempt = 0;
+
+  while (currentAttempt < maxAttempts) {
     let keyInfo = rateLimiter.getBestKeyAndModel();
     
-    if (!keyInfo.available) {
-      await sleep(Math.min(keyInfo.waitMs, 20000));
+    // 🧘‍♂️ MODO ZEN: Si todo está ocupado, ESPERAMOS. No huimos a Google Translate.
+    while (!keyInfo.available) {
+      const waitTime = Math.min(keyInfo.waitMs, 20000); // Esperar en trozos de máx 20s
+      console.log(`   ⏳ Modelos ocupados. Esperando ${(waitTime/1000).toFixed(0)}s...`);
+      await sleep(waitTime + 500);
       keyInfo = rateLimiter.getBestKeyAndModel();
     }
-    
-    if (!keyInfo.available || !keyInfo.key) {
-      console.log(`   🌐 GOOGLE TRANSLATE fallback (${entriesBatch.length} entries)`);
-      return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
-    }
+
+    currentAttempt++;
 
     try {
       const ai = new GoogleGenAI({ apiKey: keyInfo.key });
@@ -239,21 +214,24 @@ async function translateBatchOptimized(entriesBatch) {
       const isRateLimit = error.status === 429 || error.message?.includes('429') || error.message?.includes('EXHAUSTED');
       
       if (isRateLimit) {
-        // Reporta el límite AL PROYECTO, no solo a la key
         rateLimiter.recordRateLimit(keyInfo.projectId, keyInfo.model);
+        // 🛑 FRENO DE MANO: Espera obligatoria antes de intentar otro proyecto
+        await sleep(3000 + Math.random() * 2000); 
         continue;
       }
       
-      if (attempt >= 5) {
+      if (currentAttempt >= maxAttempts) {
+        console.log(`   ⚠️ Error persistente: ${error.message?.substring(0, 40)}. Pasando a Google Translate.`);
         return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
       }
     }
   }
+  
   return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BATCHING Y DATOS
+// BATCHING Y OBTENCIÓN DE DATOS
 // ═══════════════════════════════════════════════════════════════════
 function createOptimizedBatches(entries) {
   const MAX_CHARS = 12000;
@@ -288,20 +266,19 @@ async function getAllEntries(lang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROCESADOR (Ahora sí, Concurrencia a tope)
+// PROCESADOR (Concurrencia Segura 4)
 // ═══════════════════════════════════════════════════════════════════
 async function processAllBatches(batches, totalEntries) {
-  // ⚡ Como ahora controlamos proyectos enteros (10 proyectos = 150 RPM en 3.1), 
-  // podemos subir la concurrencia tranquilamente a 6 sin miedo a colisiones.
-  const limit = pLimit(6); 
+  // Concurrencia a 4. Es el punto dulce perfecto para no disparar el límite RPS de Google
+  const limit = pLimit(4); 
   
   let processed = 0, dbBuffer = [];
   const startTime = Date.now();
 
   const processBatch = async (batchEn, index) => {
-    // Arranque escalonado para distribuir las reservas iniciales
-    if (index < 6) await sleep(index * 300); 
-    else await sleep(200 + Math.random() * 200);
+    // 💧 ARRANQUE POR GOTEO: Cada trabajador arranca con 2 segundos de diferencia.
+    if (index < 4) await sleep(index * 2000); 
+    else await sleep(1000 + Math.random() * 1000);
 
     const translatedBatch = await translateBatchOptimized(batchEn);
     
@@ -348,10 +325,8 @@ async function processAllBatches(batches, totalEntries) {
 async function main() {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║  🚀 TRADUCTOR v5 "Project-Aware" (Consciente de Proyectos)                ║
+║  🚀 TRADUCTOR v5.1 "Modo Zen" (Paciencia y Cero Spam)                     ║
 ║  EN → ${TARGET_LANG.toUpperCase()}                                                                ║
-╠═══════════════════════════════════════════════════════════════════════════╣
-║  Capacidad detectada: 10 Proyectos (x15 RPM) = 150 RPM en 3.1             ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 `);
 
