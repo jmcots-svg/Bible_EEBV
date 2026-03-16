@@ -1,34 +1,33 @@
+const { createClient } = require("@supabase/supabase-js");
 const axios = require("axios");
 require("dotenv").config();
 
+// Extraer Supabase URL y Key del DATABASE_URL
 const DATABASE_URL = process.env.DATABASE_URL || process.env.DIRECT_URL;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-if (!DATABASE_URL) {
+if (!DATABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
-    "❌ Error: Falta DATABASE_URL o DIRECT_URL en las variables de entorno"
+    "❌ Error: Falta DATABASE_URL y/o SUPABASE_ANON_KEY en variables de entorno"
   );
   process.exit(1);
 }
 
-// Extraer credenciales de DATABASE_URL
-// postgresql://user:password@host:port/database
-const urlMatch = DATABASE_URL.match(
-  /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/
-);
-if (!urlMatch) {
-  console.error("❌ Error: No se pudo parsear DATABASE_URL");
+// Extraer SUPABASE_URL del DATABASE_URL
+// postgresql://user:password@xxx.supabase.co:5432/postgres
+const urlMatch = DATABASE_URL.match(/postgresql:\/\/[^@]+@([^:]+)/);
+const SUPABASE_URL = urlMatch ? `https://${urlMatch[1]}` : null;
+
+if (!SUPABASE_URL) {
+  console.error("❌ Error: No se pudo extraer SUPABASE_URL de DATABASE_URL");
+  console.error("DATABASE_URL:", DATABASE_URL);
   process.exit(1);
 }
 
-const [, dbUser, dbPassword, dbHost, dbPort, dbName] = urlMatch;
-const SUPABASE_URL = `https://${dbHost}`;
-const SUPABASE_KEY = dbPassword; // Usar la contraseña como API key temporal
-
-console.log("DEBUG - DATABASE_URL:", DATABASE_URL);
-console.log("DEBUG - dbHost:", dbHost);
 console.log("DEBUG - SUPABASE_URL:", SUPABASE_URL);
-console.log("DEBUG - TABLE:", "StrongEntry");
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FIELDS_TO_TRANSLATE = [
   "definition",
@@ -114,34 +113,33 @@ async function main() {
   try {
     // 1. Obtener todos los Strong en inglés
     console.log(`\n📥 Obteniendo Strong entries en inglés...`);
-    const getResponse = await axios.get(
-      `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.en&select=strong,language,lemma,translit,pronunciation,morphology,speechLang,definition,exegesis,explanation,kjvDefinition,strongsDef,strongsDerivation`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
-        },
-      }
-    );
+    const { data: strongEntriesEn, error: fetchError } = await supabase
+      .from("StrongEntry")
+      .select(
+        "strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation"
+      )
+      .eq("definitionLang", "en");
 
-    const strongEntriesEn = getResponse.data;
+    if (fetchError) {
+      throw new Error(`Error obteniendo datos: ${fetchError.message}`);
+    }
+
     console.log(`✓ Se obtuvieron ${strongEntriesEn.length} entradas en inglés`);
 
     // 2. Verificar si ya existen
     console.log(
       `\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`
     );
-    const checkResponse = await axios.get(
-      `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.${TARGET_LANG}&select=strong`,
-      {
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
-          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
-        },
-      }
-    );
+    const { data: existingEntries, error: checkError } = await supabase
+      .from("StrongEntry")
+      .select("strong")
+      .eq("definitionLang", TARGET_LANG);
 
-    const existingCount = checkResponse.data.length;
+    if (checkError) {
+      throw new Error(`Error verificando existencia: ${checkError.message}`);
+    }
+
+    const existingCount = existingEntries?.length || 0;
     console.log(
       `   Ya existen ${existingCount} entradas en ${TARGET_LANG.toUpperCase()}`
     );
@@ -152,17 +150,13 @@ async function main() {
       );
       console.log(`   Se sobrescribirán automáticamente.`);
 
-      // Eliminar entradas existentes (por chunks)
-      for (let i = 0; i < existingCount; i += 1000) {
-        await axios.delete(
-          `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.${TARGET_LANG}`,
-          {
-            headers: {
-              apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
-              Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
-            },
-          }
-        );
+      const { error: deleteError } = await supabase
+        .from("StrongEntry")
+        .delete()
+        .eq("definitionLang", TARGET_LANG);
+
+      if (deleteError) {
+        throw new Error(`Error eliminando entradas previas: ${deleteError.message}`);
       }
       console.log(`   ✓ Eliminadas ${existingCount} entradas previas`);
     }
@@ -198,7 +192,7 @@ async function main() {
       console.log(`⚠️  ${errors.length} errores encontrados`);
     }
 
-    // 4. Insertar en Supabase REST API
+    // 4. Insertar en Supabase
     console.log(`\n💾 Insertando en Supabase...`);
 
     if (translatedEntries.length === 0) {
@@ -212,32 +206,21 @@ async function main() {
     for (let i = 0; i < translatedEntries.length; i += chunkSize) {
       const chunk = translatedEntries.slice(i, i + chunkSize);
 
-      try {
-        await axios.post(
-          `${SUPABASE_URL}/rest/v1/StrongEntry`,
-          chunk,
-          {
-            headers: {
-              apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
-              Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
-              "Content-Type": "application/json",
-              Prefer: "resolution=merge-duplicates",
-            },
-          }
-        );
+      const { error: insertError } = await supabase
+        .from("StrongEntry")
+        .insert(chunk);
 
-        insertedCount += chunk.length;
-        console.log(
-          `  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`
+      if (insertError) {
+        throw new Error(
+          `Error insertando chunk: ${insertError.message}`
         );
-      } catch (insertError) {
-        console.error(
-          `❌ Error insertando chunk: ${insertError.response?.data?.message || insertError.message}`
-        );
-        throw insertError;
       }
 
-      // Pausa entre chunks
+      insertedCount += chunk.length;
+      console.log(
+        `  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`
+      );
+
       if (i + chunkSize < translatedEntries.length) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
@@ -261,9 +244,6 @@ async function main() {
     console.log("=".repeat(70) + "\n");
   } catch (error) {
     console.error(`\n❌ Error fatal: ${error.message}`);
-    if (error.response?.data) {
-      console.error("Detalles:", error.response.data);
-    }
     process.exit(1);
   }
 }
