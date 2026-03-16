@@ -184,7 +184,7 @@ async function main() {
     const entryBatches = chunkArray(pendingEntries, BATCH_SIZE);
     
     // Concurrencia de 2. Velocidad crucero segura.
-    const limit = pLimit(2); 
+    const limit = pLimit(5); 
     let processed = 0;
     let dbBuffer = [];
 
