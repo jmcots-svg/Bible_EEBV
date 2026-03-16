@@ -44,6 +44,9 @@ async function translateWithGeminiSDK(entry, retries = 3) {
     contentHtml: entry.contentHtml || ""
   };
 
+  // 👈 Añade esta línea justo antes del prompt para saber el nombre del idioma
+  const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
+  
   const promptDelSistema = `
   You are an expert biblical translator. Translate the following JSON object from English to Catalan (${TARGET_LANG}).
   Rules:
