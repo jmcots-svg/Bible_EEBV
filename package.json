@@ -2,9 +2,11 @@
   "name": "biblia-traduccion",
   "version": "1.0.0",
   "scripts": {
-    "translate:strong": "node scripts/translate-strong.js"
+    "translate:strong": "node scripts/translate-strong.js",
+    "translate:commentary": "node scripts/translate-commentary.js"
   },
   "dependencies": {
+    "@google/genai": "^0.1.2",
     "@prisma/client": "^6.19.2",
     "@prisma/extension-accelerate": "^1.0.0",
     "@supabase/supabase-js": "^2.38.0",
