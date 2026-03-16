@@ -45,7 +45,7 @@ const TTL_7D_MS = 7 * 24 * 60 * 60 * 1000;
 // --------------------
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Expose-Headers": "Server-Timing, X-Cache",
   "Timing-Allow-Origin": "*",
@@ -838,6 +838,108 @@ $$
   }), {
     headers: makeHeaders("public, max-age=86400"),
   });
+}
+
+// =====================================================
+// /api/translate-commentary - Traducción on-the-fly
+// =====================================================
+if (path === "/api/translate-commentary" && req.method === "POST") {
+  try {
+    const body = await req.json();
+    const { sourceId, divId, targetLang } = body;
+
+    if (!sourceId || !divId || !targetLang) {
+      return new Response(
+        JSON.stringify({ error: "Parámetros requeridos: sourceId, divId, targetLang" }),
+        { status: 400, headers: makeHeaders("no-store") }
+      );
+    }
+
+    // 1. Verificar si ya existe traducción
+    const { rows: existing } = await pool.query(
+      `SELECT * FROM "CommentaryEntry" 
+       WHERE "sourceId" = \$1 AND "divId" = \$2 AND language = \$3 
+       LIMIT 1`,
+      [sourceId, divId, targetLang]
+    );
+
+    if (existing.length > 0) {
+      return new Response(
+        JSON.stringify({ entry: existing[0], cached: true, saved: true }),
+        { headers: makeHeaders("no-store") }
+      );
+    }
+
+    // 2. Obtener entrada en inglés
+    const { rows: englishRows } = await pool.query(
+      `SELECT * FROM "CommentaryEntry" 
+       WHERE "sourceId" = \$1 AND "divId" = \$2 AND language = 'en' 
+       LIMIT 1`,
+      [sourceId, divId]
+    );
+
+    if (englishRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Entrada en inglés no encontrada" }),
+        { status: 404, headers: makeHeaders("no-store") }
+      );
+    }
+
+    const englishEntry = englishRows[0];
+
+    // 3. Traducir on-the-fly
+    const result = await translateCommentaryOnTheFly(englishEntry, targetLang);
+
+    if (!result.success || !result.entry) {
+      return new Response(
+        JSON.stringify({ error: result.error || "Traducción falló" }),
+        { status: 500, headers: makeHeaders("no-store") }
+      );
+    }
+
+    // 4. Guardar en DB
+    const entry = result.entry;
+    const { rows: inserted } = await pool.query(
+      `INSERT INTO "CommentaryEntry" 
+       ("sourceId", language, "bookAbbr", "bookOrder", chapter, 
+        "verseStart", "verseEnd", title, content, "contentHtml", 
+        "divId", "sectionType", volume)
+       VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13)
+       RETURNING *`,
+      [
+        entry.sourceId,
+        entry.language,
+        entry.bookAbbr,
+        entry.bookOrder,
+        entry.chapter,
+        entry.verseStart,
+        entry.verseEnd,
+        entry.title,
+        entry.content,
+        entry.contentHtml,
+        entry.divId,
+        entry.sectionType,
+        entry.volume,
+      ]
+    );
+
+    return new Response(
+      JSON.stringify({
+        entry: inserted[0],
+        cached: false,
+        saved: true,
+        method: result.method,
+      }),
+      { headers: makeHeaders("no-store") }
+    );
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("[translate-commentary] Error:", err.message);
+    return new Response(
+      JSON.stringify({ error: err.message }),
+      { status: 500, headers: makeHeaders("no-store") }
+    );
+  }
 }
 
 // =====================================================
