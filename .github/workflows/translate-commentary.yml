@@ -25,6 +25,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }} # 👈 ¡Acuérdate de añadir este secreto en GitHub!
-          TARGET_LANG: ca
+          TARGET_LANG: es
         timeout-minutes: 360 # 6 horas máximo
         run: npm run translate:commentary
