@@ -21,7 +21,6 @@ if (!SUPABASE_ANON_KEY) {
 }
 
 console.log(`🔗 Conectando a: ${SUPABASE_URL}`);
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const FIELDS_TO_TRANSLATE = [
@@ -34,18 +33,89 @@ const FIELDS_TO_TRANSLATE = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCCIÓN CON GOOGLE TRANSLATE (sin API key)
+// HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
-// Esperar un tiempo entre requests para evitar bloqueos
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PAGINACIÓN - Obtener TODOS los registros de Supabase
+// ═══════════════════════════════════════════════════════════════════
+
+async function getAllEntries(lang) {
+  const PAGE_SIZE = 1000;
+  let allEntries = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from("StrongEntry")
+      .select(
+        "strong, language, lemma, translit, pronunciation, morphology, " +
+        "speechLang, definition, exegesis, explanation, kjvDefinition, " +
+        "strongsDef, strongsDerivation"
+      )
+      .eq("definitionLang", lang)
+      .range(from, to);
+
+    if (error) throw new Error(`Error en paginación: ${error.message}`);
+
+    if (data && data.length > 0) {
+      allEntries = allEntries.concat(data);
+      console.log(`   📄 Página ${page + 1}: ${data.length} entradas (total: ${allEntries.length})`);
+      page++;
+      hasMore = data.length === PAGE_SIZE; // Si devuelve menos de 1000, ya no hay más
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allEntries;
+}
+
+async function getExistingStrongs(lang) {
+  const PAGE_SIZE = 1000;
+  let allStrongs = [];
+  let page = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+      .from("StrongEntry")
+      .select("strong")
+      .eq("definitionLang", lang)
+      .range(from, to);
+
+    if (error) throw new Error(`Error verificando existentes: ${error.message}`);
+
+    if (data && data.length > 0) {
+      allStrongs = allStrongs.concat(data.map(e => e.strong));
+      page++;
+      hasMore = data.length === PAGE_SIZE;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return new Set(allStrongs);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TRADUCCIÓN CON GOOGLE TRANSLATE
+// ═══════════════════════════════════════════════════════════════════
+
 async function translateText(text, targetLang = "ca", retries = 3) {
   if (!text || text.trim() === "") return null;
 
-  // Truncar texto muy largo
   const textToTranslate = text.substring(0, 1000);
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -56,16 +126,16 @@ async function translateText(text, targetLang = "ca", retries = 3) {
       });
       return translated;
     } catch (error) {
-      const isRateLimit = error.message?.includes("429") || 
-                          error.message?.includes("TooManyRequests");
-      
+      const isRateLimit =
+        error.message?.includes("429") ||
+        error.message?.includes("TooManyRequests");
+
       if (isRateLimit && attempt < retries) {
-        // Espera exponencial: 10s, 20s, 40s
-        const waitTime = 10000 * attempt;
-        console.log(`⏳ Rate limit, esperando ${waitTime/1000}s (intento ${attempt}/${retries})...`);
+        const waitTime = 15000 * attempt; // 15s, 30s, 45s
+        console.log(`⏳ Rate limit, esperando ${waitTime / 1000}s (intento ${attempt}/${retries})...`);
         await sleep(waitTime);
       } else if (attempt === retries) {
-        console.error(`⚠️ Error traduciendo después de ${retries} intentos: ${error.message}`);
+        console.error(`⚠️ Fallo traduciendo después de ${retries} intentos`);
         return null;
       }
     }
@@ -91,13 +161,11 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
     definitionLang: targetLang,
   };
 
-  // Traducir campos de forma SECUENCIAL para evitar rate limit
+  // Secuencial por campo para no saturar Google
   for (const field of FIELDS_TO_TRANSLATE) {
-    const originalText = entryEn[field];
-    if (originalText) {
-      entryTranslated[field] = await translateText(originalText, targetLang);
-      // Pequeña pausa entre campos del mismo entry
-      await sleep(200);
+    if (entryEn[field]) {
+      entryTranslated[field] = await translateText(entryEn[field], targetLang);
+      await sleep(300); // 300ms entre campos
     }
   }
 
@@ -124,37 +192,18 @@ async function main() {
     if (countError) throw new Error(`Error de conexión: ${countError.message}`);
     console.log(`✓ Conexión OK. Total registros: ${count}`);
 
-    // 2. Obtener Strong en inglés
-    console.log(`\n📥 Obteniendo Strong entries en inglés...`);
-    const { data: strongEntriesEn, error: fetchError } = await supabase
-      .from("StrongEntry")
-      .select(
-        "strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation"
-      )
-      .eq("definitionLang", "en");
-
-    if (fetchError) throw new Error(`Error obteniendo datos: ${fetchError.message}`);
-
-    if (!strongEntriesEn || strongEntriesEn.length === 0) {
-      console.log("⚠️ No se encontraron entradas en inglés");
-      process.exit(0);
-    }
-
-    console.log(`✓ ${strongEntriesEn.length} entradas en inglés obtenidas`);
+    // 2. Obtener TODAS las entradas en inglés (con paginación)
+    console.log(`\n📥 Obteniendo TODAS las Strong entries en inglés...`);
+    const strongEntriesEn = await getAllEntries("en");
+    console.log(`✓ Total obtenidas: ${strongEntriesEn.length}`);
 
     // 3. Verificar cuáles ya están traducidas (para reanudar si falla)
     console.log(`\n🔍 Verificando traducciones existentes en ${TARGET_LANG}...`);
-    const { data: existingEntries } = await supabase
-      .from("StrongEntry")
-      .select("strong")
-      .eq("definitionLang", TARGET_LANG);
-
-    const existingSet = new Set((existingEntries || []).map(e => e.strong));
+    const existingSet = await getExistingStrongs(TARGET_LANG);
     console.log(`   Ya traducidas: ${existingSet.size}`);
 
-    // Filtrar solo las que faltan
     const pendingEntries = strongEntriesEn.filter(e => !existingSet.has(e.strong));
-    console.log(`   Pendientes: ${pendingEntries.length}`);
+    console.log(`   Pendientes:    ${pendingEntries.length}`);
 
     if (pendingEntries.length === 0) {
       console.log("✅ ¡Todas las entradas ya están traducidas!");
@@ -165,11 +214,10 @@ async function main() {
     console.log(`\n🌐 Traduciendo ${pendingEntries.length} entradas...`);
     console.log("=".repeat(70));
 
-    // Solo 3 en paralelo para no saturar Google
-    const limit = pLimit(3);
+    const limit = pLimit(3); // Solo 3 en paralelo
     const startTime = Date.now();
     let processed = 0;
-    let buffer = []; // Buffer para insertar en lotes
+    let buffer = [];
 
     const translationPromises = pendingEntries.map((entryEn) =>
       limit(async () => {
@@ -180,19 +228,23 @@ async function main() {
 
           if (processed % 10 === 0) {
             const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-            console.log(`⏳ ${processed}/${pendingEntries.length} traducidas (${elapsed} min)`);
+            const remaining = pendingEntries.length - processed;
+            const rate = processed / ((Date.now() - startTime) / 1000 / 60);
+            const eta = (remaining / rate).toFixed(0);
+            console.log(
+              `⏳ ${processed}/${pendingEntries.length} ` +
+              `(${elapsed} min transcurridos, ~${eta} min restantes)`
+            );
           }
 
-          // Insertar cada 50 entradas (no esperar al final)
+          // Guardar cada 50 entradas (no esperar al final)
           if (buffer.length >= 50) {
             const toInsert = buffer.splice(0, 50);
-            const { error: insertError } = await supabase
-              .from("StrongEntry")
-              .insert(toInsert);
-            if (insertError) {
-              console.error(`⚠️ Error guardando batch: ${insertError.message}`);
+            const { error } = await supabase.from("StrongEntry").insert(toInsert);
+            if (error) {
+              console.error(`⚠️ Error guardando batch: ${error.message}`);
             } else {
-              console.log(`   💾 Guardadas ${processed} entradas acumuladas`);
+              console.log(`   💾 Batch guardado (${processed} total procesadas)`);
             }
           }
 
@@ -206,13 +258,12 @@ async function main() {
 
     await Promise.all(translationPromises);
 
-    // 5. Insertar el buffer restante
+    // 5. Guardar buffer restante
     if (buffer.length > 0) {
       console.log(`\n💾 Guardando ${buffer.length} entradas restantes...`);
-      const { error: insertError } = await supabase
-        .from("StrongEntry")
-        .insert(buffer);
-      if (insertError) throw new Error(`Error insertando: ${insertError.message}`);
+      const { error } = await supabase.from("StrongEntry").insert(buffer);
+      if (error) throw new Error(`Error insertando: ${error.message}`);
+      console.log(`✓ Guardadas`);
     }
 
     const totalTime = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
