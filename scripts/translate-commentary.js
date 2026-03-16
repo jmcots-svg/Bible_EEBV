@@ -46,14 +46,15 @@ async function translateWithGeminiSDK(entry, retries = 3) {
 
   // 👈 Añade esta línea justo antes del prompt para saber el nombre del idioma
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
-  
+
   const promptDelSistema = `
-  You are an expert biblical translator. Translate the following JSON object from English to Catalan (${TARGET_LANG}).
+  You are an expert biblical translator. Translate the following JSON object from English to ${languageName}.
   Rules:
-  1. Translate "title", "content", and "contentHtml".
-  2. For "contentHtml", DO NOT translate or modify any HTML tags (like <p>, <strong>, <i>). Only translate the text inside them.
-  3. Maintain theological accuracy.
-  4. Return ONLY a valid JSON with the exact same keys.
+  1. Translate the values of "title", "content", and "contentHtml".
+  2. For "contentHtml", DO NOT translate or modify any HTML tags (like <p>, <strong>, <i>, <a>). Only translate the text inside them.
+  3. Maintain theological accuracy and formal biblical tone.
+  4. DO NOT add any conversational text, greetings, introductions, or notes.
+  5. Return ONLY a valid JSON with the exact same keys.
   `;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -141,7 +142,15 @@ async function main() {
     // Set para saber cuáles existen (combinación única sourceId + divId)
     const existingSet = new Set(caEntries.map(e => `${e.sourceId}-${e.divId}`));
 
-    const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
+    // Reemplaza esto:
+    // const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
+
+    // Por esto (cambia el 4 por el ID de tu comentario nuevo):
+    const TEST_SOURCE_ID = 4; 
+    const pendingEntries = enEntries.filter(e => 
+      e.sourceId === TEST_SOURCE_ID && !existingSet.has(`${e.sourceId}-${e.divId}`)
+    );
+    
     console.log(`   Pendientes: ${pendingEntries.length} de ${enEntries.length}\n`);
 
     if (pendingEntries.length === 0) {
