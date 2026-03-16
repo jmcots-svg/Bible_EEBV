@@ -535,9 +535,21 @@ if (path.startsWith("/api/strong-dict/")) {
   // ✅ Leer idioma del query param, normalizar y validar
   let defLang = (url.searchParams.get("lang") || "es").toLowerCase();
   
-  // Aceptamos solo idiomas válidos
-  const validLangs = ["es", "en"];
-  if (!validLangs.includes(defLang)) defLang = "en";
+  // ✅ Obtener idiomas disponibles dinámicamente desde la DB
+  // Con caché para no consultar en cada request
+  const memKey = "strong-available-langs";
+  let availableLangs = getCached(memKey);
+  
+  if (!availableLangs) {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT "definitionLang" FROM "StrongEntry"`
+    );
+    availableLangs = rows.map((r: any) => r.definitionLang);
+    setCache(memKey, availableLangs); // se cachea 1 hora
+  }
+
+  // Si el idioma solicitado no existe en la DB, fallback a español
+  if (!availableLangs.includes(defLang)) defLang = "es";
 
   if (!code) {
     return new Response(JSON.stringify({ error: "Código Strong requerido" }), {
