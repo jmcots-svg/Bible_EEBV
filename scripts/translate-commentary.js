@@ -18,208 +18,245 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ═══════════════════════════════════════════════════════════════════
-// CONFIGURACIÓN DE LÍMITES POR MODELO
+// DIVIDIR KEYS EN DOS GRUPOS DE 10
 // ═══════════════════════════════════════════════════════════════════
-const MODEL_CONFIG = {
-  'gemini-2.0-flash-lite': {
-    rpm: 15,          // Requests per minute per key
-    tpm: 250000,      // Tokens per minute per key
-    rpd: 500,         // Requests per day per key
-    priority: 1       // Usar primero (más rápido)
-  },
-  'gemini-2.5-flash': {
-    rpm: 5,
-    tpm: 250000,
-    rpd: 20,
-    priority: 2       // Usar como backup
-  }
-};
+const KEYS_GROUP_A = GEMINI_KEYS.slice(0, 10);  // Primeras 10
+const KEYS_GROUP_B = GEMINI_KEYS.slice(10, 20); // Segundas 10
+
+console.log(`🔑 Grupo A: ${KEYS_GROUP_A.length} keys`);
+console.log(`🔑 Grupo B: ${KEYS_GROUP_B.length} keys`);
 
 // ═══════════════════════════════════════════════════════════════════
-// RATE LIMITER INTELIGENTE POR KEY Y MODELO
+// MODELOS EN ORDEN DE PRIORIDAD
 // ═══════════════════════════════════════════════════════════════════
-class SmartRateLimiter {
-  constructor(keys, modelConfig) {
-    this.keys = keys;
-    this.modelConfig = modelConfig;
+const MODELS = [
+  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
+  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
+  { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// RATE LIMITER v4 - Por grupo de keys + modelo
+// ═══════════════════════════════════════════════════════════════════
+class GroupedRateLimiter {
+  constructor(keysGroupA, keysGroupB, models) {
+    this.groups = {
+      A: { keys: keysGroupA, name: 'A (1-10)' },
+      B: { keys: keysGroupB, name: 'B (11-20)' }
+    };
+    this.models = models;
     
-    // Tracking por key
+    // Tracking por key individual
     this.keyStats = new Map();
-    keys.forEach(key => {
+    [...keysGroupA, ...keysGroupB].forEach(key => {
       this.keyStats.set(key, {
-        requestsThisMinute: 0,
+        requestTimestamps: [],
         requestsToday: 0,
-        lastMinuteReset: Date.now(),
-        lastDayReset: Date.now(),
-        exhaustedUntil: 0,
-        consecutiveErrors: 0
+        dayStart: Date.now(),
+        exhaustedUntil: 0
       });
     });
     
-    this.currentKeyIndex = 0;
-    this.totalRequests = 0;
+    // Estado actual de la cascada
+    this.currentModelIndex = 0;
+    this.currentGroup = 'A';
+    this.currentKeyIndex = { A: 0, B: 0 };
   }
 
-  // Resetear contadores cada minuto/día
-  _updateCounters(keyStats) {
-    const now = Date.now();
-    
-    // Reset cada minuto
-    if (now - keyStats.lastMinuteReset > 60000) {
-      keyStats.requestsThisMinute = 0;
-      keyStats.lastMinuteReset = now;
-    }
-    
-    // Reset cada día
-    if (now - keyStats.lastDayReset > 86400000) {
-      keyStats.requestsToday = 0;
-      keyStats.lastDayReset = now;
+  _cleanOldTimestamps(stats) {
+    const oneMinuteAgo = Date.now() - 60000;
+    stats.requestTimestamps = stats.requestTimestamps.filter(ts => ts > oneMinuteAgo);
+  }
+
+  _checkDayReset(stats) {
+    if (Date.now() - stats.dayStart > 86400000) {
+      stats.requestsToday = 0;
+      stats.dayStart = Date.now();
     }
   }
 
-  // Obtener la mejor key disponible para un modelo
-  getBestKey(model) {
-    const config = this.modelConfig[model];
-    const now = Date.now();
-    
-    // Intentar todas las keys en orden
-    for (let i = 0; i < this.keys.length; i++) {
-      const keyIndex = (this.currentKeyIndex + i) % this.keys.length;
-      const key = this.keys[keyIndex];
-      const stats = this.keyStats.get(key);
-      
-      this._updateCounters(stats);
-      
-      // Verificar si la key está disponible
-      if (stats.exhaustedUntil > now) continue;
-      if (stats.requestsThisMinute >= config.rpm) continue;
-      if (stats.requestsToday >= config.rpd) continue;
-      
-      // Key disponible
-      this.currentKeyIndex = (keyIndex + 1) % this.keys.length;
-      return { key, keyIndex };
-    }
-    
-    return null; // Ninguna key disponible
-  }
-
-  // Registrar uso exitoso
-  recordSuccess(key) {
+  _isKeyAvailable(key, model) {
     const stats = this.keyStats.get(key);
-    stats.requestsThisMinute++;
-    stats.requestsToday++;
-    stats.consecutiveErrors = 0;
-    this.totalRequests++;
-  }
-
-  // Registrar rate limit
-  recordRateLimit(key, model) {
-    const stats = this.keyStats.get(key);
-    stats.consecutiveErrors++;
+    if (!stats) return false;
     
-    // Cooldown progresivo
-    const cooldown = Math.min(5000 * stats.consecutiveErrors, 30000);
-    stats.exhaustedUntil = Date.now() + cooldown;
-    
-    console.log(`   🔴 Key ...${key.slice(-4)} rate limited. Cooldown: ${cooldown/1000}s`);
-  }
-
-  // Calcular tiempo de espera óptimo
-  getOptimalDelay(model) {
-    const config = this.modelConfig[model];
-    const availableKeys = this.keys.filter(key => {
-      const stats = this.keyStats.get(key);
-      this._updateCounters(stats);
-      return stats.requestsThisMinute < config.rpm && Date.now() > stats.exhaustedUntil;
-    }).length;
-
-    if (availableKeys === 0) return 5000; // Esperar si no hay keys
-    
-    // Distribuir requests equitativamente: 60s / (RPM * keys disponibles)
-    const totalRPM = config.rpm * availableKeys;
-    const delayMs = Math.ceil(60000 / totalRPM);
-    
-    return Math.max(delayMs, 400); // Mínimo 400ms para no saturar
-  }
-
-  // Estado actual
-  getStatus() {
-    let available = 0;
-    let exhausted = 0;
     const now = Date.now();
+    if (stats.exhaustedUntil > now) return false;
     
-    this.keys.forEach(key => {
-      const stats = this.keyStats.get(key);
-      this._updateCounters(stats);
-      if (stats.exhaustedUntil > now || stats.requestsThisMinute >= 15) {
-        exhausted++;
-      } else {
-        available++;
+    this._cleanOldTimestamps(stats);
+    if (stats.requestTimestamps.length >= model.rpm - 1) return false;
+    
+    this._checkDayReset(stats);
+    if (stats.requestsToday >= model.rpd - 5) return false;
+    
+    return true;
+  }
+
+  // Contar keys disponibles en un grupo para un modelo
+  _countAvailableInGroup(groupId, model) {
+    const group = this.groups[groupId];
+    return group.keys.filter(key => this._isKeyAvailable(key, model)).length;
+  }
+
+  // Obtener una key disponible de un grupo específico
+  _getKeyFromGroup(groupId, model) {
+    const group = this.groups[groupId];
+    
+    for (let i = 0; i < group.keys.length; i++) {
+      const keyIndex = (this.currentKeyIndex[groupId] + i) % group.keys.length;
+      const key = group.keys[keyIndex];
+      
+      if (this._isKeyAvailable(key, model)) {
+        this.currentKeyIndex[groupId] = (keyIndex + 1) % group.keys.length;
+        return key;
       }
-    });
+    }
+    return null;
+  }
+
+  // MÉTODO PRINCIPAL: Obtener key+modelo siguiendo la cascada
+  getBestKeyAndModel() {
+    // Cascada de 6 niveles:
+    // 1. Grupo A + Modelo 0 (3.1)
+    // 2. Grupo B + Modelo 0 (3.1)
+    // 3. Grupo A + Modelo 1 (2.5-lite)
+    // 4. Grupo B + Modelo 1 (2.5-lite)
+    // 5. Grupo A + Modelo 2 (2.5)
+    // 6. Grupo B + Modelo 2 (2.5)
     
-    return { available, exhausted, total: this.keys.length };
+    const cascade = [
+      { group: 'A', modelIndex: 0 },
+      { group: 'B', modelIndex: 0 },
+      { group: 'A', modelIndex: 1 },
+      { group: 'B', modelIndex: 1 },
+      { group: 'A', modelIndex: 2 },
+      { group: 'B', modelIndex: 2 },
+    ];
+
+    for (const level of cascade) {
+      const model = this.models[level.modelIndex];
+      const key = this._getKeyFromGroup(level.group, model);
+      
+      if (key) {
+        return {
+          key,
+          model: model.name,
+          group: level.group,
+          available: true,
+          level: `${level.group}+${model.name.split('-').slice(-2, -1)[0]}`
+        };
+      }
+    }
+
+    // Ninguna combinación disponible - calcular tiempo de espera
+    let minWait = Infinity;
+    
+    for (const key of [...this.groups.A.keys, ...this.groups.B.keys]) {
+      const stats = this.keyStats.get(key);
+      const now = Date.now();
+      
+      if (stats.exhaustedUntil > now) {
+        minWait = Math.min(minWait, stats.exhaustedUntil - now);
+      } else {
+        this._cleanOldTimestamps(stats);
+        if (stats.requestTimestamps.length > 0) {
+          const oldest = Math.min(...stats.requestTimestamps);
+          const wait = (oldest + 60000) - now;
+          if (wait > 0) minWait = Math.min(minWait, wait);
+        }
+      }
+    }
+
+    return {
+      key: null,
+      model: null,
+      available: false,
+      waitMs: minWait === Infinity ? 10000 : Math.max(1000, minWait)
+    };
+  }
+
+  recordSuccess(key, modelName) {
+    const stats = this.keyStats.get(key);
+    stats.requestTimestamps.push(Date.now());
+    stats.requestsToday++;
+  }
+
+  recordRateLimit(key, modelName) {
+    const stats = this.keyStats.get(key);
+    stats.exhaustedUntil = Date.now() + 65000;
+    
+    const keyNum = [...this.groups.A.keys, ...this.groups.B.keys].indexOf(key) + 1;
+    const group = this.groups.A.keys.includes(key) ? 'A' : 'B';
+    console.log(`   🔴 Key #${keyNum} (Grupo ${group}) rate limited → cooldown 65s`);
+  }
+
+  getStatus() {
+    const status = { A: {}, B: {} };
+    
+    for (const model of this.models) {
+      const shortName = model.name.includes('3.1') ? '3.1' : 
+                        model.name.includes('2.5-flash-lite') ? '2.5L' : '2.5';
+      status.A[shortName] = this._countAvailableInGroup('A', model);
+      status.B[shortName] = this._countAvailableInGroup('B', model);
+    }
+    
+    return status;
   }
 }
 
-const rateLimiter = new SmartRateLimiter(GEMINI_KEYS, MODEL_CONFIG);
+const rateLimiter = new GroupedRateLimiter(KEYS_GROUP_A, KEYS_GROUP_B, MODELS);
+
+// ═══════════════════════════════════════════════════════════════════
+// ESTADÍSTICAS
+// ═══════════════════════════════════════════════════════════════════
+const stats = {
+  byModel: {
+    'gemini-3.1-flash-lite-preview': 0,
+    'gemini-2.5-flash-lite': 0,
+    'gemini-2.5-flash': 0,
+  },
+  byGroup: { A: 0, B: 0 },
+  google: 0,
+  waits: 0
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // GOOGLE TRANSLATE FALLBACK
 // ═══════════════════════════════════════════════════════════════════
-const GOOGLE_TRANSLATE_CHAR_LIMIT = 4500;
-
-async function translateWithGoogleTranslate(text, targetLang = "es", retries = 3) {
+async function translateWithGoogleTranslate(text, targetLang = "es") {
   if (!text || text.trim() === "") return text;
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.substring(0, GOOGLE_TRANSLATE_CHAR_LIMIT))}`;
-      
-      const response = await axios.get(url, {
-        timeout: 15000,
-        headers: { "User-Agent": "Mozilla/5.0" },
-      });
-
-      return response.data[0].map(item => item[0]).filter(Boolean).join("");
-    } catch (error) {
-      if (error.response?.status === 429 && attempt < retries) {
-        await sleep(15000 * attempt);
-      } else if (attempt === retries) {
-        return text;
-      }
-    }
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.substring(0, 4500))}`;
+    const response = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
+    return response.data[0].map(item => item[0]).filter(Boolean).join("");
+  } catch {
+    return text;
   }
-  return text;
 }
 
 async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
-  console.log(`\n🌐 FALLBACK: Traduciendo ${entriesBatch.length} entries con Google Translate...`);
-  
+  console.log(`   🌐 GOOGLE TRANSLATE (${entriesBatch.length} entries) - Último recurso`);
   const results = [];
   for (const entry of entriesBatch) {
-    const translated = {
+    results.push({
       id: entry.id,
       title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
       content: entry.content ? await translateWithGoogleTranslate(entry.content, targetLang) : "",
       contentHtml: entry.contentHtml ? await translateWithGoogleTranslate(entry.contentHtml, targetLang) : ""
-    };
-    results.push(translated);
+    });
     await sleep(400);
   }
-  
+  stats.google += entriesBatch.length;
   return results;
 }
 
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR BATCH OPTIMIZADO
+// TRADUCTOR BATCH CON CASCADA
 // ═══════════════════════════════════════════════════════════════════
-async function translateBatchOptimized(entriesBatch, retries = 2) {
-  const payloadToTranslate = entriesBatch.map(entry => ({
+async function translateBatchOptimized(entriesBatch) {
+  const payload = entriesBatch.map(entry => ({
     id: entry.id,
     title: entry.title || "",
     content: entry.content || "",
@@ -227,19 +264,27 @@ async function translateBatchOptimized(entriesBatch, retries = 2) {
   }));
 
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
+  const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return only valid JSON array.`;
 
-  const systemPrompt = `You are an expert biblical translator. Translate this JSON array from English to ${languageName}.
-Rules: Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return only valid JSON array.`;
-
-  // Preferir Flash Lite (más RPM)
-  const model = 'gemini-2.0-flash-lite';
-  
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    const keyInfo = rateLimiter.getBestKey(model);
+  // Intentar hasta 6 veces (6 niveles de cascada)
+  for (let attempt = 1; attempt <= 6; attempt++) {
+    let keyInfo = rateLimiter.getBestKeyAndModel();
     
-    if (!keyInfo) {
-      // No hay keys disponibles, usar fallback
-      console.log(`   ⚠️ Sin keys Gemini disponibles, usando Google Translate...`);
+    // Si no hay disponible, esperar
+    if (!keyInfo.available) {
+      const waitTime = Math.min(keyInfo.waitMs, 30000);
+      stats.waits++;
+      
+      if (stats.waits % 10 === 0) {
+        console.log(`   ⏳ Esperando ${(waitTime/1000).toFixed(1)}s (intento ${attempt}/6)...`);
+      }
+      
+      await sleep(waitTime);
+      keyInfo = rateLimiter.getBestKeyAndModel();
+    }
+    
+    // Si después de esperar sigue sin haber, Google Translate
+    if (!keyInfo.available || !keyInfo.key) {
       return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
     }
 
@@ -247,8 +292,8 @@ Rules: Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserv
       const ai = new GoogleGenAI({ apiKey: keyInfo.key });
 
       const response = await ai.models.generateContent({
-        model: model,
-        contents: JSON.stringify(payloadToTranslate),
+        model: keyInfo.model,
+        contents: JSON.stringify(payload),
         config: {
           systemInstruction: systemPrompt,
           temperature: 0.1,
@@ -263,21 +308,25 @@ Rules: Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserv
         throw new Error("Array incompleto");
       }
 
-      rateLimiter.recordSuccess(keyInfo.key);
+      // Éxito
+      rateLimiter.recordSuccess(keyInfo.key, keyInfo.model);
+      stats.byModel[keyInfo.model] += entriesBatch.length;
+      stats.byGroup[keyInfo.group] += entriesBatch.length;
+      
       return translatedArray;
 
     } catch (error) {
-      const isRateLimit = error.status === 429 || error.response?.status === 429;
+      const isRateLimit = error.status === 429 || 
+                          error.message?.includes('429') || 
+                          error.message?.includes('RESOURCE_EXHAUSTED');
       
       if (isRateLimit) {
-        rateLimiter.recordRateLimit(keyInfo.key, model);
-        // Reintentar inmediatamente con otra key
+        rateLimiter.recordRateLimit(keyInfo.key, keyInfo.model);
         continue;
       }
       
-      console.warn(`   ⚠️ Error: ${error.message?.substring(0, 100)}`);
-      
-      if (attempt === retries) {
+      if (attempt === 6) {
+        console.log(`   ⚠️ Error final: ${error.message?.substring(0, 50)}`);
         return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
       }
     }
@@ -287,34 +336,27 @@ Rules: Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserv
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BATCH DINÁMICO OPTIMIZADO PARA TOKENS
+// BATCHING
 // ═══════════════════════════════════════════════════════════════════
 function createOptimizedBatches(entries) {
-  // Con 250K TPM, podemos enviar lotes más grandes
-  // Estimación: ~4 tokens por palabra, ~5 caracteres por palabra
-  // Objetivo: ~15,000 caracteres por batch (seguro bajo 250K TPM)
-  const MAX_CHARS = 15000;
-  const MAX_ENTRIES = 10; // Máximo 10 entries por batch para evitar errores de parsing
+  const MAX_CHARS = 12000;
+  const MAX_ENTRIES = 8;
   
   const batches = [];
   let currentBatch = [];
   let currentChars = 0;
 
   for (const entry of entries) {
-    const entryLength = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
-
-    if ((currentChars + entryLength > MAX_CHARS || currentBatch.length >= MAX_ENTRIES) && currentBatch.length > 0) {
+    const len = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
+    if ((currentChars + len > MAX_CHARS || currentBatch.length >= MAX_ENTRIES) && currentBatch.length > 0) {
       batches.push(currentBatch);
       currentBatch = [];
       currentChars = 0;
     }
-
     currentBatch.push(entry);
-    currentChars += entryLength;
+    currentChars += len;
   }
-
   if (currentBatch.length > 0) batches.push(currentBatch);
-
   return batches;
 }
 
@@ -322,20 +364,16 @@ function createOptimizedBatches(entries) {
 // OBTENER DATOS
 // ═══════════════════════════════════════════════════════════════════
 async function getAllEntries(lang) {
-  const PAGE_SIZE = 1000;
   let allEntries = [];
   let page = 0;
-
   while (true) {
     const { data, error } = await supabase
       .from("CommentaryEntry")
       .select("*")
       .eq("language", lang)
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
+      .range(page * 1000, (page + 1) * 1000 - 1);
     if (error) throw error;
     if (data.length === 0) break;
-    
     allEntries = allEntries.concat(data);
     page++;
   }
@@ -343,84 +381,69 @@ async function getAllEntries(lang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROCESADOR PARALELO CON RATE LIMITING INTELIGENTE
+// PROCESADOR
 // ═══════════════════════════════════════════════════════════════════
-async function processInParallel(batches, pendingCount) {
-  // Con 10 keys × 15 RPM = 150 RPM teórico
-  // Usamos concurrencia de 10 (1 por key) para máxima velocidad
-  const CONCURRENCY = Math.min(10, GEMINI_KEYS.length);
-  const limit = pLimit(CONCURRENCY);
-  
+async function processAllBatches(batches, totalEntries) {
+  const limit = pLimit(5);
   let processed = 0;
   let dbBuffer = [];
-  let geminiCount = 0;
-  let googleCount = 0;
   const startTime = Date.now();
 
-  const processBatch = async (batchEn, batchIndex) => {
-    // Delay dinámico basado en disponibilidad de keys
-    const delay = rateLimiter.getOptimalDelay('gemini-2.0-flash-lite');
-    await sleep(delay);
-
+  const processBatch = async (batchEn) => {
+    await sleep(300 + Math.random() * 200);
     const translatedBatch = await translateBatchOptimized(batchEn);
     
-    if (translatedBatch && translatedBatch.length > 0) {
-      const wasGemini = rateLimiter.getStatus().available > 0;
-      
+    if (translatedBatch?.length > 0) {
       translatedBatch.forEach(transItem => {
-        const originalEntry = batchEn.find(e => e.id === transItem.id);
-        if (originalEntry) {
+        const orig = batchEn.find(e => e.id === transItem.id);
+        if (orig) {
           dbBuffer.push({
-            sourceId: originalEntry.sourceId,
+            sourceId: orig.sourceId,
             language: TARGET_LANG,
-            bookAbbr: originalEntry.bookAbbr,
-            bookOrder: originalEntry.bookOrder,
-            chapter: originalEntry.chapter,
-            verseStart: originalEntry.verseStart,
-            verseEnd: originalEntry.verseEnd,
+            bookAbbr: orig.bookAbbr,
+            bookOrder: orig.bookOrder,
+            chapter: orig.chapter,
+            verseStart: orig.verseStart,
+            verseEnd: orig.verseEnd,
             title: transItem.title || null,
-            content: transItem.content || originalEntry.content,
+            content: transItem.content || orig.content,
             contentHtml: transItem.contentHtml || null,
-            divId: originalEntry.divId,
-            sectionType: originalEntry.sectionType,
-            volume: originalEntry.volume
+            divId: orig.divId,
+            sectionType: orig.sectionType,
+            volume: orig.volume
           });
           processed++;
         }
       });
-
-      if (wasGemini) geminiCount += translatedBatch.length;
-      else googleCount += translatedBatch.length;
     }
 
-    // Logging cada 50 entries
-    if (processed % 50 < batchEn.length) {
-      const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-      const rate = (processed / ((Date.now() - startTime) / 1000) * 60).toFixed(0);
-      const eta = ((pendingCount - processed) / (rate || 1)).toFixed(0);
-      const status = rateLimiter.getStatus();
+    if (processed % 100 < 10) {
+      const elapsed = (Date.now() - startTime) / 1000 / 60;
+      const rate = processed / elapsed;
+      const eta = (totalEntries - processed) / rate;
+      const st = rateLimiter.getStatus();
       
-      console.log(`⏳ ${processed}/${pendingCount} | ${rate}/min | ETA: ${eta}min | Keys: ${status.available}/${status.total} | 🤖${geminiCount} 🌐${googleCount}`);
+      console.log(`\n📊 ${processed}/${totalEntries} | ${rate.toFixed(0)}/min | ETA: ${eta.toFixed(0)}min`);
+      console.log(`   Grupo A: 3.1=${st.A['3.1']}/10  2.5L=${st.A['2.5L']}/10  2.5=${st.A['2.5']}/10`);
+      console.log(`   Grupo B: 3.1=${st.B['3.1']}/10  2.5L=${st.B['2.5L']}/10  2.5=${st.B['2.5']}/10`);
+      console.log(`   📈 3.1:${stats.byModel['gemini-3.1-flash-lite-preview']} | 2.5L:${stats.byModel['gemini-2.5-flash-lite']} | 2.5:${stats.byModel['gemini-2.5-flash']} | 🌐:${stats.google}`);
     }
 
-    // Guardar en DB cada 50 entries
-    if (dbBuffer.length >= 50) {
-      const toInsert = dbBuffer.splice(0, 50);
+    if (dbBuffer.length >= 100) {
+      const toInsert = dbBuffer.splice(0, 100);
       const { error } = await supabase.from("CommentaryEntry").insert(toInsert);
-      if (error) console.error(`⚠️ Error BD: ${error.message}`);
+      if (!error) console.log(`   💾 Guardados ${toInsert.length}`);
     }
   };
 
-  // Procesar todos los batches en paralelo con límite de concurrencia
-  await Promise.all(batches.map((batch, index) => limit(() => processBatch(batch, index))));
+  await Promise.all(batches.map(batch => limit(() => processBatch(batch))));
 
-  // Guardar resto del buffer
   if (dbBuffer.length > 0) {
-    const { error } = await supabase.from("CommentaryEntry").insert(dbBuffer);
-    if (error) console.error(`⚠️ Error BD final: ${error.message}`);
+    await supabase.from("CommentaryEntry").insert(dbBuffer);
+    console.log(`   💾 Guardados últimos ${dbBuffer.length}`);
   }
 
-  return { processed, geminiCount, googleCount };
+  return processed;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -428,15 +451,32 @@ async function processInParallel(batches, pendingCount) {
 // ═══════════════════════════════════════════════════════════════════
 async function main() {
   console.log(`
-╔══════════════════════════════════════════════════════════════════════╗
-║  🚀 TRADUCTOR HÍBRIDO ULTRA-OPTIMIZADO                               ║
-║  EN → ${TARGET_LANG.toUpperCase()}                                                           ║
-╠══════════════════════════════════════════════════════════════════════╣
-║  Keys Gemini: ${GEMINI_KEYS.length.toString().padEnd(54)}║
-║  Capacidad teórica: ${(GEMINI_KEYS.length * 15).toString().padEnd(48)} RPM ║
-║  Modelo principal: gemini-2.0-flash-lite                             ║
-║  Fallback: Google Translate                                          ║
-╚══════════════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  🚀 TRADUCTOR CON CASCADA DE GRUPOS v4                                    ║
+║  EN → ${TARGET_LANG.toUpperCase()}                                                                ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                           ║
+║  🔑 GRUPO A (Keys 1-10):  Principal                                       ║
+║  🔑 GRUPO B (Keys 11-20): Backup                                          ║
+║                                                                           ║
+║  📊 CASCADA:                                                              ║
+║  ┌─────────────────────────────────────────────────────────────────────┐  ║
+║  │ 1. Grupo A + gemini-3.1-flash-lite-preview (15 RPM)                 │  ║
+║  │    ↓ si las 10 keys fallan                                          │  ║
+║  │ 2. Grupo B + gemini-3.1-flash-lite-preview (15 RPM)                 │  ║
+║  │    ↓ si las 10 keys fallan                                          │  ║
+║  │ 3. Grupo A + gemini-2.5-flash-lite (10 RPM)                         │  ║
+║  │    ↓ si las 10 keys fallan                                          │  ║
+║  │ 4. Grupo B + gemini-2.5-flash-lite (10 RPM)                         │  ║
+║  │    ↓ si las 10 keys fallan                                          │  ║
+║  │ 5. Grupo A + gemini-2.5-flash (5 RPM)                               │  ║
+║  │    ↓ si las 10 keys fallan                                          │  ║
+║  │ 6. Grupo B + gemini-2.5-flash (5 RPM)                               │  ║
+║  │    ↓ si todas fallan                                                │  ║
+║  │ 7. Google Translate (último recurso)                                │  ║
+║  └─────────────────────────────────────────────────────────────────────┘  ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
 `);
 
   const startTime = Date.now();
@@ -451,9 +491,9 @@ async function main() {
     const existingSet = new Set(targetEntries.map(e => `${e.sourceId}-${e.divId}`));
     const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
 
-    console.log(`   Total EN: ${enEntries.length}`);
-    console.log(`   Ya traducidos: ${targetEntries.length}`);
-    console.log(`   Pendientes: ${pendingEntries.length}\n`);
+    console.log(`   📚 Total EN: ${enEntries.length}`);
+    console.log(`   ✅ Ya traducidos: ${targetEntries.length}`);
+    console.log(`   ⏳ Pendientes: ${pendingEntries.length}\n`);
 
     if (pendingEntries.length === 0) {
       console.log("✅ ¡Todo traducido!");
@@ -461,27 +501,35 @@ async function main() {
     }
 
     const batches = createOptimizedBatches(pendingEntries);
-    console.log(`📦 ${batches.length} lotes creados (avg: ${Math.round(pendingEntries.length/batches.length)} entries/lote)\n`);
+    console.log(`📦 ${batches.length} lotes\n`);
 
-    const { processed, geminiCount, googleCount } = await processInParallel(batches, pendingEntries.length);
+    const processed = await processAllBatches(batches, pendingEntries.length);
 
-    const totalTime = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-    const avgRate = (processed / ((Date.now() - startTime) / 1000) * 60).toFixed(0);
+    const totalTime = (Date.now() - startTime) / 1000 / 60;
 
     console.log(`
-╔══════════════════════════════════════════════════════════════════════╗
-║  ✅ TRADUCCIÓN COMPLETADA                                            ║
-╠══════════════════════════════════════════════════════════════════════╣
-║  Procesados: ${processed.toString().padEnd(55)}║
-║  Gemini:     ${geminiCount.toString().padEnd(55)}║
-║  Google:     ${googleCount.toString().padEnd(55)}║
-║  Tiempo:     ${totalTime.toString().padEnd(51)} min ║
-║  Velocidad:  ${avgRate.toString().padEnd(51)}/min ║
-╚══════════════════════════════════════════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════════╗
+║  ✅ COMPLETADO                                                            ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║  Total:          ${processed.toString().padEnd(57)}║
+║                                                                           ║
+║  Por modelo:                                                              ║
+║    3.1-flash:    ${stats.byModel['gemini-3.1-flash-lite-preview'].toString().padEnd(57)}║
+║    2.5-flash-L:  ${stats.byModel['gemini-2.5-flash-lite'].toString().padEnd(57)}║
+║    2.5-flash:    ${stats.byModel['gemini-2.5-flash'].toString().padEnd(57)}║
+║    Google:       ${stats.google.toString().padEnd(57)}║
+║                                                                           ║
+║  Por grupo:                                                               ║
+║    Grupo A:      ${stats.byGroup.A.toString().padEnd(57)}║
+║    Grupo B:      ${stats.byGroup.B.toString().padEnd(57)}║
+║                                                                           ║
+║  Tiempo:         ${totalTime.toFixed(1)} min                                                  ║
+║  Velocidad:      ${(processed/totalTime).toFixed(0)}/min                                                 ║
+╚═══════════════════════════════════════════════════════════════════════════╝
 `);
 
   } catch (error) {
-    console.error(`\n❌ Error fatal: ${error.message}`);
+    console.error(`\n❌ Error: ${error.message}`);
     process.exit(1);
   }
 }
