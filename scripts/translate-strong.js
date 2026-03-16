@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const { translate } = require("@vitalets/google-translate-api");
+const axios = require("axios");
 const pLimit = require("p-limit");
 require("dotenv").config();
 
@@ -41,7 +41,48 @@ function sleep(ms) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PAGINACIÓN - Obtener TODOS los registros de Supabase
+// GOOGLE TRANSLATE SIN API KEY (via axios directo)
+// ═══════════════════════════════════════════════════════════════════
+
+async function translateText(text, targetLang = "ca", retries = 3) {
+  if (!text || text.trim() === "") return null;
+
+  const textToTranslate = text.substring(0, 1000);
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`;
+
+      const response = await axios.get(url, {
+        timeout: 15000,
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+
+      const translated = response.data[0]
+        .map((item) => item[0])
+        .filter(Boolean)
+        .join("");
+
+      return translated;
+
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+
+      if (isRateLimit && attempt < retries) {
+        const waitTime = 15000 * attempt;
+        console.log(`⏳ Rate limit, esperando ${waitTime / 1000}s (intento ${attempt}/${retries})...`);
+        await sleep(waitTime);
+      } else if (attempt === retries) {
+        console.error(`⚠️ Fallo después de ${retries} intentos: ${error.message}`);
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PAGINACIÓN - Obtener TODOS los registros
 // ═══════════════════════════════════════════════════════════════════
 
 async function getAllEntries(lang) {
@@ -68,9 +109,9 @@ async function getAllEntries(lang) {
 
     if (data && data.length > 0) {
       allEntries = allEntries.concat(data);
-      console.log(`   📄 Página ${page + 1}: ${data.length} entradas (total: ${allEntries.length})`);
+      console.log(`   📄 Página ${page + 1}: ${data.length} registros (total: ${allEntries.length})`);
       page++;
-      hasMore = data.length === PAGE_SIZE; // Si devuelve menos de 1000, ya no hay más
+      hasMore = data.length === PAGE_SIZE;
     } else {
       hasMore = false;
     }
@@ -110,38 +151,8 @@ async function getExistingStrongs(lang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCCIÓN CON GOOGLE TRANSLATE
+// TRADUCIR ENTRY
 // ═══════════════════════════════════════════════════════════════════
-
-async function translateText(text, targetLang = "ca", retries = 3) {
-  if (!text || text.trim() === "") return null;
-
-  const textToTranslate = text.substring(0, 1000);
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const { text: translated } = await translate(textToTranslate, {
-        from: "en",
-        to: targetLang,
-      });
-      return translated;
-    } catch (error) {
-      const isRateLimit =
-        error.message?.includes("429") ||
-        error.message?.includes("TooManyRequests");
-
-      if (isRateLimit && attempt < retries) {
-        const waitTime = 15000 * attempt; // 15s, 30s, 45s
-        console.log(`⏳ Rate limit, esperando ${waitTime / 1000}s (intento ${attempt}/${retries})...`);
-        await sleep(waitTime);
-      } else if (attempt === retries) {
-        console.error(`⚠️ Fallo traduciendo después de ${retries} intentos`);
-        return null;
-      }
-    }
-  }
-  return null;
-}
 
 async function translateStrongEntry(entryEn, targetLang = "ca") {
   const entryTranslated = {
@@ -161,11 +172,11 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
     definitionLang: targetLang,
   };
 
-  // Secuencial por campo para no saturar Google
+  // Secuencial para no saturar Google
   for (const field of FIELDS_TO_TRANSLATE) {
     if (entryEn[field]) {
       entryTranslated[field] = await translateText(entryEn[field], targetLang);
-      await sleep(300); // 300ms entre campos
+      await sleep(300);
     }
   }
 
@@ -183,21 +194,20 @@ async function main() {
   console.log("=".repeat(70));
 
   try {
-    // 1. Test de conexión
+    // 1. Test conexión
     console.log(`\n🔌 Probando conexión a Supabase...`);
     const { count, error: countError } = await supabase
       .from("StrongEntry")
       .select("*", { count: "exact", head: true });
-
     if (countError) throw new Error(`Error de conexión: ${countError.message}`);
     console.log(`✓ Conexión OK. Total registros: ${count}`);
 
-    // 2. Obtener TODAS las entradas en inglés (con paginación)
+    // 2. Obtener TODAS las entradas en inglés con paginación
     console.log(`\n📥 Obteniendo TODAS las Strong entries en inglés...`);
     const strongEntriesEn = await getAllEntries("en");
     console.log(`✓ Total obtenidas: ${strongEntriesEn.length}`);
 
-    // 3. Verificar cuáles ya están traducidas (para reanudar si falla)
+    // 3. Ver cuáles ya están traducidas (para reanudar si falla)
     console.log(`\n🔍 Verificando traducciones existentes en ${TARGET_LANG}...`);
     const existingSet = await getExistingStrongs(TARGET_LANG);
     console.log(`   Ya traducidas: ${existingSet.size}`);
@@ -214,7 +224,7 @@ async function main() {
     console.log(`\n🌐 Traduciendo ${pendingEntries.length} entradas...`);
     console.log("=".repeat(70));
 
-    const limit = pLimit(3); // Solo 3 en paralelo
+    const limit = pLimit(3);
     const startTime = Date.now();
     let processed = 0;
     let buffer = [];
@@ -228,23 +238,19 @@ async function main() {
 
           if (processed % 10 === 0) {
             const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
-            const remaining = pendingEntries.length - processed;
             const rate = processed / ((Date.now() - startTime) / 1000 / 60);
-            const eta = (remaining / rate).toFixed(0);
-            console.log(
-              `⏳ ${processed}/${pendingEntries.length} ` +
-              `(${elapsed} min transcurridos, ~${eta} min restantes)`
-            );
+            const eta = ((pendingEntries.length - processed) / rate).toFixed(0);
+            console.log(`⏳ ${processed}/${pendingEntries.length} (${elapsed} min transcurridos, ~${eta} min restantes)`);
           }
 
-          // Guardar cada 50 entradas (no esperar al final)
+          // Guardar cada 50 entradas
           if (buffer.length >= 50) {
             const toInsert = buffer.splice(0, 50);
             const { error } = await supabase.from("StrongEntry").insert(toInsert);
             if (error) {
               console.error(`⚠️ Error guardando batch: ${error.message}`);
             } else {
-              console.log(`   💾 Batch guardado (${processed} total procesadas)`);
+              console.log(`   💾 Batch guardado (${processed} procesadas en total)`);
             }
           }
 
