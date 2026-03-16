@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+// services/translator.ts
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
@@ -9,9 +9,9 @@ const GEMINI_KEYS = (Deno.env.get("GEMINI_API_KEYS") || "")
   .filter(Boolean);
 
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
-  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
-  { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
+  { name: "gemini-3.1-flash-lite-preview", rpm: 15, rpd: 500 },
+  { name: "gemini-2.5-flash-lite", rpm: 10, rpd: 20 },
+  { name: "gemini-2.5-flash", rpm: 5, rpd: 20 },
 ];
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -24,18 +24,20 @@ const LANGUAGE_NAMES: Record<string, string> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// RATE LIMITER SIMPLIFICADO (Singleton para on-the-fly)
+// RATE LIMITER SIMPLIFICADO (On-the-fly)
 // ═══════════════════════════════════════════════════════════════════
 class SimpleRateLimiter {
   private requestTimestamps: Map<string, number[]> = new Map();
+  private dailyCount: Map<string, { count: number; dayStart: number }> = new Map();
   private currentKeyIdx = 0;
   private currentModelIdx = 0;
 
   getNextKeyAndModel(): { key: string; model: string } | null {
+    if (GEMINI_KEYS.length === 0) return null;
+
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
 
-    // Intentar cada combinación key/model
     for (let m = 0; m < MODELS.length; m++) {
       const modelIdx = (this.currentModelIdx + m) % MODELS.length;
       const model = MODELS[modelIdx];
@@ -45,16 +47,24 @@ class SimpleRateLimiter {
         const key = GEMINI_KEYS[keyIdx];
         const cacheKey = `${keyIdx}-${model.name}`;
 
-        // Limpiar timestamps viejos
+        // Limpiar timestamps viejos (RPM)
         const timestamps = (this.requestTimestamps.get(cacheKey) || []).filter(
           (ts) => ts > oneMinuteAgo
         );
         this.requestTimestamps.set(cacheKey, timestamps);
 
-        if (timestamps.length < model.rpm - 1) {
+        // Check daily limit (RPD)
+        let daily = this.dailyCount.get(cacheKey);
+        if (!daily || now - daily.dayStart > 86400000) {
+          daily = { count: 0, dayStart: now };
+          this.dailyCount.set(cacheKey, daily);
+        }
+
+        if (timestamps.length < model.rpm - 1 && daily.count < model.rpd - 1) {
           // Reservar
           timestamps.push(now);
           this.requestTimestamps.set(cacheKey, timestamps);
+          daily.count++;
           this.currentKeyIdx = (keyIdx + 1) % GEMINI_KEYS.length;
           this.currentModelIdx = modelIdx;
 
@@ -63,13 +73,15 @@ class SimpleRateLimiter {
       }
     }
 
-    return null; // Todas las keys agotadas
+    return null;
   }
 
   recordFailure(key: string, model: string) {
     const keyIdx = GEMINI_KEYS.indexOf(key);
+    if (keyIdx === -1) return;
+    
     const cacheKey = `${keyIdx}-${model}`;
-    // Llenar timestamps para bloquear temporalmente
+    // Bloquear temporalmente llenando timestamps
     const fakeTimestamps = Array(20).fill(Date.now());
     this.requestTimestamps.set(cacheKey, fakeTimestamps);
   }
@@ -105,25 +117,29 @@ async function translateWithGoogleTranslate(
       }
 
       const data = await response.json();
-      return data[0].map((item: any) => item[0]).filter(Boolean).join("");
-    } catch (error) {
-      if (attempt === 3) return text; // Devolver original
+      return data[0]
+        .map((item: [string]) => item[0])
+        .filter(Boolean)
+        .join("");
+    } catch (_error) {
+      if (attempt === 3) return text;
     }
   }
   return text;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR PRINCIPAL CON GEMINI
+// TRADUCTOR CON GEMINI
 // ═══════════════════════════════════════════════════════════════════
 async function translateWithGemini(
-  entry: { title?: string; content?: string; contentHtml?: string },
+  entry: { title?: string | null; content?: string; contentHtml?: string | null },
   targetLang: string
 ): Promise<{ title: string; content: string; contentHtml: string } | null> {
   const keyInfo = rateLimiter.getNextKeyAndModel();
 
   if (!keyInfo) {
-    return null; // No hay keys disponibles
+    console.log("[Translator] No hay keys Gemini disponibles");
+    return null;
   }
 
   const languageName = LANGUAGE_NAMES[targetLang] || targetLang;
@@ -140,6 +156,8 @@ Return only valid JSON object with the same structure.`;
   };
 
   try {
+    // Importación dinámica para Deno
+    const { GoogleGenAI } = await import("npm:@google/genai");
     const ai = new GoogleGenAI({ apiKey: keyInfo.key });
 
     const response = await ai.models.generateContent({
@@ -157,15 +175,20 @@ Return only valid JSON object with the same structure.`;
       .replace(/\n?```$/i, "")
       .trim();
 
+    console.log(`[Translator] ✓ Gemini (${keyInfo.model})`);
     return JSON.parse(responseText);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { status?: number; message?: string };
     const isRateLimit =
-      error.status === 429 ||
-      error.message?.includes("429") ||
-      error.message?.includes("EXHAUSTED");
+      err.status === 429 ||
+      err.message?.includes("429") ||
+      err.message?.includes("EXHAUSTED");
 
     if (isRateLimit) {
+      console.log(`[Translator] Rate limit en ${keyInfo.model}, marcando...`);
       rateLimiter.recordFailure(keyInfo.key, keyInfo.model);
+    } else {
+      console.error(`[Translator] Error Gemini:`, err.message);
     }
 
     return null;
@@ -173,16 +196,16 @@ Return only valid JSON object with the same structure.`;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// FUNCIÓN PRINCIPAL EXPORTADA
+// TIPOS EXPORTADOS
 // ═══════════════════════════════════════════════════════════════════
 export interface CommentaryEntry {
   id?: number;
-  sourceId: string;
+  sourceId: number;
   language: string;
   bookAbbr: string;
   bookOrder: number;
   chapter: number;
-  verseStart: number;
+  verseStart: number | null;
   verseEnd: number | null;
   title: string | null;
   content: string;
@@ -199,16 +222,21 @@ export interface TranslationResult {
   error?: string;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// FUNCIÓN PRINCIPAL EXPORTADA
+// ═══════════════════════════════════════════════════════════════════
 export async function translateCommentaryOnTheFly(
   originalEntry: CommentaryEntry,
   targetLang: string
 ): Promise<TranslationResult> {
+  console.log(`[Translator] Traduciendo entry ${originalEntry.id} a ${targetLang}...`);
+
   // 1. Intentar con Gemini
   const geminiResult = await translateWithGemini(
     {
-      title: originalEntry.title || undefined,
+      title: originalEntry.title,
       content: originalEntry.content,
-      contentHtml: originalEntry.contentHtml || undefined,
+      contentHtml: originalEntry.contentHtml,
     },
     targetLang
   );
@@ -219,7 +247,7 @@ export async function translateCommentaryOnTheFly(
       method: "gemini",
       entry: {
         ...originalEntry,
-        id: undefined, // Nuevo registro
+        id: undefined,
         language: targetLang,
         title: geminiResult.title || null,
         content: geminiResult.content || originalEntry.content,
@@ -229,6 +257,7 @@ export async function translateCommentaryOnTheFly(
   }
 
   // 2. Fallback a Google Translate
+  console.log(`[Translator] Fallback a Google Translate...`);
   try {
     const [title, content, contentHtml] = await Promise.all([
       originalEntry.title
@@ -240,6 +269,7 @@ export async function translateCommentaryOnTheFly(
         : Promise.resolve(null),
     ]);
 
+    console.log(`[Translator] ✓ Google Translate`);
     return {
       success: true,
       method: "google",
@@ -252,12 +282,14 @@ export async function translateCommentaryOnTheFly(
         contentHtml,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error(`[Translator] ✗ Error total:`, err.message);
     return {
       success: false,
       method: "failed",
       entry: null,
-      error: error.message,
+      error: err.message,
     };
   }
 }
