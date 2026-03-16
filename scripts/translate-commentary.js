@@ -1,5 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
-const axios = require("axios");
+const { GoogleGenAI } = require("@google/genai"); // 👈 El SDK oficial que usas
 const pLimit = require("p-limit");
 require("dotenv").config();
 
@@ -10,6 +10,9 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
 const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
+
+// El modelo que prefieres usar
+const TARGET_MODEL = 'gemini-3.1-flash-lite-preview'; 
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
   console.error("❌ Error: Faltan variables de entorno (Supabase o Gemini Keys)");
@@ -32,51 +35,53 @@ function getNextApiKey() {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR CON GEMINI 1.5 FLASH (JSON MODE)
+// TRADUCTOR CON SDK OFICIAL Y JSON MODE
 // ═══════════════════════════════════════════════════════════════════
-async function translateWithGemini(entry, retries = 3) {
-  // Preparamos lo que queremos traducir
+async function translateWithGeminiSDK(entry, retries = 3) {
   const payloadToTranslate = {
     title: entry.title || "",
     content: entry.content || "",
     contentHtml: entry.contentHtml || ""
   };
 
-  const prompt = `
+  const promptDelSistema = `
   You are an expert biblical translator. Translate the following JSON object from English to Catalan (${TARGET_LANG}).
   Rules:
   1. Translate "title", "content", and "contentHtml".
-  2. For "contentHtml", DO NOT translate or modify any HTML tags (like <p>, <strong>, <i>, <a>). Only translate the text inside them.
+  2. For "contentHtml", DO NOT translate or modify any HTML tags (like <p>, <strong>, <i>). Only translate the text inside them.
   3. Maintain theological accuracy.
   4. Return ONLY a valid JSON with the exact same keys.
-  
-  JSON to translate:
-  ${JSON.stringify(payloadToTranslate)}
   `;
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     const apiKey = getNextApiKey();
+    
     try {
-      const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" } // 👈 Obligamos a que devuelva JSON
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+
+      const response = await ai.models.generateContent({
+        model: TARGET_MODEL,
+        contents: JSON.stringify(payloadToTranslate),
+        config: {
+          systemInstruction: promptDelSistema,
+          temperature: 0.2, // 👈 Baja temperatura = traducción más precisa y menos creativa
+          responseMimeType: "application/json", // 👈 MAGIA: Obliga al modelo a devolver JSON puro
         },
-        { timeout: 30000 }
-      );
+      });
 
-      const responseText = response.data.candidates[0].content.parts[0].text;
+      // El SDK nuevo usa .text para obtener el contenido directamente
+      const responseText = response.text;
+      
+      // Parseamos el JSON devuelto
       const translatedJson = JSON.parse(responseText);
-
       return translatedJson;
 
     } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      console.warn(`⚠️ Intento ${attempt} falló (Key terminada en ...${apiKey.slice(-4)}). Error: ${error.response?.status || error.message}`);
+      const isRateLimit = error.status === 429 || (error.response && error.response.status === 429);
+      console.warn(`⚠️ Intento ${attempt} falló (Key ...${apiKey.slice(-4)}). Error: ${error.message}`);
       
       if (attempt < retries) {
-        // Si es 429, esperamos un poco más antes de usar la siguiente key
+        // Si hay rate limit, esperamos más tiempo antes de intentar con la siguiente key
         await sleep(isRateLimit ? 5000 : 2000);
       } else {
         console.error(`❌ Fallo definitivo traduciendo ID ${entry.id}`);
@@ -87,7 +92,7 @@ async function translateWithGemini(entry, retries = 3) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// OBTENER DATOS
+// OBTENER DATOS PAGINADOS
 // ═══════════════════════════════════════════════════════════════════
 async function getAllEntries(lang) {
   const PAGE_SIZE = 1000;
@@ -119,19 +124,18 @@ async function getAllEntries(lang) {
 // ═══════════════════════════════════════════════════════════════════
 async function main() {
   console.log(`\n🔄 INICIANDO TRADUCCIÓN DE COMENTARIOS: EN → ${TARGET_LANG.toUpperCase()}`);
+  console.log(`   Modelo: ${TARGET_MODEL}`);
   console.log(`   Keys en el Pool: ${GEMINI_KEYS.length}`);
   console.log("=".repeat(70));
 
   try {
-    // 1. Obtener los de origen (inglés)
     console.log(`📥 Obteniendo comentarios en inglés...`);
     const enEntries = await getAllEntries("en");
     
-    // 2. Obtener los que ya están traducidos (catalán)
     console.log(`🔍 Verificando existentes en ${TARGET_LANG}...`);
     const caEntries = await getAllEntries(TARGET_LANG);
     
-    // Creamos un Set rápido para saber cuáles existen (combinación única sourceId + divId)
+    // Set para saber cuáles existen (combinación única sourceId + divId)
     const existingSet = new Set(caEntries.map(e => `${e.sourceId}-${e.divId}`));
 
     const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
@@ -142,22 +146,19 @@ async function main() {
       process.exit(0);
     }
 
-    // 3. Traducir con concurrencia calculada
-    // 15 RPM * 10 keys = 150 RPM = ~2.5 peticiones por segundo.
-    // Usamos una concurrencia de 4 para ir sobre seguro y no saturar las colas.
-    const limit = pLimit(4); 
+    // Usamos concurrencia de 3 (para no golpear muy duro el rate limit por minuto, 
+    // aunque rotemos keys, es mejor ir a paso seguro)
+    const limit = pLimit(3); 
     let processed = 0;
     let buffer = [];
 
     const translationPromises = pendingEntries.map((entryEn) =>
       limit(async () => {
-        // Pequeño retraso entre llamadas para distribuir la carga uniformemente
-        await sleep(500); 
+        await sleep(500); // Pequeño respiro entre llamadas
 
-        const translatedTexts = await translateWithGemini(entryEn);
+        const translatedTexts = await translateWithGeminiSDK(entryEn);
         
         if (translatedTexts) {
-          // Construimos el nuevo objeto para insertar
           const newEntry = {
             sourceId: entryEn.sourceId,
             language: TARGET_LANG,
@@ -167,7 +168,7 @@ async function main() {
             verseStart: entryEn.verseStart,
             verseEnd: entryEn.verseEnd,
             title: translatedTexts.title || null,
-            content: translatedTexts.content || entryEn.content, // Fallback al original si viene vacío
+            content: translatedTexts.content || entryEn.content, 
             contentHtml: translatedTexts.contentHtml || null,
             divId: entryEn.divId,
             sectionType: entryEn.sectionType,
@@ -180,7 +181,7 @@ async function main() {
         processed++;
         if (processed % 10 === 0) console.log(`⏳ Procesados: ${processed}/${pendingEntries.length}`);
 
-        // Guardar en lotes de 20
+        // Insertar en BD cada 20 registros
         if (buffer.length >= 20) {
           const toInsert = buffer.splice(0, 20);
           const { error } = await supabase.from("CommentaryEntry").insert(toInsert);
