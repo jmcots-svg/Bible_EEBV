@@ -22,8 +22,8 @@ jobs:
       - name: Run translation script
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           TARGET_LANG: ca
         timeout-minutes: 180
         run: npm run translate:strong
