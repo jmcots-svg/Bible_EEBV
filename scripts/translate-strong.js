@@ -10,11 +10,11 @@ require("dotenv").config();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
+const DEEPL_API_KEY = process.env.DEEPL_API_KEY; // ← Declaramos esto para evitar el error
 
 // Validar variables requeridas
 if (!SUPABASE_URL) {
   console.error("❌ Error: Falta SUPABASE_URL");
-  console.error("   Ejemplo: https://abcdefgh.supabase.co");
   process.exit(1);
 }
 
@@ -36,7 +36,10 @@ const FIELDS_TO_TRANSLATE = [
   "strongsDerivation",
 ];
 
-// Usar DeepL si está disponible, sino MyMemory
+// ═══════════════════════════════════════════════════════════════════
+// TRADUCCIÓN (Soporta DeepL si hay API, sino usa MyMemory)
+// ═══════════════════════════════════════════════════════════════════
+
 async function translateText(text, targetLang = "ca") {
   if (!text || text.trim() === "") return null;
 
@@ -44,30 +47,38 @@ async function translateText(text, targetLang = "ca") {
     if (DEEPL_API_KEY) {
       // DeepL (más rápido y mejor)
       const response = await axios.post(
-        "https://api-free.deepl.com/v1/translate",
+        "https://api-free.deepl.com/v2/translate",
         {
-          text: text,
-          target_lang: targetLang === "ca" ? "ES" : targetLang.toUpperCase(), // DeepL no tiene catalán, usa español
+          text: [text],
+          target_lang: targetLang === "ca" ? "ES" : targetLang.toUpperCase(),
           source_lang: "EN",
         },
         {
           headers: {
             Authorization: `DeepL-Auth-Key ${DEEPL_API_KEY}`,
+            "Content-Type": "application/json"
           },
         }
       );
       return response.data.translations[0].text;
     } else {
       // MyMemory (gratis)
-      const encodedText = encodeURIComponent(text);
+      const encodedText = encodeURIComponent(text.substring(0, 500));
       const response = await axios.get(
-        `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`
+        `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`,
+        { timeout: 10000 }
       );
       if (response.data.responseStatus === 200) {
         return response.data.responseData.translatedText;
       }
+      return null;
     }
   } catch (error) {
+    if (error.response?.status === 429) {
+      console.log("⏳ Rate limit, esperando 5 segundos...");
+      await new Promise(r => setTimeout(r, 5000));
+      return translateText(text, targetLang); 
+    }
     console.error(`⚠️ Error en traducción: ${error.message}`);
     return null;
   }
@@ -91,7 +102,7 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
     definitionLang: targetLang,
   };
 
-  // Traducir campos en PARALELO (no secuencial)
+  // Traducir campos en PARALELO
   await Promise.all(
     FIELDS_TO_TRANSLATE.map(async (field) => {
       const originalText = entryEn[field];
@@ -105,63 +116,60 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
   return entryTranslated;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════
+
 async function main() {
-  console.log(
-    `\n🔄 INICIANDO TRADUCCIÓN DE STRONG: EN → ${TARGET_LANG.toUpperCase()}`
-  );
-  console.log(`   API: ${DEEPL_API_KEY ? "DeepL" : "MyMemory"}`);
-  console.log(`   Concurrencia: 20 entradas en paralelo`);
+  console.log(`\n🔄 INICIANDO TRADUCCIÓN DE STRONG: EN → ${TARGET_LANG.toUpperCase()}`);
+  console.log(`   API: ${DEEPL_API_KEY ? "DeepL" : "MyMemory (gratis)"}`);
+  console.log(`   Concurrencia: 5 entradas en paralelo (para evitar rate limit)`);
   console.log("=".repeat(70));
 
   try {
-    // 1. Obtener Strong en inglés
+    // 1. Test de conexión
+    console.log(`\n🔌 Probando conexión a Supabase...`);
+    const { count, error: countError } = await supabase
+      .from("StrongEntry")
+      .select("*", { count: "exact", head: true });
+    
+    if (countError) throw new Error(`Error de conexión: ${countError.message}`);
+    console.log(`✓ Conexión OK. Total registros en StrongEntry: ${count}`);
+
+    // 2. Obtener Strong en inglés
     console.log(`\n📥 Obteniendo Strong entries en inglés...`);
     const { data: strongEntriesEn, error: fetchError } = await supabase
       .from("StrongEntry")
-      .select(
-        "strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation"
-      )
+      .select("strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation")
       .eq("definitionLang", "en");
 
     if (fetchError) throw new Error(`Error obteniendo datos: ${fetchError.message}`);
+    
+    if (!strongEntriesEn || strongEntriesEn.length === 0) {
+      console.log("⚠️ No se encontraron entradas en inglés (definitionLang='en')");
+      process.exit(0);
+    }
+    
     console.log(`✓ Se obtuvieron ${strongEntriesEn.length} entradas en inglés`);
 
-    // 2. Verificar si ya existen
-    console.log(
-      `\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`
-    );
-    const { data: existingEntries, error: checkError } = await supabase
-      .from("StrongEntry")
-      .select("strong")
-      .eq("definitionLang", TARGET_LANG);
+    // 3. Traducir (con límite de concurrencia de 5)
+    console.log(`\n🌐 Traduciendo...`);
+    const limit = pLimit(5); 
+    const startTime = Date.now();
+    let processed = 0;
 
-    if (checkError) throw new Error(`Error verificando: ${checkError.message}`);
-
-    const existingCount = existingEntries?.length || 0;
-    console.log(`   Ya existen ${existingCount} entradas`);
-
-    if (existingCount > 0) {
-      console.log(`   Eliminando entradas previas...`);
-      const { error: deleteError } = await supabase
-        .from("StrongEntry")
-        .delete()
-        .eq("definitionLang", TARGET_LANG);
-      if (deleteError) throw deleteError;
-      console.log(`   ✓ Eliminadas`);
-    }
-
-    // 3. Traducir EN PARALELO
-    console.log(`\n🌐 Traduciendo ${strongEntriesEn.length} entradas (en paralelo)...`);
-    console.log("=".repeat(70));
-
-    const limit = pLimit(20); // Máximo 20 entradas en paralelo
-    const translationPromises = strongEntriesEn.map((entryEn, index) =>
+    const translationPromises = strongEntriesEn.map((entryEn) =>
       limit(async () => {
         try {
-          if ((index + 1) % 100 === 0) {
-            console.log(`⏳ ${index + 1}/${strongEntriesEn.length} entradas procesadas...`);
+          const result = await translateStrongEntry(entryEn, TARGET_LANG);
+          processed++;
+          
+          if (processed % 20 === 0) {
+            const elapsed = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
+            console.log(`⏳ ${processed}/${strongEntriesEn.length} traducidas (${elapsed} min)`);
           }
-          return await translateStrongEntry(entryEn, TARGET_LANG);
+          
+          return result;
         } catch (error) {
           console.error(`❌ Error en ${entryEn.strong}: ${error.message}`);
           return null;
@@ -172,40 +180,31 @@ async function main() {
     const translatedEntries = (await Promise.all(translationPromises)).filter(Boolean);
     console.log(`\n✓ Se tradujeron ${translatedEntries.length} entradas`);
 
-    // 4. Insertar EN BATCH
-    console.log(`\n💾 Insertando ${translatedEntries.length} entradas en Supabase...`);
+    // 4. Insertar/Actualizar en Supabase
+    console.log(`\n💾 Guardando en Supabase...`);
+    if (translatedEntries.length > 0) {
+      const chunkSize = 200;
+      let insertedCount = 0;
 
-    if (translatedEntries.length === 0) {
-      console.error("❌ No hay entradas para insertar");
-      process.exit(1);
+      for (let i = 0; i < translatedEntries.length; i += chunkSize) {
+        const chunk = translatedEntries.slice(i, i + chunkSize);
+        
+        // Upsert para insertar o actualizar si ya existe la llave primaria
+        const { error: insertError } = await supabase
+          .from("StrongEntry")
+          .upsert(chunk, { onConflict: 'strong, definitionLang' }); // Ajusta onConflict si es necesario
+
+        if (insertError) throw new Error(`Error insertando chunk: ${insertError.message}`);
+
+        insertedCount += chunk.length;
+        console.log(`  ✓ ${insertedCount}/${translatedEntries.length} guardadas`);
+      }
     }
 
-    const chunkSize = 500; // Chunks más grandes = más rápido
-    let insertedCount = 0;
-    const startInsert = Date.now();
-
-    for (let i = 0; i < translatedEntries.length; i += chunkSize) {
-      const chunk = translatedEntries.slice(i, i + chunkSize);
-      const { error: insertError } = await supabase
-        .from("StrongEntry")
-        .insert(chunk);
-
-      if (insertError) throw new Error(`Error insertando: ${insertError.message}`);
-
-      insertedCount += chunk.length;
-      const elapsed = ((Date.now() - startInsert) / 1000 / 60).toFixed(1);
-      console.log(
-        `  ✓ ${insertedCount}/${translatedEntries.length} entradas (${elapsed} min)`
-      );
-    }
-
-    // 5. Resumen
-    const totalTime = ((Date.now() - startInsert) / 1000 / 60).toFixed(1);
-    console.log("\n" + "=".repeat(70));
-    console.log("✅ TRADUCCIÓN COMPLETADA");
-    console.log(`   Entradas: ${translatedEntries.length}`);
+    const totalTime = ((Date.now() - startTime) / 1000 / 60).toFixed(1);
+    console.log("\n✅ TRADUCCIÓN COMPLETADA");
     console.log(`   Tiempo total: ${totalTime} minutos`);
-    console.log("=".repeat(70) + "\n");
+
   } catch (error) {
     console.error(`\n❌ Error fatal: ${error.message}`);
     process.exit(1);
