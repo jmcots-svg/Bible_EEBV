@@ -532,20 +532,18 @@ if (path.startsWith("/api/strong-dict/")) {
     path.replace("/api/strong-dict/", "")
   ).toUpperCase().trim();
 
-  // ✅ Leer idioma del query param, normalizar y validar
-  let defLang = (url.searchParams.get("lang") || "es").toLowerCase();
-  
-  // ✅ Obtener idiomas disponibles dinámicamente desde la DB
-  // Con caché para no consultar en cada request
-  const memKey = "strong-available-langs";
-  let availableLangs = getCached(memKey);
+  let defLang = (url.searchParams.get("lang") || "en").toLowerCase();
+
+  // ✅ Nombre diferente para evitar conflicto
+  const langsMemKey = "strong-available-langs"; // ← distinto de memKey
+  let availableLangs = getCached(langsMemKey);
   
   if (!availableLangs) {
     const { rows } = await pool.query(
       `SELECT DISTINCT "definitionLang" FROM "StrongEntry"`
     );
     availableLangs = rows.map((r: any) => r.definitionLang);
-    setCache(memKey, availableLangs); // se cachea 1 hora
+    setCache(langsMemKey, availableLangs);
   }
 
   // Si el idioma solicitado no existe en la DB, fallback a español
