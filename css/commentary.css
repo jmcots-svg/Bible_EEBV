@@ -248,3 +248,25 @@
 #reference:hover::after {
     opacity: 0.7;
 }
+
+/* PAra referencia de traduccion IA */
+
+.translation-hint {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+.translate-icon {
+    font-size: 0.9em;
+    margin-right: 4px;
+}
+
+.translation-badge {
+    font-size: 0.75em;
+    background: var(--accent-light, #e3f2fd);
+    color: var(--accent, #1976d2);
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: auto;
+}
