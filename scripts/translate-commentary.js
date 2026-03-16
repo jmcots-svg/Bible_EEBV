@@ -159,7 +159,7 @@ async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR BATCH "A TODA MÁQUINA"
+// TRADUCTOR BATCH "HÍBRIDO EQUILIBRADO"
 // ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
   const payload = entriesBatch.map(entry => ({
@@ -172,7 +172,16 @@ async function translateBatchOptimized(entriesBatch) {
   for (let attempt = 1; attempt <= 4; attempt++) {
     let keyInfo = rateLimiter.getBestKeyAndModel();
     
-    // 🚀 SIN ESPERAS: Si Gemini está lleno, nos vamos directo a Google Translate
+    // ⚖️ EL CAMBIO MÁGICO: Esperamos un MÁXIMO de 15 segundos.
+    // Si la espera es mayor, no perdemos el tiempo y pasamos a Google Translate.
+    if (!keyInfo.available) {
+      if (keyInfo.waitMs > 0 && keyInfo.waitMs <= 15000) {
+        await sleep(keyInfo.waitMs);
+        keyInfo = rateLimiter.getBestKeyAndModel();
+      }
+    }
+    
+    // Si después de la breve espera sigue sin haber keys, usamos GT.
     if (!keyInfo.available || !keyInfo.key) {
       return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
     }
@@ -198,12 +207,10 @@ async function translateBatchOptimized(entriesBatch) {
       
       if (isRateLimit) {
         rateLimiter.recordRateLimit(keyInfo.projectId, keyInfo.model);
-        // Pequeño freno para no disparar 4 errores en el mismo segundo exacto
-        await sleep(1500); 
+        await sleep(2000); // Pequeño freno tras error
         continue;
       }
       
-      // Otro tipo de error
       return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
     }
   }
