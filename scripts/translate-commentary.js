@@ -37,7 +37,7 @@ const MODELS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// RATE LIMITER
+// RATE LIMITER (Project-Aware)
 // ═══════════════════════════════════════════════════════════════════
 class ProjectAwareRateLimiter {
   constructor(projects, models) {
@@ -57,27 +57,23 @@ class ProjectAwareRateLimiter {
       });
       this.projectStats.set(p.id, modelMap);
     });
-    
     this.currentProjectIdx = 0;
   }
 
   _isAvailable(projectId, model) {
     const stats = this.projectStats.get(projectId).get(model.name);
     const now = Date.now();
-    
     if (stats.exhaustedUntil > now) return false;
     
     const oneMinAgo = now - 60000;
     stats.requestTimestamps = stats.requestTimestamps.filter(ts => ts > oneMinAgo);
     
     if (stats.requestTimestamps.length >= model.rpm - 1) return false;
-    
     if (now - stats.dayStart > 86400000) {
       stats.requestsToday = 0;
       stats.dayStart = now;
     }
     if (stats.requestsToday >= model.rpd - 1) return false;
-    
     return true;
   }
 
@@ -85,7 +81,6 @@ class ProjectAwareRateLimiter {
     const stats = this.projectStats.get(project.id).get(model.name);
     stats.requestTimestamps.push(Date.now());
     stats.requestsToday++;
-    
     const key = project.keys[project.currentKeyIdx];
     project.currentKeyIdx = (project.currentKeyIdx + 1) % project.keys.length;
     return key;
@@ -96,7 +91,6 @@ class ProjectAwareRateLimiter {
       for (let i = 0; i < this.projects.length; i++) {
         const pIdx = (this.currentProjectIdx + i) % this.projects.length;
         const project = this.projects[pIdx];
-        
         if (this._isAvailable(project.id, model)) {
           this.currentProjectIdx = (pIdx + 1) % this.projects.length;
           const key = this._reserveFromProject(project, model);
@@ -104,30 +98,12 @@ class ProjectAwareRateLimiter {
         }
       }
     }
-
-    let minWait = Infinity;
-    const now = Date.now();
-    for (const project of this.projects) {
-      for (const model of this.models) {
-        const stats = this.projectStats.get(project.id).get(model.name);
-        if (stats.exhaustedUntil > now) {
-          minWait = Math.min(minWait, stats.exhaustedUntil - now);
-        } else if (stats.requestTimestamps.length > 0) {
-          const oldest = Math.min(...stats.requestTimestamps);
-          const wait = (oldest + 60000) - now;
-          if (wait > 0) minWait = Math.min(minWait, wait);
-        }
-      }
-    }
-
-    return { key: null, model: null, projectId: null, available: false, waitMs: minWait === Infinity ? 5000 : Math.max(1000, minWait) };
+    return { key: null, model: null, projectId: null, available: false };
   }
 
   recordRateLimit(projectId, modelName) {
     const stats = this.projectStats.get(projectId).get(modelName);
     stats.exhaustedUntil = Date.now() + 65000;
-    const shortModel = modelName.includes('3.1') ? '3.1' : (modelName.includes('lite') ? '2.5L' : '2.5');
-    console.log(`   🔴 Rate Limit | PROYECTO ${projectId} | Modelo ${shortModel} → cooldown 65s`);
   }
 }
 
@@ -142,33 +118,48 @@ const stats = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// GOOGLE TRANSLATE FALLBACK
+// GOOGLE TRANSLATE FALLBACK (ROBUSTO - Con reintentos)
 // ═══════════════════════════════════════════════════════════════════
-async function translateWithGoogleTranslate(text, targetLang = "es") {
+async function translateWithGoogleTranslate(text, targetLang = "es", retries = 3) {
   if (!text || text.trim() === "") return text;
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(text.substring(0, 4500))}`;
-    const response = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
-    return response.data[0].map(item => item[0]).filter(Boolean).join("");
-  } catch { return text; }
+  const textToTranslate = text.substring(0, 4500);
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`;
+      const response = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
+      return response.data[0].map(item => item[0]).filter(Boolean).join("");
+    } catch (error) {
+      const isRateLimit = error.response?.status === 429;
+      if (isRateLimit && attempt < retries) {
+        const waitTime = 15000 * attempt;
+        console.log(`   ⏳ GT Rate limit, esperando ${waitTime / 1000}s...`);
+        await sleep(waitTime);
+      } else if (attempt === retries) {
+        return text; // Devolver original si falla definitivamente
+      }
+    }
+  }
+  return text;
 }
 
 async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
   const results = [];
   for (const entry of entriesBatch) {
     results.push({
-      id: entry.id, title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
+      id: entry.id, 
+      title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
       content: entry.content ? await translateWithGoogleTranslate(entry.content, targetLang) : "",
       contentHtml: entry.contentHtml ? await translateWithGoogleTranslate(entry.contentHtml, targetLang) : ""
     });
-    await sleep(400);
+    await sleep(400); // Pequeña pausa entre textos para no saturar GT
   }
   stats.google += entriesBatch.length;
   return results;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR BATCH "MODO PACIENTE"
+// TRADUCTOR BATCH "A TODA MÁQUINA"
 // ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
   const payload = entriesBatch.map(entry => ({
@@ -178,21 +169,13 @@ async function translateBatchOptimized(entriesBatch) {
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
   const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return only valid JSON array.`;
 
-  let maxAttempts = 5;
-  let currentAttempt = 0;
-
-  while (currentAttempt < maxAttempts) {
+  for (let attempt = 1; attempt <= 4; attempt++) {
     let keyInfo = rateLimiter.getBestKeyAndModel();
     
-    // 🧘‍♂️ MODO ZEN: Si todo está ocupado, ESPERAMOS. No huimos a Google Translate.
-    while (!keyInfo.available) {
-      const waitTime = Math.min(keyInfo.waitMs, 20000); // Esperar en trozos de máx 20s
-      console.log(`   ⏳ Modelos ocupados. Esperando ${(waitTime/1000).toFixed(0)}s...`);
-      await sleep(waitTime + 500);
-      keyInfo = rateLimiter.getBestKeyAndModel();
+    // 🚀 SIN ESPERAS: Si Gemini está lleno, nos vamos directo a Google Translate
+    if (!keyInfo.available || !keyInfo.key) {
+      return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
     }
-
-    currentAttempt++;
 
     try {
       const ai = new GoogleGenAI({ apiKey: keyInfo.key });
@@ -215,15 +198,13 @@ async function translateBatchOptimized(entriesBatch) {
       
       if (isRateLimit) {
         rateLimiter.recordRateLimit(keyInfo.projectId, keyInfo.model);
-        // 🛑 FRENO DE MANO: Espera obligatoria antes de intentar otro proyecto
-        await sleep(3000 + Math.random() * 2000); 
+        // Pequeño freno para no disparar 4 errores en el mismo segundo exacto
+        await sleep(1500); 
         continue;
       }
       
-      if (currentAttempt >= maxAttempts) {
-        console.log(`   ⚠️ Error persistente: ${error.message?.substring(0, 40)}. Pasando a Google Translate.`);
-        return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
-      }
+      // Otro tipo de error
+      return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
     }
   }
   
@@ -266,19 +247,18 @@ async function getAllEntries(lang) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROCESADOR (Concurrencia Segura 4)
+// PROCESADOR 
 // ═══════════════════════════════════════════════════════════════════
 async function processAllBatches(batches, totalEntries) {
-  // Concurrencia a 4. Es el punto dulce perfecto para no disparar el límite RPS de Google
-  const limit = pLimit(4); 
+  const limit = pLimit(5); // Concurrencia de 5
   
   let processed = 0, dbBuffer = [];
   const startTime = Date.now();
 
   const processBatch = async (batchEn, index) => {
-    // 💧 ARRANQUE POR GOTEO: Cada trabajador arranca con 2 segundos de diferencia.
-    if (index < 4) await sleep(index * 2000); 
-    else await sleep(1000 + Math.random() * 1000);
+    // Arranque escalonado
+    if (index < 5) await sleep(index * 1500); 
+    else await sleep(500 + Math.random() * 500);
 
     const translatedBatch = await translateBatchOptimized(batchEn);
     
@@ -325,7 +305,7 @@ async function processAllBatches(batches, totalEntries) {
 async function main() {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║  🚀 TRADUCTOR v5.1 "Modo Zen" (Paciencia y Cero Spam)                     ║
+║  🚀 TRADUCTOR v6 "A TODA MÁQUINA" (Prioridad Velocidad)                   ║
 ║  EN → ${TARGET_LANG.toUpperCase()}                                                                ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 `);
