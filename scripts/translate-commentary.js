@@ -147,13 +147,13 @@ async function main() {
     const existingSet = new Set(caEntries.map(e => `${e.sourceId}-${e.divId}`));
 
     // Reemplaza esto:
-    // const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
+    const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}-${e.divId}`));
 
     // Por esto (cambia el 4 por el ID de tu comentario nuevo):
-    const TEST_SOURCE_ID = 1; 
-    const pendingEntries = enEntries.filter(e => 
-      e.sourceId === TEST_SOURCE_ID && !existingSet.has(`${e.sourceId}-${e.divId}`)
-    );
+    //const TEST_SOURCE_ID = 1; 
+    //const pendingEntries = enEntries.filter(e => 
+    //  e.sourceId === TEST_SOURCE_ID && !existingSet.has(`${e.sourceId}-${e.divId}`)
+    //);
     
     console.log(`   Pendientes: ${pendingEntries.length} de ${enEntries.length}\n`);
 
