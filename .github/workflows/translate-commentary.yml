@@ -1,9 +1,7 @@
 name: Translate Commentaries to Catalan
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "0 2 * * *" # Opcional: Ejecutar cada día a las 2 AM automáticamente
+  workflow_dispatch: # 👈 Esto te permite darle al botón "Run workflow" manualmente en GitHub
 
 jobs:
   translate:
@@ -26,7 +24,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }} # 👈 Tus 10 keys separadas por coma
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }} # 👈 ¡Acuérdate de añadir este secreto en GitHub!
           TARGET_LANG: ca
-        timeout-minutes: 360 # 6 horas por si hay muchos datos
-        run: node scripts/translate-commentary.js
+        timeout-minutes: 360 # 6 horas máximo
+        run: npm run translate:commentary
