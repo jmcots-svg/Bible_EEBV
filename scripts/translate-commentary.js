@@ -204,7 +204,7 @@ async function main() {
     console.log(`📦 Se han creado ${entryBatches.length} lotes dinámicos adaptados a la IA.`);
     
     // Concurrencia de 5. Velocidad crucero (para segura poner 2)
-    const limit = pLimit(5); 
+    const limit = pLimit(3); 
     let processed = 0;
     let dbBuffer = [];
 
