@@ -2,16 +2,14 @@
   "name": "biblia-traduccion",
   "version": "1.0.0",
   "scripts": {
-    "translate:strong": "node scripts/translate-strong.js",
-    "translate:commentaries": "node scripts/translate-commentaries.js"
+    "translate:strong": "node scripts/translate-strong.js"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
     "@prisma/extension-accelerate": "^1.0.0",
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
-    "fast-xml-parser": "^5.5.5",
-    "pg": "^8.11.3"
+    "fast-xml-parser": "^5.5.5"
   },
   "devDependencies": {
     "prisma": "^6.19.2"
