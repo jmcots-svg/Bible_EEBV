@@ -1,0 +1,37 @@
+name: Translate Strong Dictionary to Catalan
+
+on:
+  workflow_dispatch:  # Ejecución manual desde GitHub UI
+  schedule:
+    - cron: "0 2 * * 0"  # Cada domingo a las 2 AM UTC (opcional)
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run translation script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TARGET_LANG: ca
+          # GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}  # Opcional
+        run: node scripts/translate-strong.js
+
+      - name: Upload logs (si falla)
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: translation-logs
+          path: logs/
