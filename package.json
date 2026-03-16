@@ -8,10 +8,12 @@
     "@prisma/client": "^6.19.2",
     "@prisma/extension-accelerate": "^1.0.0",
     "@supabase/supabase-js": "^2.38.0",
+    "@vitalets/google-translate-api": "^8.4.0",
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
     "fast-xml-parser": "^5.5.5",
-    "p-limit": "^3.1.0"
+    "p-limit": "^3.1.0",
+    "tunnel": "^0.0.6"
   },
   "devDependencies": {
     "prisma": "^6.19.2"
