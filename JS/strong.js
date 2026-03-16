@@ -507,6 +507,35 @@ async function loadStrongDict(strongCode) {
     }
 }
 
+// ── Recargar diccionario si el panel está abierto ──
+export function reloadCurrentStrongIfOpen() {
+    if (
+        currentStrongCode &&
+        elements.strongBottomPanel.classList.contains('open')
+    ) {
+        const lang = getLang();
+        
+        const dictPanel = document.getElementById('strongTabDict');
+        const refsPanel = document.getElementById('strongTabRefs');
+        
+        if (dictPanel) {
+            dictPanel.innerHTML = `
+                <div class="strong-bottom-loading">
+                    ${t('loadingDictionary', lang)}
+                </div>`;
+        }
+        if (refsPanel) {
+            refsPanel.innerHTML = `
+                <div class="strong-bottom-loading">
+                    ${t('loadingReferences', lang)}
+                </div>`;
+        }
+
+        loadStrongDict(currentStrongCode);
+        loadStrongRefs(currentStrongCode, 1);
+    }
+}
+
 export function closeStrongPanel() {
     elements.strongBottomPanel.classList.remove('open');
     currentStrongCode = null;
