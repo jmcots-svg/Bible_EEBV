@@ -1,7 +1,8 @@
-// commentary.js
+// JS/commentary.js
 
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml } from './utils.js';
+import { translateCommentaryBatch, initTranslationService } from './translationService.js'; // ✅ CAMBIO: Importar
 
 // Estado del módulo
 let currentReference = null;
@@ -13,6 +14,10 @@ let callbacks = {};
 export function initCommentary(els, cbs) {
     elements = els;
     callbacks = cbs;
+    
+    // ✅ CAMBIO: Inicializar servicio de traducción
+    const keys = window.GEMINI_API_KEYS || [];
+    initTranslationService(keys);
     
     if (elements.commentaryBottomClose) {
         elements.commentaryBottomClose.addEventListener('click', closeCommentaryPanel);
@@ -45,16 +50,14 @@ async function getBookOrder(bookName, versionName) {
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Obtener idioma desde localStorage (Ajustes)
 function getCommentaryLanguage() {
     const savedLang = localStorage.getItem('appLanguage');
-    // Mapear a los códigos que usa tu API
     if (savedLang === 'es') return 'es';
     if (savedLang === 'en') return 'en';
+    if (savedLang === 'ca') return 'ca'; // ✅ CAMBIO: Soportar catalán
     return 'en'; // Default
 }
 
-// ✅ FUNCIÓN ACTUALIZADA
 export async function openCommentaryForReference(refText, versionName) {
     const parsed = parseReference(refText);
     if (!parsed) {
@@ -68,12 +71,11 @@ export async function openCommentaryForReference(refText, versionName) {
         return;
     }
     
-    // ✅ CAMBIO CLAVE: Usar el idioma de los Ajustes, no de la versión
     currentReference = {
         ...parsed,
         bookOrder,
         versionName,
-        language: getCommentaryLanguage(), // ← CAMBIO AQUÍ
+        language: getCommentaryLanguage(),
         displayText: refText
     };
     
@@ -105,7 +107,7 @@ function updateHeader() {
 
 async function loadCommentarySources() {
     const content = elements.commentaryBottomContent;
-    const lang = getCommentaryLanguage(); // ✅ Obtener idioma actual
+    const lang = getCommentaryLanguage();
     
     content.innerHTML = '<div class="commentary-loading">📚 Buscando comentarios disponibles...</div>';
     
@@ -113,14 +115,14 @@ async function loadCommentarySources() {
         const params = new URLSearchParams({
             bookOrder: currentReference.bookOrder,
             chapter: currentReference.chapter,
-            language: lang // ✅ Usar idioma de Ajustes
+            language: lang
         });
         
         if (currentReference.verse) {
             params.append('verse', currentReference.verse);
         }
         
-        console.log(`[Commentary] Buscando fuentes: ${params.toString()}`); // Debug
+        console.log(`[Commentary] Buscando fuentes: ${params.toString()}`);
         
         const sources = await fetchJSON(`${API_URL}/api/commentary/sources?${params}`);
         
@@ -128,7 +130,7 @@ async function loadCommentarySources() {
             content.innerHTML = `
                 <div class="commentary-empty">
                     <p>📭 No hay comentarios disponibles para esta referencia.</p>
-                    <p class="commentary-empty-hint">Idioma: ${lang === 'en' ? 'English' : 'Español'}</p>
+                    <p class="commentary-empty-hint">Idioma: ${lang === 'en' ? 'English' : lang === 'es' ? 'Español' : lang === 'ca' ? 'Català' : lang}</p>
                 </div>
             `;
             return;
@@ -176,10 +178,11 @@ function renderSourcesList(sources) {
     });
 }
 
+// ✅ CAMBIO: Función ACTUALIZADA con traducción on-the-fly
 async function loadCommentaryEntries(sourceId) {
     currentSourceId = sourceId;
     const content = elements.commentaryBottomContent;
-    const lang = getCommentaryLanguage(); // ✅ Obtener idioma actual
+    const lang = getCommentaryLanguage();
     
     content.innerHTML = '<div class="commentary-loading">📖 Cargando comentario...</div>';
     
@@ -187,7 +190,7 @@ async function loadCommentaryEntries(sourceId) {
         const params = new URLSearchParams({
             bookOrder: currentReference.bookOrder,
             chapter: currentReference.chapter,
-            language: lang, // ✅ Usar idioma de Ajustes
+            language: lang,
             sourceId: sourceId
         });
         
@@ -195,9 +198,41 @@ async function loadCommentaryEntries(sourceId) {
             params.append('verse', currentReference.verse);
         }
         
-        console.log(`[Commentary] Cargando entradas: ${params.toString()}`); // Debug
+        console.log(`[Commentary] Cargando entradas: ${params.toString()}`);
         
-        const data = await fetchJSON(`${API_URL}/api/commentary?${params}`);
+        let data = await fetchJSON(`${API_URL}/api/commentary?${params}`);
+        
+        // ✅ CAMBIO: Si no hay en el idioma deseado Y no es inglés, buscar en inglés y traducir
+        if ((!data.entries || data.entries.length === 0) && lang !== 'en') {
+            console.log(`📚 No hay comentarios en ${lang}, buscando en inglés para traducir...`);
+            
+            // Buscar en inglés
+            const paramsEn = new URLSearchParams({
+                bookOrder: currentReference.bookOrder,
+                chapter: currentReference.chapter,
+                language: 'en',
+                sourceId: sourceId
+            });
+            
+            if (currentReference.verse) {
+                paramsEn.append('verse', currentReference.verse);
+            }
+            
+            const dataEn = await fetchJSON(`${API_URL}/api/commentary?${paramsEn}`);
+            
+            // Si encontramos en inglés, traducir
+            if (dataEn.entries && dataEn.entries.length > 0) {
+                console.log(`🔄 Traduciendo ${dataEn.entries.length} entradas a ${lang}...`);
+                content.innerHTML = '<div class="commentary-loading">✨ Traduciendo con IA (Gemini)...</div>';
+                
+                // Llamar al servicio de traducción (Gemini + fallback a GT)
+                const translatedEntries = await translateCommentaryBatch(dataEn.entries, lang);
+                data = { entries: translatedEntries, wasTranslated: true };
+                
+                // Guardar en DB en background (no esperar)
+                saveTranslatedEntries(translatedEntries, lang);
+            }
+        }
         
         if (!data.entries || data.entries.length === 0) {
             content.innerHTML = `
@@ -226,6 +261,25 @@ async function loadCommentaryEntries(sourceId) {
     }
 }
 
+// ✅ CAMBIO: Nueva función para guardar traducciones en la BD
+async function saveTranslatedEntries(entries, lang) {
+    try {
+        const response = await fetch(`${API_URL}/api/commentary/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries, language: lang })
+        });
+        
+        if (response.ok) {
+            console.log(`💾 ${entries.length} entradas guardadas en BD (${lang})`);
+        } else {
+            console.error("Error guardando:", response.statusText);
+        }
+    } catch (error) {
+        console.error("⚠️ Error guardando traducciones:", error);
+    }
+}
+
 function renderCommentaryEntries(data) {
     const firstEntry = data.entries[0];
     
@@ -236,6 +290,11 @@ function renderCommentaryEntries(data) {
         </div>
         <div class="commentary-entries">
     `;
+    
+    // ✅ CAMBIO: Mostrar badge si fue traducido
+    if (data.wasTranslated) {
+        html += `<div style="font-size: 0.8rem; color: #888; padding: 8px 12px; background: #f0f0f0; border-radius: 4px; margin-bottom: 12px; text-align: center;">✨ Traducido automáticamente con IA</div>`;
+    }
     
     data.entries.forEach(entry => {
         const verseRange = formatVerseRange(entry.verseStart, entry.verseEnd);
