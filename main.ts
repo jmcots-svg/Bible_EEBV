@@ -1,4 +1,5 @@
 import { Pool } from "npm:@neondatabase/serverless";
+import { translateCommentaryOnTheFly } from "./services/translator.ts";
 
 const pool = new Pool({
   connectionString: Deno.env.get("DATABASE_URL"),
