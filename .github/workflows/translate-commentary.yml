@@ -1,0 +1,32 @@
+name: Translate Commentaries to Catalan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *" # Opcional: Ejecutar cada día a las 2 AM automáticamente
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install --no-package-lock
+
+      - name: Run commentary translation
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }} # 👈 Tus 10 keys separadas por coma
+          TARGET_LANG: ca
+        timeout-minutes: 360 # 6 horas por si hay muchos datos
+        run: node scripts/translate-commentary.js
