@@ -15,7 +15,7 @@ import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } f
 import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, updateComparacionLabels } from './comparacion.js';
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
-import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels } from './strong.js';
+import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
 
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -168,6 +168,7 @@ if (languageSelect) {
         localStorage.setItem('appLanguage', newLanguage);
         console.log('Idioma cambiado a:', newLanguage);
         applyTranslations(newLanguage);
+        reloadCurrentStrongIfOpen();
     });
 }
 
