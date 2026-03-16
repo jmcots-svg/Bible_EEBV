@@ -5,7 +5,13 @@ require("dotenv").config();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY; // Opcional: para mejor rate limit
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error(
+    "❌ Error: Falta SUPABASE_URL o SUPABASE_KEY en las variables de entorno"
+  );
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -18,25 +24,11 @@ const FIELDS_TO_TRANSLATE = [
   "strongsDerivation",
 ];
 
-// Función para traducir con Google Translate API (gratuita)
+// Función para traducir con MyMemory API (gratis, sin clave)
 async function translateText(text, targetLang = "ca") {
   if (!text || text.trim() === "") return null;
 
   try {
-    // Opción 1: Google Translate API (requiere clave pero mejor rate limit)
-    if (GOOGLE_API_KEY) {
-      const response = await axios.post(
-        `https://translation.googleapis.com/language/translate/v2?key=${GOOGLE_API_KEY}`,
-        {
-          q: text,
-          target: targetLang,
-          source: "en",
-        }
-      );
-      return response.data.data.translations[0].translatedText;
-    }
-
-    // Opción 2: MyMemory API (gratis, sin clave, pero más lento)
     const encodedText = encodeURIComponent(text);
     const response = await axios.get(
       `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`
@@ -45,12 +37,27 @@ async function translateText(text, targetLang = "ca") {
     if (response.data.responseStatus === 200) {
       return response.data.responseData.translatedText;
     } else {
-      console.warn(`⚠️ Error en traducción: ${response.data.responseDetails}`);
+      console.warn(
+        `⚠️ Error en traducción: ${response.data.responseDetails}`
+      );
       return null;
     }
   } catch (error) {
     console.error(`❌ Error traduciendo: ${error.message}`);
-    return null;
+    // Reintentar una vez
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      const encodedText = encodeURIComponent(text);
+      const response = await axios.get(
+        `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=en|${targetLang}`
+      );
+      if (response.data.responseStatus === 200) {
+        return response.data.responseData.translatedText;
+      }
+    } catch (retryError) {
+      console.error(`❌ Error en reintento: ${retryError.message}`);
+      return null;
+    }
   }
 }
 
@@ -63,6 +70,12 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
     pronunciation: entryEn.pronunciation,
     morphology: entryEn.morphology,
     speechLang: entryEn.speechLang,
+    definition: null,
+    exegesis: null,
+    explanation: null,
+    kjvDefinition: null,
+    strongsDef: null,
+    strongsDerivation: null,
     definitionLang: targetLang,
     createdAt: new Date().toISOString(),
   };
@@ -75,9 +88,7 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
       entryTranslated[field] = translated;
       console.log("✓");
       // Pausa para evitar rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    } else {
-      entryTranslated[field] = null;
+      await new Promise((resolve) => setTimeout(resolve, 800));
     }
   }
 
@@ -85,40 +96,61 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
 }
 
 async function main() {
-  console.log(`\n🔄 INICIANDO TRADUCCIÓN DE STRONG: EN → ${TARGET_LANG.toUpperCase()}`);
+  console.log(
+    `\n🔄 INICIANDO TRADUCCIÓN DE STRONG: EN → ${TARGET_LANG.toUpperCase()}`
+  );
   console.log("=".repeat(70));
 
-  // 1. Obtener todos los Strong en inglés
-  console.log(`\n📥 Obteniendo Strong entries en inglés...`);
   try {
-    const { data: strongEntriesEn, error } = await supabase
+    // 1. Obtener todos los Strong en inglés
+    console.log(`\n📥 Obteniendo Strong entries en inglés...`);
+    const { data: strongEntriesEn, error: fetchError } = await supabase
       .from("StrongEntry")
       .select(
         "strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation"
       )
       .eq("definitionLang", "en");
 
-    if (error) throw error;
+    if (fetchError) {
+      throw new Error(`Error obteniendo datos: ${fetchError.message}`);
+    }
 
     console.log(`✓ Se obtuvieron ${strongEntriesEn.length} entradas en inglés`);
 
     // 2. Verificar si ya existen
-    console.log(`\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`);
+    console.log(
+      `\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`
+    );
     const { data: existingEntries, error: checkError } = await supabase
       .from("StrongEntry")
-      .select("strong", { count: "exact" })
+      .select("strong")
       .eq("definitionLang", TARGET_LANG);
 
-    if (checkError) throw checkError;
+    if (checkError) {
+      throw new Error(`Error verificando existencia: ${checkError.message}`);
+    }
 
     const existingCount = existingEntries?.length || 0;
-    console.log(`   Ya existen ${existingCount} entradas en ${TARGET_LANG.toUpperCase()}`);
+    console.log(
+      `   Ya existen ${existingCount} entradas en ${TARGET_LANG.toUpperCase()}`
+    );
 
     if (existingCount > 0) {
       console.log(
         `\n⚠️  Ya hay entradas en ${TARGET_LANG.toUpperCase()}.`
       );
-      console.log(`   En CI/CD se sobrescribirán automáticamente.`);
+      console.log(`   Se sobrescribirán automáticamente.`);
+
+      // Eliminar entradas existentes
+      const { error: deleteError } = await supabase
+        .from("StrongEntry")
+        .delete()
+        .eq("definitionLang", TARGET_LANG);
+
+      if (deleteError) {
+        throw new Error(`Error eliminando entradas previas: ${deleteError.message}`);
+      }
+      console.log(`   ✓ Eliminadas ${existingCount} entradas previas`);
     }
 
     // 3. Traducir
@@ -161,22 +193,31 @@ async function main() {
       process.exit(1);
     }
 
-    // Dividir en chunks de 1000 para evitar límites de payload
-    const chunkSize = 1000;
+    // Dividir en chunks de 500 para evitar límites de payload
+    const chunkSize = 500;
     let insertedCount = 0;
 
     for (let i = 0; i < translatedEntries.length; i += chunkSize) {
       const chunk = translatedEntries.slice(i, i + chunkSize);
       const { error: upsertError } = await supabase
         .from("StrongEntry")
-        .upsert(chunk, { ignoreDuplicates: false });
+        .insert(chunk);
 
-      if (upsertError) throw upsertError;
+      if (upsertError) {
+        throw new Error(
+          `Error insertando chunk ${Math.floor(i / chunkSize) + 1}: ${upsertError.message}`
+        );
+      }
 
       insertedCount += chunk.length;
       console.log(
         `  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`
       );
+
+      // Pausa entre chunks
+      if (i + chunkSize < translatedEntries.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
     }
 
     // 5. Resumen final
@@ -186,7 +227,7 @@ async function main() {
     console.log(`   Entradas traducidas: ${translatedEntries.length}`);
     console.log(`   Errores: ${errors.length}`);
     if (errors.length > 0) {
-      console.log("\n   Errores encontrados:");
+      console.log("\n   Primeros errores encontrados:");
       errors.slice(0, 5).forEach(([strong, error]) => {
         console.log(`   - ${strong}: ${error}`);
       });
@@ -196,7 +237,7 @@ async function main() {
     }
     console.log("=".repeat(70) + "\n");
   } catch (error) {
-    console.error(`❌ Error fatal: ${error.message}`);
+    console.error(`\n❌ Error fatal: ${error.message}`);
     process.exit(1);
   }
 }
