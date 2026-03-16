@@ -95,14 +95,9 @@ export async function loadStrongVersions() {
 }
 
 function getStrongDefLang() {
-    try {
-        const opt = elements.strongVersion?.options?.[elements.strongVersion.selectedIndex];
-        const lang = opt?.dataset?.lang?.trim()?.toLowerCase();
-        if (lang === "en" || lang === "es") return lang;
-        return "en";
-    } catch {
-        return "en";
-    }
+    const lang = getLang(); // ya tienes esta función que lee localStorage 'appLanguage'
+    if (lang === "en" || lang === "es") return lang;
+    return "en"; // fallback a inglés
 }
 
 async function loadStrongBooks(version) {
