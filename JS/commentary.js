@@ -264,8 +264,8 @@ async function loadCommentaryEntries(sourceId, needsTranslation = false) {
 }
 
 // ✅ NUEVA FUNCIÓN: Cargar entradas en inglés y traducirlas
+// ✅ NUEVA FUNCIÓN: Cargar entradas en inglés y traducirlas
 async function loadAndTranslateEntries(sourceId, targetLang) {
-    // 1. Cargar entradas en inglés
     const params = new URLSearchParams({
         bookOrder: currentReference.bookOrder,
         chapter: currentReference.chapter,
@@ -283,7 +283,6 @@ async function loadAndTranslateEntries(sourceId, targetLang) {
         return { entries: [], translationMethod: null };
     }
     
-    // 2. Traducir cada entrada on-the-fly
     const translatedEntries = [];
     let lastMethod = null;
     
@@ -293,9 +292,9 @@ async function loadAndTranslateEntries(sourceId, targetLang) {
             translatedEntries.push(translated.entry);
             lastMethod = translated.method;
         } catch (e) {
-            console.warn(`[Commentary] Error traduciendo entrada ${entry.id}:`, e);
-            // Fallback: usar entrada en inglés
-            translatedEntries.push(entry);
+            console.warn(`[Commentary] Error traduciendo entrada ${entry.id}, saltando...`);
+            // ❌ ANTES: translatedEntries.push(entry); // Fallback inglés
+            // ✅ AHORA: No añadimos nada, simplemente la saltamos
         }
     }
     
