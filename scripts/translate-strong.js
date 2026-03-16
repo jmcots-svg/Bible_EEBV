@@ -3,25 +3,27 @@ const axios = require("axios");
 const pLimit = require("p-limit");
 require("dotenv").config();
 
-const DATABASE_URL = process.env.DATABASE_URL || process.env.DIRECT_URL;
-const TARGET_LANG = process.env.TARGET_LANG || "ca";
+// ═══════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const DEEPL_API_KEY = process.env.DEEPL_API_KEY;
+const TARGET_LANG = process.env.TARGET_LANG || "ca";
 
-if (!DATABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error(
-    "❌ Error: Falta DATABASE_URL y/o SUPABASE_ANON_KEY"
-  );
-  process.exit(1);
-}
-
-const urlMatch = DATABASE_URL.match(/postgresql:\/\/[^@]+@([^:]+)/);
-const SUPABASE_URL = urlMatch ? `https://${urlMatch[1]}` : null;
-
+// Validar variables requeridas
 if (!SUPABASE_URL) {
-  console.error("❌ Error: No se pudo extraer SUPABASE_URL de DATABASE_URL");
+  console.error("❌ Error: Falta SUPABASE_URL");
+  console.error("   Ejemplo: https://abcdefgh.supabase.co");
   process.exit(1);
 }
+
+if (!SUPABASE_ANON_KEY) {
+  console.error("❌ Error: Falta SUPABASE_ANON_KEY");
+  process.exit(1);
+}
+
+console.log(`🔗 Conectando a: ${SUPABASE_URL}`);
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
