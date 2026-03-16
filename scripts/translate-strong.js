@@ -1,19 +1,18 @@
-const { createClient } = require("@supabase/supabase-js");
 const axios = require("axios");
+const { Client } = require("pg");
 require("dotenv").config();
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.DIRECT_URL;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error(
-    "❌ Error: Falta SUPABASE_URL o SUPABASE_KEY en las variables de entorno"
-  );
+if (!DATABASE_URL) {
+  console.error("❌ Error: Falta DATABASE_URL o DIRECT_URL en las variables de entorno");
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = new Client({
+  connectionString: DATABASE_URL,
+});
 
 const FIELDS_TO_TRANSLATE = [
   "definition",
@@ -37,9 +36,7 @@ async function translateText(text, targetLang = "ca") {
     if (response.data.responseStatus === 200) {
       return response.data.responseData.translatedText;
     } else {
-      console.warn(
-        `⚠️ Error en traducción: ${response.data.responseDetails}`
-      );
+      console.warn(`⚠️ Error en traducción: ${response.data.responseDetails}`);
       return null;
     }
   } catch (error) {
@@ -77,7 +74,6 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
     strongsDef: null,
     strongsDerivation: null,
     definitionLang: targetLang,
-    createdAt: new Date().toISOString(),
   };
 
   for (const field of FIELDS_TO_TRANSLATE) {
@@ -102,35 +98,35 @@ async function main() {
   console.log("=".repeat(70));
 
   try {
+    // Conectar a la base de datos
+    console.log(`\n🔌 Conectando a la base de datos...`);
+    await client.connect();
+    console.log(`✓ Conectado`);
+
     // 1. Obtener todos los Strong en inglés
     console.log(`\n📥 Obteniendo Strong entries en inglés...`);
-    const { data: strongEntriesEn, error: fetchError } = await supabase
-      .from("StrongEntry")
-      .select(
-        "strong, language, lemma, translit, pronunciation, morphology, speechLang, definition, exegesis, explanation, kjvDefinition, strongsDef, strongsDerivation"
-      )
-      .eq("definitionLang", "en");
+    const result = await client.query(
+      `SELECT "strong", "language", "lemma", "translit", "pronunciation", 
+              "morphology", "speechLang", "definition", "exegesis", "explanation", 
+              "kjvDefinition", "strongsDef", "strongsDerivation"
+       FROM "StrongEntry"
+       WHERE "definitionLang" = 'en'
+       ORDER BY "strong"`
+    );
 
-    if (fetchError) {
-      throw new Error(`Error obteniendo datos: ${fetchError.message}`);
-    }
-
+    const strongEntriesEn = result.rows;
     console.log(`✓ Se obtuvieron ${strongEntriesEn.length} entradas en inglés`);
 
     // 2. Verificar si ya existen
     console.log(
       `\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`
     );
-    const { data: existingEntries, error: checkError } = await supabase
-      .from("StrongEntry")
-      .select("strong")
-      .eq("definitionLang", TARGET_LANG);
+    const existingResult = await client.query(
+      `SELECT COUNT(*) as count FROM "StrongEntry" WHERE "definitionLang" = \$1`,
+      [TARGET_LANG]
+    );
 
-    if (checkError) {
-      throw new Error(`Error verificando existencia: ${checkError.message}`);
-    }
-
-    const existingCount = existingEntries?.length || 0;
+    const existingCount = parseInt(existingResult.rows[0].count);
     console.log(
       `   Ya existen ${existingCount} entradas en ${TARGET_LANG.toUpperCase()}`
     );
@@ -142,14 +138,10 @@ async function main() {
       console.log(`   Se sobrescribirán automáticamente.`);
 
       // Eliminar entradas existentes
-      const { error: deleteError } = await supabase
-        .from("StrongEntry")
-        .delete()
-        .eq("definitionLang", TARGET_LANG);
-
-      if (deleteError) {
-        throw new Error(`Error eliminando entradas previas: ${deleteError.message}`);
-      }
+      await client.query(
+        `DELETE FROM "StrongEntry" WHERE "definitionLang" = \$1`,
+        [TARGET_LANG]
+      );
       console.log(`   ✓ Eliminadas ${existingCount} entradas previas`);
     }
 
@@ -185,40 +177,49 @@ async function main() {
       console.log(`⚠️  ${errors.length} errores encontrados`);
     }
 
-    // 4. Insertar en Supabase
-    console.log(`\n💾 Insertando en Supabase...`);
+    // 4. Insertar en la base de datos
+    console.log(`\n💾 Insertando en la base de datos...`);
 
     if (translatedEntries.length === 0) {
       console.error("❌ No hay entradas para insertar");
       process.exit(1);
     }
 
-    // Dividir en chunks de 500 para evitar límites de payload
-    const chunkSize = 500;
     let insertedCount = 0;
 
-    for (let i = 0; i < translatedEntries.length; i += chunkSize) {
-      const chunk = translatedEntries.slice(i, i + chunkSize);
-      const { error: upsertError } = await supabase
-        .from("StrongEntry")
-        .insert(chunk);
-
-      if (upsertError) {
-        throw new Error(
-          `Error insertando chunk ${Math.floor(i / chunkSize) + 1}: ${upsertError.message}`
-        );
-      }
-
-      insertedCount += chunk.length;
-      console.log(
-        `  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`
+    for (const entry of translatedEntries) {
+      await client.query(
+        `INSERT INTO "StrongEntry" 
+         ("strong", "language", "lemma", "translit", "pronunciation", "morphology", 
+          "speechLang", "definition", "exegesis", "explanation", "kjvDefinition", 
+          "strongsDef", "strongsDerivation", "definitionLang", "createdAt")
+         VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15)`,
+        [
+          entry.strong,
+          entry.language,
+          entry.lemma,
+          entry.translit,
+          entry.pronunciation,
+          entry.morphology,
+          entry.speechLang,
+          entry.definition,
+          entry.exegesis,
+          entry.explanation,
+          entry.kjvDefinition,
+          entry.strongsDef,
+          entry.strongsDerivation,
+          entry.definitionLang,
+          new Date(),
+        ]
       );
 
-      // Pausa entre chunks
-      if (i + chunkSize < translatedEntries.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+      insertedCount++;
+      if (insertedCount % 100 === 0) {
+        console.log(`  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`);
       }
     }
+
+    console.log(`  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`);
 
     // 5. Resumen final
     console.log("\n" + "=".repeat(70));
@@ -239,6 +240,8 @@ async function main() {
   } catch (error) {
     console.error(`\n❌ Error fatal: ${error.message}`);
     process.exit(1);
+  } finally {
+    await client.end();
   }
 }
 
