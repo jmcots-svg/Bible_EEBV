@@ -25,6 +25,11 @@ const [, dbUser, dbPassword, dbHost, dbPort, dbName] = urlMatch;
 const SUPABASE_URL = `https://${dbHost}`;
 const SUPABASE_KEY = dbPassword; // Usar la contraseña como API key temporal
 
+console.log("DEBUG - DATABASE_URL:", DATABASE_URL);
+console.log("DEBUG - dbHost:", dbHost);
+console.log("DEBUG - SUPABASE_URL:", SUPABASE_URL);
+console.log("DEBUG - TABLE:", "StrongEntry");
+
 const FIELDS_TO_TRANSLATE = [
   "definition",
   "exegesis",
