@@ -669,53 +669,53 @@ if (path === "/api/commentary") {
   const params: any[] = [bookOrder, chapter, language];
   let query = "";
   
-  if (sourceId && verse) {
-    // Caso 1: Con sourceId y verse
-    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
-            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
-            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
-            "FROM \"CommentaryEntry\" ce " +
-            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
-            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
-            "AND cs.id = \$4 " +
-            "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \$5 OR (ce.\"verseStart\" <= \$5 AND ce.\"verseEnd\" >= \$5)) " +
-            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
-    params.push(Number(sourceId), Number(verse));
-    
-  } else if (sourceId) {
-    // Caso 2: Solo sourceId
-    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
-            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
-            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
-            "FROM \"CommentaryEntry\" ce " +
-            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
-            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
-            "AND cs.id = \$4 " +
-            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
-    params.push(Number(sourceId));
-    
-  } else if (verse) {
-    // Caso 3: Solo verse
-    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
-            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
-            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
-            "FROM \"CommentaryEntry\" ce " +
-            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
-            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
-            "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \$4 OR (ce.\"verseStart\" <= \$4 AND ce.\"verseEnd\" >= \$4)) " +
-            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
-    params.push(Number(verse));
-    
-  } else {
-    // Caso 4: Sin sourceId ni verse
-    query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\", " +
-            "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
-            "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
-            "FROM \"CommentaryEntry\" ce " +
-            "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
-            "WHERE ce.\"bookOrder\" = \$1 AND ce.chapter = \$2 AND ce.language = \$3 " +
-            "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
-  }
+if (sourceId && verse) {
+  // Caso 1: Con sourceId y verse
+  query = "SELECT ce.id, ce.\"sourceId\", ce.\"divId\", ce.title, ce.content, ce.\"contentHtml\", " +
+          "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+          "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+          "FROM \"CommentaryEntry\" ce " +
+          "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+          "WHERE ce.\"bookOrder\" = \\$1 AND ce.chapter = \\$2 AND ce.language = \\$3 " +
+          "AND cs.id = \\$4 " +
+          "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \\$5 OR (ce.\"verseStart\" <= \\$5 AND ce.\"verseEnd\" >= \\$5)) " +
+          "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+  params.push(Number(sourceId), Number(verse));
+  
+} else if (sourceId) {
+  // Caso 2: Solo sourceId
+  query = "SELECT ce.id, ce.\"sourceId\", ce.\"divId\", ce.title, ce.content, ce.\"contentHtml\", " +
+          "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+          "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+          "FROM \"CommentaryEntry\" ce " +
+          "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+          "WHERE ce.\"bookOrder\" = \\$1 AND ce.chapter = \\$2 AND ce.language = \\$3 " +
+          "AND cs.id = \\$4 " +
+          "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+  params.push(Number(sourceId));
+  
+} else if (verse) {
+  // Caso 3: Solo verse
+  query = "SELECT ce.id, ce.\"sourceId\", ce.\"divId\", ce.title, ce.content, ce.\"contentHtml\", " +
+          "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+          "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+          "FROM \"CommentaryEntry\" ce " +
+          "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+          "WHERE ce.\"bookOrder\" = \\$1 AND ce.chapter = \\$2 AND ce.language = \\$3 " +
+          "AND (ce.\"verseStart\" IS NULL OR ce.\"verseStart\" = \\$4 OR (ce.\"verseStart\" <= \\$4 AND ce.\"verseEnd\" >= \\$4)) " +
+          "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+  params.push(Number(verse));
+  
+} else {
+  // Caso 4: Sin sourceId ni verse
+  query = "SELECT ce.id, ce.\"sourceId\", ce.\"divId\", ce.title, ce.content, ce.\"contentHtml\", " +
+          "ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", " +
+          "cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author " +
+          "FROM \"CommentaryEntry\" ce " +
+          "JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id " +
+          "WHERE ce.\"bookOrder\" = \\$1 AND ce.chapter = \\$2 AND ce.language = \\$3 " +
+          "ORDER BY ce.\"verseStart\" NULLS FIRST, ce.id";
+}
   
   const { rows } = await pool.query(query, params);
   
