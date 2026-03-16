@@ -96,8 +96,7 @@ export async function loadStrongVersions() {
 
 function getStrongDefLang() {
     const lang = getLang(); // ya tienes esta función que lee localStorage 'appLanguage'
-    if (lang === "en" || lang === "es") return lang;
-    return "en"; // fallback a inglés
+    return getLang();
 }
 
 async function loadStrongBooks(version) {
