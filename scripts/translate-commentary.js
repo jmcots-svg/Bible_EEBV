@@ -37,6 +37,9 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // ═══════════════════════════════════════════════════════════════════
 // TRADUCTOR CON SDK OFICIAL Y JSON MODE
 // ═══════════════════════════════════════════════════════════════════
+
+let globalCallCounter = 0;
+
 async function translateWithGeminiSDK(entry, retries = 3) {
   const payloadToTranslate = {
     title: entry.title || "",
@@ -60,40 +63,53 @@ async function translateWithGeminiSDK(entry, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     const apiKey = getNextApiKey();
     
+    // 🔄 ROTACIÓN DE MODELOS: Cada 4 llamadas, la 4ª usa el modelo 2.5-flash
+    globalCallCounter++;
+    const modelToUse = (globalCallCounter % 4 === 0) ? 'gemini-2.5-flash' : 'gemini-3.1-flash-lite-preview';
+    
     try {
       const ai = new GoogleGenAI({ apiKey: apiKey });
 
       const response = await ai.models.generateContent({
-        model: TARGET_MODEL,
+        model: modelToUse,
         contents: JSON.stringify(payloadToTranslate),
         config: {
           systemInstruction: promptDelSistema,
-          temperature: 0.2, // 👈 Baja temperatura = traducción más precisa y menos creativa
-          responseMimeType: "application/json", // 👈 MAGIA: Obliga al modelo a devolver JSON puro
+          temperature: 0.2, 
+          responseMimeType: "application/json", 
         },
       });
 
-      // El SDK nuevo usa .text para obtener el contenido directamente
-      const responseText = response.text;
+      let responseText = response.text;
       
-      // Parseamos el JSON devuelto
+      // 🧹 LIMPIADOR DE JSON: Por si la IA devuelve ```json ... ``` o caracteres extraños
+      responseText = responseText.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
+      
+      // Intentamos parsear
       const translatedJson = JSON.parse(responseText);
       return translatedJson;
 
     } catch (error) {
+      // Manejo de errores 429 (Cuota) y 503 (Servidor saturado)
       const isRateLimit = error.status === 429 || (error.response && error.response.status === 429);
-      console.warn(`⚠️ Intento ${attempt} falló (Key ...${apiKey.slice(-4)}). Error: ${error.message}`);
+      const isOverloaded = error.status === 503 || (error.response && error.response.status === 503);
+      const isJsonError = error instanceof SyntaxError;
+      
+      let errorMsg = error.message;
+      if (isJsonError) errorMsg = "JSON malformado devuelto por la IA";
+
+      console.warn(`⚠️ Intento ${attempt} falló (Modelo: ${modelToUse} | Key: ...${apiKey.slice(-4)}). Error: ${errorMsg}`);
       
       if (attempt < retries) {
-        if (isRateLimit) {
-          console.log(`   ⏳ Límite por minuto alcanzado. Pausando 60 segundos para reiniciar cuota...`);
-          await sleep(61000); // 👈 MAGIA: Espera un minuto entero para que Google nos perdone
+        if (isRateLimit || isOverloaded) {
+          console.log(`   ⏳ Servidor/Cuota al límite. Pausando 60 segundos...`);
+          await sleep(61000); 
         } else {
-          await sleep(2000);
+          await sleep(3000);
         }
       } else {
         console.error(`❌ Fallo definitivo traduciendo ID ${entry.id}`);
-        return null;
+        return null; // Si falla 3 veces, devuelve null y sigue con el siguiente
       }
     }
   }
