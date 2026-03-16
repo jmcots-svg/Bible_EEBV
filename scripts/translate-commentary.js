@@ -85,8 +85,12 @@ async function translateWithGeminiSDK(entry, retries = 3) {
       console.warn(`⚠️ Intento ${attempt} falló (Key ...${apiKey.slice(-4)}). Error: ${error.message}`);
       
       if (attempt < retries) {
-        // Si hay rate limit, esperamos más tiempo antes de intentar con la siguiente key
-        await sleep(isRateLimit ? 5000 : 2000);
+        if (isRateLimit) {
+          console.log(`   ⏳ Límite por minuto alcanzado. Pausando 60 segundos para reiniciar cuota...`);
+          await sleep(61000); // 👈 MAGIA: Espera un minuto entero para que Google nos perdone
+        } else {
+          await sleep(2000);
+        }
       } else {
         console.error(`❌ Fallo definitivo traduciendo ID ${entry.id}`);
         return null;
@@ -160,13 +164,13 @@ async function main() {
 
     // Usamos concurrencia de 3 (para no golpear muy duro el rate limit por minuto, 
     // aunque rotemos keys, es mejor ir a paso seguro)
-    const limit = pLimit(3); 
+    const limit = pLimit(2); 
     let processed = 0;
     let buffer = [];
 
     const translationPromises = pendingEntries.map((entryEn) =>
       limit(async () => {
-        await sleep(500); // Pequeño respiro entre llamadas
+        await sleep(3500); // Pequeño respiro entre llamadas
 
         const translatedTexts = await translateWithGeminiSDK(entryEn);
         
