@@ -1,18 +1,29 @@
 const axios = require("axios");
-const { Client } = require("pg");
 require("dotenv").config();
 
 const DATABASE_URL = process.env.DATABASE_URL || process.env.DIRECT_URL;
 const TARGET_LANG = process.env.TARGET_LANG || "ca";
 
 if (!DATABASE_URL) {
-  console.error("❌ Error: Falta DATABASE_URL o DIRECT_URL en las variables de entorno");
+  console.error(
+    "❌ Error: Falta DATABASE_URL o DIRECT_URL en las variables de entorno"
+  );
   process.exit(1);
 }
 
-const client = new Client({
-  connectionString: DATABASE_URL,
-});
+// Extraer credenciales de DATABASE_URL
+// postgresql://user:password@host:port/database
+const urlMatch = DATABASE_URL.match(
+  /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/
+);
+if (!urlMatch) {
+  console.error("❌ Error: No se pudo parsear DATABASE_URL");
+  process.exit(1);
+}
+
+const [, dbUser, dbPassword, dbHost, dbPort, dbName] = urlMatch;
+const SUPABASE_URL = `https://${dbHost}`;
+const SUPABASE_KEY = dbPassword; // Usar la contraseña como API key temporal
 
 const FIELDS_TO_TRANSLATE = [
   "definition",
@@ -23,7 +34,7 @@ const FIELDS_TO_TRANSLATE = [
   "strongsDerivation",
 ];
 
-// Función para traducir con MyMemory API (gratis, sin clave)
+// Función para traducir con MyMemory API
 async function translateText(text, targetLang = "ca") {
   if (!text || text.trim() === "") return null;
 
@@ -41,7 +52,6 @@ async function translateText(text, targetLang = "ca") {
     }
   } catch (error) {
     console.error(`❌ Error traduciendo: ${error.message}`);
-    // Reintentar una vez
     await new Promise((resolve) => setTimeout(resolve, 2000));
     try {
       const encodedText = encodeURIComponent(text);
@@ -83,7 +93,6 @@ async function translateStrongEntry(entryEn, targetLang = "ca") {
       const translated = await translateText(originalText, targetLang);
       entryTranslated[field] = translated;
       console.log("✓");
-      // Pausa para evitar rate limiting
       await new Promise((resolve) => setTimeout(resolve, 800));
     }
   }
@@ -98,35 +107,36 @@ async function main() {
   console.log("=".repeat(70));
 
   try {
-    // Conectar a la base de datos
-    console.log(`\n🔌 Conectando a la base de datos...`);
-    await client.connect();
-    console.log(`✓ Conectado`);
-
     // 1. Obtener todos los Strong en inglés
     console.log(`\n📥 Obteniendo Strong entries en inglés...`);
-    const result = await client.query(
-      `SELECT "strong", "language", "lemma", "translit", "pronunciation", 
-              "morphology", "speechLang", "definition", "exegesis", "explanation", 
-              "kjvDefinition", "strongsDef", "strongsDerivation"
-       FROM "StrongEntry"
-       WHERE "definitionLang" = 'en'
-       ORDER BY "strong"`
+    const getResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.en&select=strong,language,lemma,translit,pronunciation,morphology,speechLang,definition,exegesis,explanation,kjvDefinition,strongsDef,strongsDerivation`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
+        },
+      }
     );
 
-    const strongEntriesEn = result.rows;
+    const strongEntriesEn = getResponse.data;
     console.log(`✓ Se obtuvieron ${strongEntriesEn.length} entradas en inglés`);
 
     // 2. Verificar si ya existen
     console.log(
       `\n🔍 Verificando si ya existen en ${TARGET_LANG.toUpperCase()}...`
     );
-    const existingResult = await client.query(
-      `SELECT COUNT(*) as count FROM "StrongEntry" WHERE "definitionLang" = \$1`,
-      [TARGET_LANG]
+    const checkResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.${TARGET_LANG}&select=strong`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
+          Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
+        },
+      }
     );
 
-    const existingCount = parseInt(existingResult.rows[0].count);
+    const existingCount = checkResponse.data.length;
     console.log(
       `   Ya existen ${existingCount} entradas en ${TARGET_LANG.toUpperCase()}`
     );
@@ -137,11 +147,18 @@ async function main() {
       );
       console.log(`   Se sobrescribirán automáticamente.`);
 
-      // Eliminar entradas existentes
-      await client.query(
-        `DELETE FROM "StrongEntry" WHERE "definitionLang" = \$1`,
-        [TARGET_LANG]
-      );
+      // Eliminar entradas existentes (por chunks)
+      for (let i = 0; i < existingCount; i += 1000) {
+        await axios.delete(
+          `${SUPABASE_URL}/rest/v1/StrongEntry?definitionLang=eq.${TARGET_LANG}`,
+          {
+            headers: {
+              apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
+            },
+          }
+        );
+      }
       console.log(`   ✓ Eliminadas ${existingCount} entradas previas`);
     }
 
@@ -161,7 +178,6 @@ async function main() {
         const entryTranslated = await translateStrongEntry(entryEn, TARGET_LANG);
         translatedEntries.push(entryTranslated);
 
-        // Pausa cada 10 entradas
         if ((i + 1) % 10 === 0) {
           console.log("⏸️  Pausa de 2 segundos para respetar rate limit...");
           await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -177,49 +193,50 @@ async function main() {
       console.log(`⚠️  ${errors.length} errores encontrados`);
     }
 
-    // 4. Insertar en la base de datos
-    console.log(`\n💾 Insertando en la base de datos...`);
+    // 4. Insertar en Supabase REST API
+    console.log(`\n💾 Insertando en Supabase...`);
 
     if (translatedEntries.length === 0) {
       console.error("❌ No hay entradas para insertar");
       process.exit(1);
     }
 
+    const chunkSize = 100;
     let insertedCount = 0;
 
-    for (const entry of translatedEntries) {
-      await client.query(
-        `INSERT INTO "StrongEntry" 
-         ("strong", "language", "lemma", "translit", "pronunciation", "morphology", 
-          "speechLang", "definition", "exegesis", "explanation", "kjvDefinition", 
-          "strongsDef", "strongsDerivation", "definitionLang", "createdAt")
-         VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13, \$14, \$15)`,
-        [
-          entry.strong,
-          entry.language,
-          entry.lemma,
-          entry.translit,
-          entry.pronunciation,
-          entry.morphology,
-          entry.speechLang,
-          entry.definition,
-          entry.exegesis,
-          entry.explanation,
-          entry.kjvDefinition,
-          entry.strongsDef,
-          entry.strongsDerivation,
-          entry.definitionLang,
-          new Date(),
-        ]
-      );
+    for (let i = 0; i < translatedEntries.length; i += chunkSize) {
+      const chunk = translatedEntries.slice(i, i + chunkSize);
 
-      insertedCount++;
-      if (insertedCount % 100 === 0) {
-        console.log(`  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`);
+      try {
+        await axios.post(
+          `${SUPABASE_URL}/rest/v1/StrongEntry`,
+          chunk,
+          {
+            headers: {
+              apikey: process.env.SUPABASE_ANON_KEY || SUPABASE_KEY,
+              Authorization: `Bearer ${process.env.SUPABASE_ANON_KEY || SUPABASE_KEY}`,
+              "Content-Type": "application/json",
+              Prefer: "resolution=merge-duplicates",
+            },
+          }
+        );
+
+        insertedCount += chunk.length;
+        console.log(
+          `  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`
+        );
+      } catch (insertError) {
+        console.error(
+          `❌ Error insertando chunk: ${insertError.response?.data?.message || insertError.message}`
+        );
+        throw insertError;
+      }
+
+      // Pausa entre chunks
+      if (i + chunkSize < translatedEntries.length) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
     }
-
-    console.log(`  ✓ Insertadas ${insertedCount}/${translatedEntries.length} entradas`);
 
     // 5. Resumen final
     console.log("\n" + "=".repeat(70));
@@ -239,9 +256,10 @@ async function main() {
     console.log("=".repeat(70) + "\n");
   } catch (error) {
     console.error(`\n❌ Error fatal: ${error.message}`);
+    if (error.response?.data) {
+      console.error("Detalles:", error.response.data);
+    }
     process.exit(1);
-  } finally {
-    await client.end();
   }
 }
 
