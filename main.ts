@@ -592,6 +592,52 @@ Deno.serve(async (req: Request) => {
     }
 
     // =====================================================
+// /api/debug/versions - TEMPORAL PARA DIAGNÓSTICO
+// =====================================================
+if (path === "/api/debug/versions") {
+  const memVersions = getCached("versions");
+  const kvVersions = await kvGet<any[]>(["versions"]);
+  
+  const { rows: dbVersions } = await pool.query(
+    `SELECT id, name, "fullName", language 
+     FROM "BibleVersion" 
+     ORDER BY language ASC, id ASC`
+  );
+
+  const getNames = (arr: any[] | null) => arr?.map((v: any) => v.name) ?? null;
+
+  return new Response(JSON.stringify({
+    timestamp: new Date().toISOString(),
+    sources: {
+      memory: {
+        data: getNames(memVersions),
+        hasKJV: memVersions?.some((v: any) => v.name === "KJV") ?? false,
+        count: memVersions?.length ?? 0,
+      },
+      kv: {
+        data: getNames(kvVersions),
+        hasKJV: kvVersions?.some((v: any) => v.name === "KJV") ?? false,
+        count: kvVersions?.length ?? 0,
+      },
+      database: {
+        data: getNames(dbVersions),
+        hasKJV: dbVersions.some((v: any) => v.name === "KJV"),
+        count: dbVersions.length,
+      },
+    },
+    diagnosis: !dbVersions.some((v: any) => v.name === "KJV")
+      ? "❌ KJV NO está en la base de datos"
+      : kvVersions && !kvVersions.some((v: any) => v.name === "KJV")
+      ? "⚠️ KJV está en DB pero NO en Deno KV (caché corrupta)"
+      : memVersions && !memVersions.some((v: any) => v.name === "KJV")
+      ? "⚠️ KJV está en DB y KV pero NO en memoria"
+      : "✅ KJV presente en todas las capas",
+  }, null, 2), {
+    headers: makeHeaders("no-store"),
+  });
+}
+
+    // =====================================================
     // 404
     // =====================================================
     return new Response(JSON.stringify({ error: "404" }), {
