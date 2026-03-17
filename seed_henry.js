@@ -66,14 +66,12 @@ function parseCitation(citation) {
 function cleanContent(raw) {
   if (!raw) return '';
   let text = String(raw);
-
-  // Eliminar tags self-closing vacíos (artefactos del XML origen)
-  text = text.replace(/<[a-zA-Z]+\s*\/>/g, '');
-
-  // Eliminar tags de apertura/cierre restantes
-  text = text.replace(/<\/?[a-zA-Z][^>]*>/g, '');
-
-  // Limpiar espacios múltiples y saltos de línea
+  
+  // Las entidades ya vienen como texto: &lt;i /&gt; etc.
+  // Solo hay que eliminar los tags escapados
+  text = text.replace(/&lt;[^&]*?\/&gt;/g, '');      // elimina &lt;i /&gt; etc.
+  text = text.replace(/&lt;\/?[^&]*?&gt;/g, '');      // elimina &lt;p&gt; etc.
+  text = text.replace(/&amp;/g, '&');                  // restaura & reales
   text = text.replace(/\s+/g, ' ').trim();
 
   return text;
@@ -193,23 +191,36 @@ async function seed() {
     console.log(`📖 CommentarySource creado: ${SOURCE_NAME} (id=${sourceId})`);
   }
 
-  // 4. Parsear XML
-  const xmlContent = fs.readFileSync(XML_PATH, 'utf-8');
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '',
-    parseTagValue: true,
-    trimValues: true,
-    htmlEntities: true,      
-    processEntities: true,   
-    entityExpansionLimit: 10000 
-  });
-  const parsed = parser.parse(xmlContent);
+// 4. Parsear XML
+let xmlContent = fs.readFileSync(XML_PATH, 'utf-8');
 
-  // fast-xml-parser: array si hay múltiples entradas, objeto si solo hay una
-  const rawEntries = parsed?.root?.entrada;
-  const entries = Array.isArray(rawEntries) ? rawEntries : [rawEntries];
-  console.log(`📄 Entradas en XML: ${entries.length}`);
+// ============================================
+// PREPROCESADO: reemplazar entidades HTML
+// para evitar el límite de fast-xml-parser
+// Las entidades están dentro de <comentario>...</comentario>
+// como texto escapado: &lt;i /&gt; etc.
+// Las dejamos como texto plano simplemente escapando & -> __AMP__
+// para que el parser XML no las procese
+// ============================================
+xmlContent = xmlContent.replace(
+  /<comentario>([\s\S]*?)<\/comentario>/g,
+  (match, content) => {
+    // Escapar & sueltos que no sean entidades XML estándar
+    // para que el parser no intente expandirlos
+    const safe = content.replace(/&(?!(amp|lt|gt|quot|apos);)/g, '&amp;');
+    return `<comentario>${safe}</comentario>`;
+  }
+);
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: '',
+  parseTagValue: true,
+  trimValues: true,
+  processEntities: false,  // 👈 desactivar procesado de entidades
+});
+
+const parsed = parser.parse(xmlContent);
 
   // 5. Procesar e insertar
   let inserted = 0;
