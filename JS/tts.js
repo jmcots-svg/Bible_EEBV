@@ -8,7 +8,6 @@ const LANG_MAP = {
     'en': 'en-US'
 };
 
-// ✅ CORREGIDO: nombres limpios, sin engine
 const VOICES_DATA = [
     { name: 'Arlet',   lang: 'ca-ES', gender: 'female' },
     { name: 'Lucia',   lang: 'es-ES', gender: 'female' },
@@ -105,7 +104,7 @@ async function _startPlayback(text, btn) {
     _fragIndex  = 0;
 
     const language = _getLang();
-    const voice    = _getVoice(language); // ✅ devuelve string
+    const voice    = _getVoice(language);
 
     console.log('[TTS] Lang:', language, '| Voz:', voice);
 
@@ -113,14 +112,17 @@ async function _startPlayback(text, btn) {
 
     try {
         for (let i = 0; i < _fragments.length; i++) {
-            // ✅ Solo 3 argumentos: texto, idioma, voz
+
+            // ✅ Mismo formato que el script de test que funciona
             const audio = await window.puter.ai.txt2speech(
                 _fragments[i],
                 {
                     voice:    voice,
+                    engine:   'neural',
                     language: language
                 }
             );
+
             if (!audio) throw new Error('Sin respuesta de audio');
             _allAudios.push(audio);
         }
@@ -219,16 +221,13 @@ function _getLang() {
     return LANG_MAP[appLang] || 'es-ES';
 }
 
-// ✅ Devuelve string con el nombre de la voz
 function _getVoice(lang) {
     const candidates = VOICES_DATA.filter(v => v.lang === lang && v.gender === _gender);
     if (candidates.length) return candidates[0].name;
 
-    // Fallback: mismo idioma, cualquier género
     const fallback = VOICES_DATA.filter(v => v.lang === lang);
     if (fallback.length) return fallback[0].name;
 
-    // Fallback final
     return 'Lucia';
 }
 
