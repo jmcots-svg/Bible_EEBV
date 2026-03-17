@@ -302,51 +302,66 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // =====================================================
-    // /api/cache/clear
-    // =====================================================
-    if (path === "/api/cache/clear") {
-      const token = url.searchParams.get("token");
-      const SECRET = Deno.env.get("CACHE_SECRET");
+// =====================================================
+// /api/cache/force-refresh - SOLUCIÓN DEFINITIVA
+// =====================================================
+if (path === "/api/cache/force-refresh") {
+  const token = url.searchParams.get("token");
+  const SECRET = Deno.env.get("CACHE_SECRET");
 
-      if (token !== SECRET) {
-        return new Response(JSON.stringify({ error: "No autorizado" }), {
-          status: 401,
-          headers: makeHeaders("no-store"),
-        });
-      }
+  if (token !== SECRET) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), {
+      status: 401,
+      headers: makeHeaders("no-store"),
+    });
+  }
 
-      Object.keys(serverCache).forEach((k) => delete serverCache[k]);
+  // 1. Limpiar TODA la memoria
+  Object.keys(serverCache).forEach((k) => delete serverCache[k]);
 
-      const keysToDelete: Deno.KvKey[] = [
-        ["versions"],
-        ["versions-strongs"],
-      ];
+  // 2. Limpiar TODAS las claves de Deno KV
+  const deletedKeys: string[] = [];
+  for await (const entry of kv.list({ prefix: [] })) {
+    await kv.delete(entry.key);
+    deletedKeys.push(JSON.stringify(entry.key));
+  }
 
-      const { rows: versions } = await pool.query(
-        "SELECT name FROM \"BibleVersion\" ORDER BY name ASC"
-      );
+  // 3. Obtener datos frescos de DB
+  const { rows: versions } = await pool.query(
+    `SELECT id, name, "fullName", language 
+     FROM "BibleVersion" 
+     ORDER BY language ASC, id ASC`
+  );
 
-      for (const v of versions) {
-        keysToDelete.push(["books", v.name]);
-        console.log("[Cache Clear] Agregando: [\"books\", \"" + v.name + "\"]");
-      }
+  // 4. Pre-popular ambas cachés con datos correctos
+  setCache("versions", versions);
+  await kvSet(["versions"], versions, TTL_1D_MS);
 
-      for (const key of keysToDelete) {
-        await kv.delete(key);
-        console.log("[Cache Clear] Eliminada: " + JSON.stringify(key));
-      }
+  // También pre-popular los libros de cada versión
+  for (const v of versions) {
+    const { rows: books } = await pool.query(
+      `SELECT b.id, b.name, b.testament, b."bookOrder"
+       FROM "Book" b
+       JOIN "BibleVersion" bv ON b."versionId" = bv.id
+       WHERE bv.name = \$1
+       ORDER BY b."bookOrder" ASC`,
+      [v.name]
+    );
+    
+    setCache("books-" + v.name, books);
+    await kvSet(["books", v.name], books, TTL_1D_MS);
+  }
 
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          message: "Caché limpiada correctamente (" + keysToDelete.length + " claves)",
-          deletedKeys: keysToDelete.length,
-          versions: versions.map((v: any) => v.name),
-        }),
-        { headers: makeHeaders("no-store") }
-      );
-    }
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      deletedKvKeys: deletedKeys.length,
+      refreshedVersions: versions.map((v: any) => v.name),
+      kjvPresent: versions.some((v: any) => v.name === "KJV"),
+    }, null, 2),
+    { headers: makeHeaders("no-store") }
+  );
+}
 
     // =====================================================
     // /api/versions/strongs
