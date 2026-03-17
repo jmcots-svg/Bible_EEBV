@@ -16,7 +16,6 @@ import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, u
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
-import { initTTS, stopTTS, attachTTSButton } from './tts.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -72,11 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const concQuery     = document.getElementById('concQuery');
     const concSearchBtn = document.getElementById('concSearchBtn');
     const concExact     = document.getElementById('concExact');
-
-    // TTS
-    const ttsBar       = document.getElementById('ttsBar');
-    const ttsToggleBtn = document.getElementById('ttsToggleBtn');
-    const ttsCloseBar  = document.getElementById('ttsCloseBar');
 
     // =====================
     // 2. VARIABLES DE ESTADO
@@ -202,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
             panelStrong.style.display       = 'none';
             closeStrongPanel();
             closeCommentaryPanel();
-            stopTTS();
 
             if (mode === 'lectura') {
                 panelLectura.style.display = '';
@@ -484,7 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         updateCopyButtonVisibility();
-        attachTTSButton(verses);
     }
 
     // =====================
@@ -834,33 +826,5 @@ document.addEventListener('DOMContentLoaded', () => {
             openCommentaryForReference(refText, versionSelect.value);
         });
     }
-
-    // =====================
-    // 20. INICIALIZAR TTS  ← SIEMPRE AL FINAL
-    // =====================
-    initTTS({
-        ttsPlayBtn:           document.getElementById('ttsPlayBtn'),
-        ttsPauseBtn:          document.getElementById('ttsPauseBtn'),
-        ttsStopBtn:           document.getElementById('ttsStopBtn'),
-        ttsNextBtn:           document.getElementById('ttsNextBtn'),
-        ttsSpeedSlider:       document.getElementById('ttsSpeedSlider'),
-        ttsSpeedLabel:        document.getElementById('ttsSpeedLabel'),
-        ttsStatus:            document.getElementById('ttsStatus'),
-        ttsProgressContainer: document.getElementById('ttsProgressContainer'),
-        ttsProgressFill:      document.getElementById('ttsProgressFill'),
-        ttsTimeCurrent:       document.getElementById('ttsTimeCurrent'),
-        ttsTimeTotal:         document.getElementById('ttsTimeTotal'),
-        ttsFragmentLabel:     document.getElementById('ttsFragmentLabel'),
-        ttsGenderToggle:      document.getElementById('ttsGenderToggle'),
-    });
-
-    ttsToggleBtn?.addEventListener('click', () => {
-        ttsBar.classList.toggle('visible');
-    });
-
-    ttsCloseBar?.addEventListener('click', () => {
-        stopTTS();
-        ttsBar.classList.remove('visible');
-    });
 
 }); // ← fin DOMContentLoaded
