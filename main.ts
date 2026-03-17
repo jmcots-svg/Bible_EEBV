@@ -772,47 +772,37 @@ if (path === "/api/commentary") {
     });
   }
   
-  // Si es inglés, query simple
+  // ── INGLÉS ──────────────────────────────────────────
   if (language === 'en') {
-    let query = `
-      SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
-             ce."verseStart", ce."verseEnd", ce."sectionType", ce."divId",
-             cs.name as source_name, cs."fullName" as source_full_name, cs.author,
-             false as "needsTranslation"
-      FROM "CommentaryEntry" ce
-      JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
-      WHERE ce."bookOrder" = \$1 
-        AND ce.chapter = \$2
-        AND ce.language = 'en'
-    `;
-    
-    const params = [bookOrder, chapter];
+    const params: any[] = [bookOrder, chapter];
     let paramIndex = 3;
     
+    let query = 
+      'SELECT ce.id, ce.title, ce.content, ce."contentHtml",' +
+      ' ce."verseStart", ce."verseEnd", ce."sectionType", ce."divId",' +
+      ' cs.name as source_name, cs."fullName" as source_full_name, cs.author,' +
+      ' false as "needsTranslation"' +
+      ' FROM "CommentaryEntry" ce' +
+      ' JOIN "CommentarySource" cs ON ce."sourceId" = cs.id' +
+      ' WHERE ce."bookOrder" = \$1' +
+      ' AND ce.chapter = \$2' +
+      " AND ce.language = 'en'";
+    
     if (sourceId) {
-      query += ` AND cs.id = 
-$$
-{paramIndex}`;
+      query += ' AND cs.id = $' + paramIndex;
       params.push(Number(sourceId));
       paramIndex++;
     }
     
     if (verse) {
-      // 👇 Si hay versículo: excluir introducciones de capítulo (verseStart IS NULL)
-      query += `
-        AND ce."verseStart" IS NOT NULL
-        AND ce."verseStart" <=
-$$
-{paramIndex} 
-        AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= 
-$$
-{paramIndex})
-      `;
-      params.push(Number(verse));
+      query += ' AND ce."verseStart" IS NOT NULL' +
+               ' AND ce."verseStart" <= $' + paramIndex +
+               ' AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= $' + (paramIndex + 1) + ')';
+      params.push(Number(verse), Number(verse));
+      paramIndex += 2;
     }
-    // 👇 Si NO hay versículo (capítulo completo): incluir todo, introducción primero
     
-    query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
+    query += ' ORDER BY ce."verseStart" NULLS FIRST, ce.id';
     
     const { rows } = await pool.query(query, params);
     
@@ -827,66 +817,56 @@ $$
     });
   }
   
-  // Para otros idiomas: devolver traducidas + inglés sin traducir
-  const params = [bookOrder, chapter, language];
+  // ── OTROS IDIOMAS ────────────────────────────────────
+  const params: any[] = [bookOrder, chapter, language];
   let paramIndex = 4;
   
-  let query = `
-    SELECT 
-      ce_en.id as "englishId",
-      ce_lang.id as "translatedId",
-      COALESCE(ce_lang.title, ce_en.title) as title,
-      COALESCE(ce_lang.content, ce_en.content) as content,
-      COALESCE(ce_lang."contentHtml", ce_en."contentHtml") as "contentHtml",
-      ce_en."verseStart",
-      ce_en."verseEnd",
-      ce_en."sectionType",
-      ce_en."divId",
-      cs.name as source_name, 
-      cs."fullName" as source_full_name, 
-      cs.author,
-      CASE WHEN ce_lang.id IS NULL THEN true ELSE false END as "needsTranslation"
-    FROM "CommentaryEntry" ce_en
-    JOIN "CommentarySource" cs ON ce_en."sourceId" = cs.id
-    LEFT JOIN "CommentaryEntry" ce_lang 
-      ON ce_lang."sourceId" = ce_en."sourceId"
-      AND ce_lang."bookOrder" = ce_en."bookOrder"
-      AND ce_lang.chapter = ce_en.chapter
-      AND ce_lang.language = $3
-      AND COALESCE(ce_lang."divId", '') = COALESCE(ce_en."divId", '')
-    WHERE ce_en."bookOrder" = $1 
-      AND ce_en.chapter = $2
-      AND ce_en.language = 'en'
-  `;
+  let query =
+    'SELECT' +
+    ' ce_en.id as "englishId",' +
+    ' ce_lang.id as "translatedId",' +
+    ' COALESCE(ce_lang.title, ce_en.title) as title,' +
+    ' COALESCE(ce_lang.content, ce_en.content) as content,' +
+    ' COALESCE(ce_lang."contentHtml", ce_en."contentHtml") as "contentHtml",' +
+    ' ce_en."verseStart",' +
+    ' ce_en."verseEnd",' +
+    ' ce_en."sectionType",' +
+    ' ce_en."divId",' +
+    ' cs.name as source_name,' +
+    ' cs."fullName" as source_full_name,' +
+    ' cs.author,' +
+    ' CASE WHEN ce_lang.id IS NULL THEN true ELSE false END as "needsTranslation"' +
+    ' FROM "CommentaryEntry" ce_en' +
+    ' JOIN "CommentarySource" cs ON ce_en."sourceId" = cs.id' +
+    ' LEFT JOIN "CommentaryEntry" ce_lang' +
+    '   ON ce_lang."sourceId" = ce_en."sourceId"' +
+    '   AND ce_lang."bookOrder" = ce_en."bookOrder"' +
+    '   AND ce_lang.chapter = ce_en.chapter' +
+    '   AND ce_lang.language = \$3' +
+    "   AND COALESCE(ce_lang.\"divId\", '') = COALESCE(ce_en.\"divId\", '')" +
+    ' WHERE ce_en."bookOrder" = \$1' +
+    ' AND ce_en.chapter = \$2' +
+    " AND ce_en.language = 'en'";
   
   if (sourceId) {
-    query += ` AND cs.id =
-$$
-{paramIndex}`;
+    query += ' AND cs.id = $' + paramIndex;
     params.push(Number(sourceId));
     paramIndex++;
   }
   
   if (verse) {
-    // 👇 Si hay versículo: excluir introducciones de capítulo (verseStart IS NULL)
-    query += `
-      AND ce_en."verseStart" IS NOT NULL
-      AND ce_en."verseStart" <= 
-$$
-{paramIndex} 
-      AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >=
-$$
-{paramIndex})
-    `;
-    params.push(Number(verse));
+    query += ' AND ce_en."verseStart" IS NOT NULL' +
+             ' AND ce_en."verseStart" <= $' + paramIndex +
+             ' AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >= $' + (paramIndex + 1) + ')';
+    params.push(Number(verse), Number(verse));
+    paramIndex += 2;
   }
-  // 👇 Si NO hay versículo (capítulo completo): incluir todo, introducción primero
 
-  query += ` ORDER BY ce_en."verseStart" NULLS FIRST, ce_en.id`;
+  query += ' ORDER BY ce_en."verseStart" NULLS FIRST, ce_en.id';
   
   const { rows } = await pool.query(query, params);
   
-  const entries = rows.map(row => ({
+  const entries = rows.map((row: any) => ({
     id: row.translatedId || row.englishId,
     englishId: row.englishId,
     title: row.title,
@@ -913,7 +893,6 @@ $$
     headers: makeHeaders("public, max-age=86400"),
   });
 }
-
     
 // =====================================================
 // /api/translate-commentary - Traducción on-the-fly
