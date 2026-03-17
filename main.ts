@@ -747,28 +747,89 @@ if (path === "/api/commentary/sources") {
     });
   }
   
-  let query = `
-    SELECT DISTINCT cs.id, cs.name, cs."fullName", cs.author, cs.description,
-           COUNT(ce.id) as entry_count
-    FROM "CommentarySource" cs
-    JOIN "CommentaryEntry" ce ON ce."sourceId" = cs.id
-    WHERE ce."bookOrder" = \$1 
-      AND ce.chapter = \$2
-      AND ce.language = \$3
-  `;
+  // Si es inglés, query simple (todo está en inglés)
+  if (language === 'en') {
+    let query = `
+      SELECT DISTINCT cs.id, cs.name, cs."fullName", cs.author, cs.description,
+             COUNT(ce.id) as entry_count
+      FROM "CommentarySource" cs
+      JOIN "CommentaryEntry" ce ON ce."sourceId" = cs.id
+      WHERE ce."bookOrder" = \$1 
+        AND ce.chapter = \$2
+        AND ce.language = 'en'
+    `;
+    
+    const params = [bookOrder, chapter];
+    
+    if (verse) {
+      query += `
+        AND (ce."verseStart" IS NULL 
+             OR (ce."verseStart" <= \$3 AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= \$3)))
+      `;
+      params.push(Number(verse));
+    }
+    
+    query += ` GROUP BY cs.id, cs.name, cs."fullName", cs.author, cs.description
+               ORDER BY cs.name ASC`;
+    
+    const { rows } = await pool.query(query, params);
+    
+    return new Response(JSON.stringify(rows), {
+      headers: makeHeaders("public, max-age=3600"),
+    });
+  }
   
-  const params: any[] = [bookOrder, chapter, language];
+  // Para otros idiomas (es, ca, etc.): mostrar TODAS las fuentes que tienen contenido en inglés,
+  // indicando cuáles tienen traducciones pendientes
+  let verseCondition = '';
+  const params = [bookOrder, chapter, language];
   
   if (verse) {
-    query += `
+    verseCondition = `
       AND (ce."verseStart" IS NULL 
            OR (ce."verseStart" <= \$4 AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= \$4)))
     `;
     params.push(Number(verse));
   }
   
-  query += ` GROUP BY cs.id, cs.name, cs."fullName", cs.author, cs.description
-             ORDER BY cs.name ASC`;
+  const query = `
+    WITH english_entries AS (
+      SELECT ce."sourceId", COUNT(*) as en_count
+      FROM "CommentaryEntry" ce
+      WHERE ce."bookOrder" = \$1 
+        AND ce.chapter = \$2
+        AND ce.language = 'en'
+        ${verseCondition}
+      GROUP BY ce."sourceId"
+    ),
+    translated_entries AS (
+      SELECT ce."sourceId", COUNT(*) as trans_count
+      FROM "CommentaryEntry" ce
+      WHERE ce."bookOrder" = \$1 
+        AND ce.chapter = \$2
+        AND ce.language = \$3
+        ${verseCondition}
+      GROUP BY ce."sourceId"
+    )
+    SELECT 
+      cs.id, 
+      cs.name, 
+      cs."fullName", 
+      cs.author, 
+      cs.description,
+      COALESCE(ee.en_count, 0) as english_count,
+      COALESCE(te.trans_count, 0) as translated_count,
+      GREATEST(COALESCE(ee.en_count, 0), COALESCE(te.trans_count, 0)) as entry_count,
+      CASE 
+        WHEN COALESCE(te.trans_count, 0) < COALESCE(ee.en_count, 0) THEN true 
+        ELSE false 
+      END as "needsTranslation"
+    FROM "CommentarySource" cs
+    LEFT JOIN english_entries ee ON ee."sourceId" = cs.id
+    LEFT JOIN translated_entries te ON te."sourceId" = cs.id
+    WHERE COALESCE(ee.en_count, 0) > 0 OR COALESCE(te.trans_count, 0) > 0
+    ORDER BY cs.name ASC
+  `;
   
   const { rows } = await pool.query(query, params);
   
@@ -778,7 +839,7 @@ if (path === "/api/commentary/sources") {
 }
 
 // =====================================================
-// /api/commentary - Obtener comentarios (MEJORADO)
+// /api/commentary - Obtener comentarios
 // =====================================================
 if (path === "/api/commentary") {
   const bookOrder = Number(url.searchParams.get("bookOrder"));
@@ -794,22 +855,120 @@ if (path === "/api/commentary") {
     });
   }
   
-  let query = `
-    SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
-           ce."verseStart", ce."verseEnd", ce."sectionType",
-           cs.name as source_name, cs."fullName" as source_full_name, cs.author
-    FROM "CommentaryEntry" ce
-    JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
-    WHERE ce."bookOrder" = \$1 
-      AND ce.chapter = \$2
-      AND ce.language = \$3
-  `;
+  // Si es inglés, query simple
+  if (language === 'en') {
+    let query = `
+      SELECT ce.id, ce.title, ce.content, ce."contentHtml", 
+             ce."verseStart", ce."verseEnd", ce."sectionType", ce."divId",
+             cs.name as source_name, cs."fullName" as source_full_name, cs.author,
+             false as "needsTranslation"
+      FROM "CommentaryEntry" ce
+      JOIN "CommentarySource" cs ON ce."sourceId" = cs.id
+      WHERE ce."bookOrder" = \$1 
+        AND ce.chapter = \$2
+        AND ce.language = 'en'
+    `;
+    
+    const params = [bookOrder, chapter];
+    let paramIndex = 3;
+    
+    if (sourceId) {
+      query += ` AND cs.id = 
+$$
+{paramIndex}`;
+      params.push(Number(sourceId));
+      paramIndex++;
+    }
+    
+    if (verse) {
+      query += `
+        AND (ce."verseStart" IS NULL 
+             OR (ce."verseStart" <=
+$$
+{paramIndex} AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= 
+$$
+{paramIndex})))
+      `;
+      params.push(Number(verse));
+    }
+    
+    query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
+    
+    const { rows } = await pool.query(query, params);
+    
+    return new Response(JSON.stringify({
+      bookOrder,
+      chapter,
+      verse: verse ? Number(verse) : null,
+      total: rows.length,
+      entries: rows
+    }), {
+      headers: makeHeaders("public, max-age=86400"),
+    });
+  }
   
-  const params: any[] = [bookOrder, chapter, language];
+  // Para otros idiomas: devolver traducidas + inglés sin traducir
+  let verseCondition = '';
+  let verseConditionEn = '';
+  const params = [bookOrder, chapter, language];
   let paramIndex = 4;
   
   if (sourceId) {
-    query += ` AND cs.id = 
+    paramIndex++;
+  }
+  
+  if (verse) {
+    verseCondition = `
+      AND (ce_lang."verseStart" IS NULL 
+           OR (ce_lang."verseStart" <=
+$$
+{paramIndex} AND (ce_lang."verseEnd" IS NULL OR ce_lang."verseEnd" >= 
+$$
+{paramIndex})))
+    `;
+    verseConditionEn = `
+      AND (ce_en."verseStart" IS NULL 
+           OR (ce_en."verseStart" <=
+$$
+{paramIndex} AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >= 
+$$
+{paramIndex})))
+    `;
+  }
+  
+  let query = `
+    SELECT 
+      ce_en.id as "englishId",
+      ce_lang.id as "translatedId",
+      COALESCE(ce_lang.title, ce_en.title) as title,
+      COALESCE(ce_lang.content, ce_en.content) as content,
+      COALESCE(ce_lang."contentHtml", ce_en."contentHtml") as "contentHtml",
+      ce_en."verseStart",
+      ce_en."verseEnd",
+      ce_en."sectionType",
+      ce_en."divId",
+      cs.name as source_name, 
+      cs."fullName" as source_full_name, 
+      cs.author,
+      CASE WHEN ce_lang.id IS NULL THEN true ELSE false END as "needsTranslation"
+    FROM "CommentaryEntry" ce_en
+    JOIN "CommentarySource" cs ON ce_en."sourceId" = cs.id
+    LEFT JOIN "CommentaryEntry" ce_lang 
+      ON ce_lang."sourceId" = ce_en."sourceId"
+      AND ce_lang."bookOrder" = ce_en."bookOrder"
+      AND ce_lang.chapter = ce_en.chapter
+      AND ce_lang.language = $3
+      AND COALESCE(ce_lang."divId", '') = COALESCE(ce_en."divId", '')
+    WHERE ce_en."bookOrder" = $1 
+      AND ce_en.chapter = $2
+      AND ce_en.language = 'en'
+  `;
+  
+  // Reset paramIndex para construir correctamente
+  paramIndex = 4;
+  
+  if (sourceId) {
+    query += ` AND cs.id =
 $$
 {paramIndex}`;
     params.push(Number(sourceId));
@@ -818,24 +977,44 @@ $$
   
   if (verse) {
     query += `
-      AND (ce."verseStart" IS NULL 
-           OR (ce."verseStart" <=
+      AND (ce_en."verseStart" IS NULL 
+           OR (ce_en."verseStart" <= 
 $$
-{paramIndex} AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= $${paramIndex})))
+{paramIndex} AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >=
+$$
+{paramIndex})))
     `;
     params.push(Number(verse));
   }
   
-  query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
+  query += ` ORDER BY ce_en."verseStart" NULLS FIRST, ce_en.id`;
   
   const { rows } = await pool.query(query, params);
+  
+  // Usar englishId como id principal para la traducción
+  const entries = rows.map(row => ({
+    id: row.translatedId || row.englishId,
+    englishId: row.englishId,
+    title: row.title,
+    content: row.content,
+    contentHtml: row.contentHtml,
+    verseStart: row.verseStart,
+    verseEnd: row.verseEnd,
+    sectionType: row.sectionType,
+    divId: row.divId,
+    source_name: row.source_name,
+    source_full_name: row.source_full_name,
+    author: row.author,
+    needsTranslation: row.needsTranslation
+  }));
   
   return new Response(JSON.stringify({
     bookOrder,
     chapter,
     verse: verse ? Number(verse) : null,
-    total: rows.length,
-    entries: rows
+    language,
+    total: entries.length,
+    entries: entries
   }), {
     headers: makeHeaders("public, max-age=86400"),
   });
