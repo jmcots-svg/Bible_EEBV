@@ -8,7 +8,6 @@
 
 require('dotenv').config();
 const { Client } = require('pg');
-const { XMLParser } = require('fast-xml-parser');
 const fs = require('fs');
 const path = require('path');
 
@@ -35,13 +34,11 @@ const LANGUAGE    = 'en';
 // MAPA: abreviatura XML -> osisAbbr
 // ============================================
 const XML_ABBR_TO_OSIS = {
-  // Pentateuco
   'Ge':   'Gen',
   'Ex':   'Exod',
   'Le':   'Lev',
   'Nu':   'Num',
   'De':   'Deut',
-  // Históricos
   'Jos':  'Josh',
   'Jud':  'Judg',
   'Ru':   'Ruth',
@@ -54,19 +51,16 @@ const XML_ABBR_TO_OSIS = {
   'Ezr':  'Ezra',
   'Ne':   'Neh',
   'Es':   'Esth',
-  // Poéticos
   'Job':  'Job',
   'Ps':   'Ps',
   'Pr':   'Prov',
   'Ec':   'Eccl',
   'So':   'Song',
-  // Profetas mayores
   'Isa':  'Isa',
   'Jer':  'Jer',
   'La':   'Lam',
   'Eze':  'Ezek',
   'Da':   'Dan',
-  // Profetas menores
   'Ho':   'Hos',
   'Joe':  'Joel',
   'Am':   'Amos',
@@ -79,7 +73,6 @@ const XML_ABBR_TO_OSIS = {
   'Hag':  'Hag',
   'Zec':  'Zech',
   'Mal':  'Mal',
-  // Nuevo Testamento
   'Mt':   'Matt',
   'Mr':   'Mark',
   'Lu':   'Luke',
@@ -106,15 +99,37 @@ const XML_ABBR_TO_OSIS = {
   '2Jo':  '2John',
   '3Jo':  '3John',
   'Jude': 'Jude',
-  Re:     'Rev',
+  'Re':   'Rev',
 };
 
 // ============================================
+// EXTRAER ENTRADAS DEL XML CON REGEX
+// Evita el problema de contenido mixto de fast-xml-parser
+// ============================================
+function extractEntries(xmlContent) {
+  const entries = [];
+  const entryRegex = /<entrada>([\s\S]*?)<\/entrada>/g;
+  let entryMatch;
+
+  while ((entryMatch = entryRegex.exec(xmlContent)) !== null) {
+    const entryContent = entryMatch[1];
+
+    const citaMatch = entryContent.match(/<cita>([\s\S]*?)<\/cita>/);
+    if (!citaMatch) continue;
+    const cita = citaMatch[1].trim();
+
+    const comentarioMatch = entryContent.match(/<comentario>([\s\S]*?)<\/comentario>/);
+    if (!comentarioMatch) continue;
+    const comentario = comentarioMatch[1];
+
+    entries.push({ cita, comentario });
+  }
+
+  return entries;
+}
+
+// ============================================
 // PARSEAR CITA BÍBLICA
-// Formatos:
-//   "Ge 1"       -> cap completo, sin versículo
-//   "Ge 1:1"     -> versículo único
-//   "Ge 1:1-2"   -> rango
 // ============================================
 function parseCitation(citation) {
   const str = citation.trim();
@@ -147,53 +162,45 @@ function parseCitation(citation) {
 // ============================================
 // PARSEAR REFERENCIAS CRUZADAS
 // Entrada: "Joh 1:3,10,Eph 3:9,Col 1:16,Heb 1:2"
-// Salida: array de { xmlAbbr, chapter, verseStart, verseEnd }
-//
-// Lógica: si un token no tiene libro, hereda el último libro visto
-// Ej: "Ps 121:2,124:8" -> Ps 121:2 y Ps 124:8
 // ============================================
 function parseScripRefs(passage) {
   if (!passage) return [];
 
   const refs = [];
   let lastAbbr = null;
+  let lastChapter = null;
 
-  // Separar por coma
   const parts = passage.split(',').map(p => p.trim()).filter(Boolean);
 
   for (const part of parts) {
-    // ¿Tiene libro? "Joh 1:3" o solo "10" o "3:9"
-    const withBook = part.match(/^([A-Z][a-z0-9]*)\s+(\d+):(\d+)(?:-(\d+))?$/);
+    const withBook  = part.match(/^([A-Z][a-z0-9]*)\s+(\d+):(\d+)(?:-(\d+))?$/);
     const chapVerse = part.match(/^(\d+):(\d+)(?:-(\d+))?$/);
     const verseOnly = part.match(/^(\d+)$/);
 
     if (withBook) {
-      lastAbbr = withBook[1];
+      lastAbbr    = withBook[1];
+      lastChapter = parseInt(withBook[2], 10);
       refs.push({
         xmlAbbr:    withBook[1],
-        chapter:    parseInt(withBook[2], 10),
+        chapter:    lastChapter,
         verseStart: parseInt(withBook[3], 10),
         verseEnd:   withBook[4] ? parseInt(withBook[4], 10) : parseInt(withBook[3], 10),
       });
     } else if (chapVerse && lastAbbr) {
-      // "124:8" -> mismo libro que el anterior
+      lastChapter = parseInt(chapVerse[1], 10);
       refs.push({
         xmlAbbr:    lastAbbr,
-        chapter:    parseInt(chapVerse[1], 10),
+        chapter:    lastChapter,
         verseStart: parseInt(chapVerse[2], 10),
         verseEnd:   chapVerse[3] ? parseInt(chapVerse[3], 10) : parseInt(chapVerse[2], 10),
       });
-    } else if (verseOnly && lastAbbr) {
-      // "10" -> mismo libro y capítulo que el anterior
-      const lastRef = refs[refs.length - 1];
-      if (lastRef) {
-        refs.push({
-          xmlAbbr:    lastAbbr,
-          chapter:    lastRef.chapter,
-          verseStart: parseInt(verseOnly[1], 10),
-          verseEnd:   parseInt(verseOnly[1], 10),
-        });
-      }
+    } else if (verseOnly && lastAbbr && lastChapter) {
+      refs.push({
+        xmlAbbr:    lastAbbr,
+        chapter:    lastChapter,
+        verseStart: parseInt(verseOnly[1], 10),
+        verseEnd:   parseInt(verseOnly[1], 10),
+      });
     }
   }
 
@@ -202,44 +209,46 @@ function parseScripRefs(passage) {
 
 // ============================================
 // CONVERTIR CONTENIDO A HTML CON LINKS
-// Transforma <scripRef passage="..." /> en
-// enlaces HTML clicables
 // ============================================
 function contentToHtml(raw, osisToOrder) {
   if (!raw) return '';
   let html = String(raw);
 
-  // Reemplazar <scripRef passage="..." /> por span con data attributes
+  // Reemplazar <scripRef passage="..." /> por enlaces clicables
   html = html.replace(
     /<scripRef passage="([^"]+)"\s*\/>/g,
     (match, passage) => {
       const refs = parseScripRefs(passage);
-      if (refs.length === 0) return '';
+      if (refs.length === 0) return `<span class="ref-unknown">${passage}</span>`;
 
-      // Construir enlaces para cada referencia
       const links = refs.map(ref => {
-        const osisAbbr = XML_ABBR_TO_OSIS[ref.xmlAbbr];
-        if (!osisAbbr) return `<span class="ref-unknown">${passage}</span>`;
+        const osisAbbr  = XML_ABBR_TO_OSIS[ref.xmlAbbr];
+        if (!osisAbbr) return `<span class="ref-unknown">${ref.xmlAbbr} ${ref.chapter}:${ref.verseStart}</span>`;
 
-        const bookOrder = osisToOrder[osisAbbr];
-        const label = `${ref.xmlAbbr} ${ref.chapter}:${ref.verseStart}${ref.verseEnd !== ref.verseStart ? '-' + ref.verseEnd : ''}`;
+        const bookOrder = osisToOrder[osisAbbr] || '';
+        const verseLabel = ref.verseEnd !== ref.verseStart
+          ? `${ref.verseStart}-${ref.verseEnd}`
+          : `${ref.verseStart}`;
+        const label = `${ref.xmlAbbr} ${ref.chapter}:${verseLabel}`;
 
-        return `<a class="scripture-ref" ` +
-               `data-book="${osisAbbr}" ` +
-               `data-book-order="${bookOrder}" ` +
-               `data-chapter="${ref.chapter}" ` +
-               `data-verse-start="${ref.verseStart}" ` +
-               `data-verse-end="${ref.verseEnd}" ` +
-               `href="#">${label}</a>`;
+        return `<a class="scripture-ref"` +
+               ` data-book="${osisAbbr}"` +
+               ` data-book-order="${bookOrder}"` +
+               ` data-chapter="${ref.chapter}"` +
+               ` data-verse-start="${ref.verseStart}"` +
+               ` data-verse-end="${ref.verseEnd}"` +
+               ` href="#">${label}</a>`;
       }).join(', ');
 
       return `<span class="scripture-refs">${links}</span>`;
     }
   );
 
-  // Limpiar tags restantes sin contenido: <i>, <b>, <pb />, etc.
-  html = html.replace(/<(i|b|pb|span|property)\s*\/>/g, '');
-  html = html.replace(/<\/?(?:i|b|pb|span|property)[^>]*>/g, '');
+  // Eliminar tags decorativos sin contenido
+  html = html.replace(/<[a-zA-Z]+\s*\/>/g, '');
+
+  // Eliminar <i> y </i> pero conservar el texto entre ellos
+  html = html.replace(/<\/?[a-zA-Z][^>]*>/g, '');
 
   // Convertir saltos de línea dobles en párrafos
   html = html.split(/\n\n+/).map(p => {
@@ -257,13 +266,13 @@ function contentToPlain(raw) {
   if (!raw) return '';
   let text = String(raw);
 
-  // Eliminar scripRef dejando el passage como texto
+  // Conservar el passage como referencia textual
   text = text.replace(/<scripRef passage="([^"]+)"\s*\/>/g, '(\$1)');
 
-  // Eliminar otros tags
+  // Eliminar todos los demás tags
   text = text.replace(/<[^>]+>/g, '');
 
-  // Limpiar espacios
+  // Limpiar espacios múltiples
   text = text.replace(/\s+/g, ' ').trim();
 
   return text;
@@ -280,55 +289,31 @@ async function processFile(filePath, volume, sourceId, osisToOrder, stats) {
     return;
   }
 
-  // Leer y preprocesar XML
-  let xmlContent = fs.readFileSync(filePath, 'utf-8');
+  // Leer XML como texto plano
+  const xmlContent = fs.readFileSync(filePath, 'utf-8');
 
-  // Preprocesar: escapar & sueltos dentro de <comentario>
-  xmlContent = xmlContent.replace(
-    /<comentario>([\s\S]*?)<\/comentario>/g,
-    (match, content) => {
-      const safe = content.replace(/&(?!(amp|lt|gt|quot|apos);)/g, '&amp;');
-      return `<comentario>${safe}</comentario>`;
-    }
-  );
-
-  const parser = new XMLParser({
-    ignoreAttributes:    false,
-    attributeNamePrefix: '',
-    parseTagValue:       true,
-    trimValues:          false, // mantener saltos de línea
-    processEntities:     false,
-  });
-
-  const parsed = parser.parse(xmlContent);
-  const rawEntries = parsed?.root?.entrada;
-  const entries = Array.isArray(rawEntries) ? rawEntries : [rawEntries];
-
+  // Extraer entradas con regex (sin parser XML)
+  const entries = extractEntries(xmlContent);
   console.log(`   📄 Entradas encontradas: ${entries.length}`);
 
   for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
+    const { cita, comentario } = entries[i];
 
-    if (!entry?.cita || !entry?.comentario) {
+    if (!cita || !comentario) {
       stats.skipped++;
       continue;
     }
 
-    const citationRaw = String(entry.cita).trim();
-    const commentRaw  = String(entry.comentario);
-
     try {
-      const { xmlAbbr, chapter, verseStart, verseEnd } = parseCitation(citationRaw);
+      const { xmlAbbr, chapter, verseStart, verseEnd } = parseCitation(cita);
 
-      // Resolver osisAbbr
       const osisAbbr = XML_ABBR_TO_OSIS[xmlAbbr];
       if (!osisAbbr) {
-        console.warn(`   ⚠️  Abreviatura desconocida: "${xmlAbbr}" en "${citationRaw}"`);
+        console.warn(`   ⚠️  Abreviatura desconocida: "${xmlAbbr}" en "${cita}"`);
         stats.skipped++;
         continue;
       }
 
-      // Resolver bookOrder
       const bookOrder = osisToOrder[osisAbbr];
       if (!bookOrder) {
         console.warn(`   ⚠️  Sin bookOrder para "${osisAbbr}"`);
@@ -336,27 +321,23 @@ async function processFile(filePath, volume, sourceId, osisToOrder, stats) {
         continue;
       }
 
-      // Generar contenido
-      const content     = contentToPlain(commentRaw);
-      const contentHtml = contentToHtml(commentRaw, osisToOrder);
+      const content     = contentToPlain(comentario);
+      const contentHtml = contentToHtml(comentario, osisToOrder);
 
       if (!content || content.length < 10) {
         stats.skipped++;
         continue;
       }
 
-      // Título: primeras 80 chars del texto plano
       const title = content.length > 80
         ? content.substring(0, 80).trimEnd() + '...'
         : content;
 
-      // divId único por volumen + libro + capítulo + versos
       const verseStr = verseStart
         ? `-${verseStart}${verseEnd && verseEnd !== verseStart ? '-' + verseEnd : ''}`
         : '';
       const divId = `mhc-en-${osisAbbr}-${chapter}${verseStr}`.toLowerCase();
 
-      // Upsert
       const result = await client.query(
         `INSERT INTO "CommentaryEntry"
           ("sourceId", language, "bookAbbr", "bookOrder", chapter,
@@ -365,11 +346,11 @@ async function processFile(filePath, volume, sourceId, osisToOrder, stats) {
          VALUES (\$1,\$2,\$3,\$4,\$5,\$6,\$7,\$8,\$9,\$10,\$11,\$12,\$13)
          ON CONFLICT ("sourceId", language, "divId")
          DO UPDATE SET
-           content      = EXCLUDED.content,
-           "contentHtml"= EXCLUDED."contentHtml",
-           title        = EXCLUDED.title,
-           "verseStart" = EXCLUDED."verseStart",
-           "verseEnd"   = EXCLUDED."verseEnd"
+           content       = EXCLUDED.content,
+           "contentHtml" = EXCLUDED."contentHtml",
+           title         = EXCLUDED.title,
+           "verseStart"  = EXCLUDED."verseStart",
+           "verseEnd"    = EXCLUDED."verseEnd"
          RETURNING id, (xmax = 0) AS is_new`,
         [
           sourceId, LANGUAGE, osisAbbr, bookOrder, chapter,
@@ -386,11 +367,11 @@ async function processFile(filePath, volume, sourceId, osisToOrder, stats) {
 
       const total = stats.inserted + stats.updated;
       if (total % 200 === 0) {
-        console.log(`   ⏳ ${total} entradas procesadas (${stats.inserted} nuevas, ${stats.updated} actualizadas)...`);
+        console.log(`   ⏳ ${total} procesadas (${stats.inserted} nuevas, ${stats.updated} actualizadas)...`);
       }
 
     } catch (err) {
-      console.error(`   ❌ Error en "${citationRaw}": ${err.message}`);
+      console.error(`   ❌ Error en "${cita}": ${err.message}`);
       stats.errors++;
     }
   }
