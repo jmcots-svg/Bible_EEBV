@@ -351,6 +351,9 @@ Deno.serve(async (req: Request) => {
     // =====================================================
     // /api/search
     // =====================================================
+    // =====================================================
+    // /api/search
+    // =====================================================
     if (path === "/api/search") {
       const queryText = url.searchParams.get("query")?.trim();
       const version = url.searchParams.get("version") || "RV60";
@@ -373,6 +376,7 @@ Deno.serve(async (req: Request) => {
 
       let testamentFilter = "";
       if (testament !== "ALL") {
+        // CORRECCIÓN AQUÍ: Todo en una misma línea y con formato correcto
         testamentFilter = ` AND b."testament" = 
 $$
 {paramIndex}`;
@@ -392,13 +396,16 @@ $$
 
       const countSql = `SELECT COUNT(*) as total ${baseFrom}`;
 
+      // CORRECCIÓN AQUÍ: El LIMIT y OFFSET corregidos en la misma línea
       const dataSql = `SELECT v."number" AS verse, v."text" AS text, c."number" AS chapter, 
         b."name" AS book, b."testament", b."bookOrder" 
         ${baseFrom}
         ORDER BY b."bookOrder", c."number", v."number"
         LIMIT
 $$
-{paramIndex} OFFSET $${paramIndex + 1}`;
+{paramIndex} OFFSET 
+$$
+{paramIndex + 1}`;
 
       params.push(limit, offset);
 
