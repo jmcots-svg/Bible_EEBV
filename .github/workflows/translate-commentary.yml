@@ -1,7 +1,16 @@
-name: Translate Commentaries to Spanish
+name: Translate Commentaries
 
 on:
-  workflow_dispatch: # 👈 Esto te permite darle al botón "Run workflow" manualmente en GitHub
+  workflow_dispatch:
+    inputs:
+      target_lang:
+        description: 'Idioma destino para traducir'
+        required: true
+        default: 'es'
+        type: choice
+        options:
+          - ca  # Catalán
+          - es  # Español
 
 jobs:
   translate:
@@ -24,7 +33,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }} # 👈 ¡Acuérdate de añadir este secreto en GitHub!
-          TARGET_LANG: es
+          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+          # 👇 Aquí inyectamos la elección que hiciste en el menú de GitHub
+          TARGET_LANG: ${{ github.event.inputs.target_lang }}
         timeout-minutes: 360 # 6 horas máximo
         run: npm run translate:commentary
