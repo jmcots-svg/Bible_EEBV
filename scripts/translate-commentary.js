@@ -239,35 +239,45 @@ function createOptimizedBatches(entries) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🔧 OBTENER ENTRADAS CON PAGINACIÓN (SIN .timeout())
+// 🔧 OBTENER ENTRADAS CON PAGINACIÓN PEQUEÑA + RETRY
 // ═══════════════════════════════════════════════════════════════════
-async function getAllEntriesOptimized(lang, pageSize = 500) {
+async function getAllEntriesOptimized(lang, pageSize = 100) {
   let allEntries = [];
   let page = 0;
   let lastBatchSize = pageSize;
+  let consecutiveErrors = 0;
 
   console.log(`\n📥 Obteniendo comentarios en "${lang}"...`);
 
-  while (lastBatchSize === pageSize) {
+  while (lastBatchSize === pageSize && consecutiveErrors < 3) {
     try {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
       console.log(`   📄 Página ${page + 1} (${from}-${to})...`);
 
-      // ✅ SIN .timeout() - Supabase lo maneja solo
       const { data, error } = await supabase
         .from("CommentaryEntry")
-        .select("*")
+        .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume, createdAt", { count: "exact" })
         .eq("language", lang)
         .order("id", { ascending: true })
         .range(from, to);
 
       if (error) {
-        console.error(`❌ Error en página ${page}:`, error.message);
-        throw error;
+        consecutiveErrors++;
+        console.error(`❌ Error en página ${page} (intento ${consecutiveErrors}):`, error.message);
+        
+        if (consecutiveErrors >= 3) {
+          throw new Error(`Demasiados errores consecutivos en ${lang}`);
+        }
+        
+        // Reintentar página con espera
+        await sleep(5000 * consecutiveErrors);
+        continue;
       }
 
+      consecutiveErrors = 0; // Reset contador
+      
       if (!data) {
         console.log(`⚠️  Sin datos en página ${page}`);
         break;
@@ -278,12 +288,11 @@ async function getAllEntriesOptimized(lang, pageSize = 500) {
 
       console.log(`   ✅ Obtenidos ${data.length} (Total: ${allEntries.length})`);
 
-      // Pausa entre páginas
-      await sleep(300);
+      await sleep(200); // Pausa corta
       page++;
 
     } catch (error) {
-      console.error(`❌ Fallo en página ${page}:`, error.message);
+      console.error(`❌ Fallo crítico en ${lang} página ${page}:`, error.message);
       throw error;
     }
   }
@@ -356,7 +365,6 @@ async function processAllBatches(batches, totalEntries) {
 
   await Promise.all(batches.map((b, idx) => limit(() => processBatch(b, idx))));
 
-  // Guardar lo que queda
   if (dbBuffer.length > 0) {
     try {
       const { error } = await supabase.from("CommentaryEntry").insert(dbBuffer);
@@ -383,13 +391,11 @@ async function main() {
   const startTime = Date.now();
 
   try {
-    // 📥 Obtener comentarios EN PARALELO
     const [enEntries, targetEntries] = await Promise.all([
       getAllEntriesOptimized("en"),
       getAllEntriesOptimized(TARGET_LANG)
     ]);
 
-    // 🔍 Crear set de ya traducidos
     const existingSet = new Set(
       targetEntries.map(e => `${e.sourceId}|${e.divId}`)
     );
@@ -398,7 +404,6 @@ async function main() {
     console.log(`   📝 Comentarios EN: ${enEntries.length}`);
     console.log(`   ✅ Comentarios ${TARGET_LANG}: ${targetEntries.length}`);
 
-    // 🎯 Filtrar solo los pendientes
     const pendingEntries = enEntries.filter(
       e => !existingSet.has(`${e.sourceId}|${e.divId}`)
     );
@@ -410,14 +415,12 @@ async function main() {
       return; 
     }
 
-    // 🔄 Procesar lotes
     const batches = createOptimizedBatches(pendingEntries);
     await processAllBatches(batches, pendingEntries.length);
     
     console.log(`\n✅ COMPLETADO en ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} min`);
   } catch (error) { 
     console.error(`\n❌ Error: ${error.message}`);
-    console.error(error.stack);
     process.exit(1);
   }
 }
