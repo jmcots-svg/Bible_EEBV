@@ -881,16 +881,19 @@ $$
     }
     
     if (verse) {
+      // 👇 Si hay versículo: excluir introducciones de capítulo (verseStart IS NULL)
       query += `
-        AND (ce."verseStart" IS NULL 
-             OR (ce."verseStart" <=
+        AND ce."verseStart" IS NOT NULL
+        AND ce."verseStart" <=
 $$
-{paramIndex} AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= 
+{paramIndex} 
+        AND (ce."verseEnd" IS NULL OR ce."verseEnd" >= 
 $$
-{paramIndex})))
+{paramIndex})
       `;
       params.push(Number(verse));
     }
+    // 👇 Si NO hay versículo (capítulo completo): incluir todo, introducción primero
     
     query += ` ORDER BY ce."verseStart" NULLS FIRST, ce.id`;
     
@@ -908,33 +911,8 @@ $$
   }
   
   // Para otros idiomas: devolver traducidas + inglés sin traducir
-  let verseCondition = '';
-  let verseConditionEn = '';
   const params = [bookOrder, chapter, language];
   let paramIndex = 4;
-  
-  if (sourceId) {
-    paramIndex++;
-  }
-  
-  if (verse) {
-    verseCondition = `
-      AND (ce_lang."verseStart" IS NULL 
-           OR (ce_lang."verseStart" <=
-$$
-{paramIndex} AND (ce_lang."verseEnd" IS NULL OR ce_lang."verseEnd" >= 
-$$
-{paramIndex})))
-    `;
-    verseConditionEn = `
-      AND (ce_en."verseStart" IS NULL 
-           OR (ce_en."verseStart" <=
-$$
-{paramIndex} AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >= 
-$$
-{paramIndex})))
-    `;
-  }
   
   let query = `
     SELECT 
@@ -964,9 +942,6 @@ $$
       AND ce_en.language = 'en'
   `;
   
-  // Reset paramIndex para construir correctamente
-  paramIndex = 4;
-  
   if (sourceId) {
     query += ` AND cs.id =
 $$
@@ -976,22 +951,24 @@ $$
   }
   
   if (verse) {
+    // 👇 Si hay versículo: excluir introducciones de capítulo (verseStart IS NULL)
     query += `
-      AND (ce_en."verseStart" IS NULL 
-           OR (ce_en."verseStart" <= 
+      AND ce_en."verseStart" IS NOT NULL
+      AND ce_en."verseStart" <= 
 $$
-{paramIndex} AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >=
+{paramIndex} 
+      AND (ce_en."verseEnd" IS NULL OR ce_en."verseEnd" >=
 $$
-{paramIndex})))
+{paramIndex})
     `;
     params.push(Number(verse));
   }
-  
+  // 👇 Si NO hay versículo (capítulo completo): incluir todo, introducción primero
+
   query += ` ORDER BY ce_en."verseStart" NULLS FIRST, ce_en.id`;
   
   const { rows } = await pool.query(query, params);
   
-  // Usar englishId como id principal para la traducción
   const entries = rows.map(row => ({
     id: row.translatedId || row.englishId,
     englishId: row.englishId,
@@ -1020,6 +997,7 @@ $$
   });
 }
 
+    
 // =====================================================
 // /api/translate-commentary - Traducción on-the-fly
 // =====================================================
