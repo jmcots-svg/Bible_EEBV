@@ -143,3 +143,187 @@ async function translateBatchOptimized(entriesBatch) {
 
       let responseText = response.text || "";
       responseText = responseText.replace(/^
+
+      
+      const translatedArray = JSON.parse(responseText);
+      
+      if (!Array.isArray(translatedArray) || translatedArray.length !== entriesBatch.length) {
+        throw new Error("El modelo no devolvió la longitud correcta");
+      }
+
+      stats[slot.model] += entriesBatch.length;
+      return translatedArray;
+
+    } catch (error) {
+      attempts++;
+      const isRateLimit = error.status === 429 || error.message?.includes('429') || error.message?.toLowerCase().includes('exhausted');
+      
+      if (isRateLimit) {
+        rateLimiter.markExhausted(slot.key, slot.model);
+      } else {
+        await sleep(1500); 
+      }
+    }
+  }
+  
+  console.error(`❌ Lote de ${entriesBatch.length} fallido tras 8 intentos.`);
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BATCHING (Agrupación Inteligente)
+// ═══════════════════════════════════════════════════════════════════
+function createOptimizedBatches(entries) {
+  const MAX_CHARS = 12000; 
+  const MAX_ENTRIES = 10;  
+  const batches = [];
+  let currentBatch = [], currentChars = 0;
+
+  for (const entry of entries) {
+    const len = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
+    if ((currentChars + len > MAX_CHARS || currentBatch.length >= MAX_ENTRIES) && currentBatch.length > 0) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentChars = 0;
+    }
+    currentBatch.push(entry);
+    currentChars += len;
+  }
+  if (currentBatch.length > 0) batches.push(currentBatch);
+  return batches;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXTRACCIÓN DE DATOS DE SUPABASE
+// ═══════════════════════════════════════════════════════════════════
+async function getAllEntriesOptimized(lang, pageSize = 500) {
+  let allEntries = [];
+  let page = 0;
+  let hasMore = true;
+
+  process.stdout.write(`\n📥 Cargando datos en "${lang}"... `);
+
+  while (hasMore) {
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabase
+      .from("CommentaryEntry")
+      .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume")
+      .eq("language", lang)
+      .order("id", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+    if (data.length < pageSize) hasMore = false;
+
+    allEntries = allEntries.concat(data);
+    page++;
+    process.stdout.write(`\r📥 Cargando datos en "${lang}"... ✅ ${allEntries.length} cargados.`);
+  }
+  console.log("");
+  return allEntries;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PROCESADOR CONCURRENTE
+// ═══════════════════════════════════════════════════════════════════
+async function processAllBatches(batches, totalEntries) {
+  const limit = pLimit(5); 
+  let processed = 0;
+  const startTime = Date.now();
+
+  const processBatch = async (batchEn, index) => {
+    if (index < 5) await sleep(index * 300); 
+
+    const translatedBatch = await translateBatchOptimized(batchEn);
+    
+    if (translatedBatch && translatedBatch.length > 0) {
+      const dbBufferLocal = []; 
+
+      translatedBatch.forEach(transItem => {
+        const orig = batchEn.find(e => e.id === transItem.id);
+        if (orig) {
+          dbBufferLocal.push({
+            sourceId: orig.sourceId, 
+            language: TARGET_LANG, 
+            bookAbbr: orig.bookAbbr,
+            bookOrder: orig.bookOrder, 
+            chapter: orig.chapter, 
+            verseStart: orig.verseStart,
+            verseEnd: orig.verseEnd, 
+            title: transItem.title || null,
+            content: transItem.content || orig.content, 
+            contentHtml: transItem.contentHtml || null,
+            divId: orig.divId, 
+            sectionType: orig.sectionType, 
+            volume: orig.volume
+          });
+          processed++;
+        }
+      });
+
+      if (dbBufferLocal.length > 0) {
+        const { error } = await supabase.from("CommentaryEntry").insert(dbBufferLocal);
+        if (error) console.error(`\n❌ Error insertando en DB: ${error.message}`);
+      }
+    }
+
+    if (processed % 20 < 10) { 
+      const elapsed = (Date.now() - startTime) / 1000 / 60;
+      const rate = processed / elapsed;
+      const eta = (totalEntries - processed) / rate;
+      process.stdout.write(`\r🚀 Trans: ${processed}/${totalEntries} | Vel: ${rate.toFixed(0)}/min | ETA: ${eta.toFixed(1)}m | 3.1L: ${stats['gemini-3.1-flash-lite-preview']} | 2.5L: ${stats['gemini-2.5-flash-lite']} | 2.5: ${stats['gemini-2.5-flash']}   `);
+    }
+  };
+
+  await Promise.all(batches.map((b, idx) => limit(() => processBatch(b, idx))));
+  console.log(""); 
+  return processed;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MAIN ✨
+// ═══════════════════════════════════════════════════════════════════
+async function main() {
+  console.log(`
+╔═════════════════════════════════════════════════════════════════╗
+║  ⚡ TRADUCTOR GEMINI PURO (Modo 5 Hilos)                        ║
+║  EN → ${TARGET_LANG.toUpperCase().padEnd(60, ' ')}║
+╚═════════════════════════════════════════════════════════════════╝
+`);
+  const startTime = Date.now();
+
+  try {
+    const [enEntries, targetEntries] = await Promise.all([
+      getAllEntriesOptimized("en"),
+      getAllEntriesOptimized(TARGET_LANG)
+    ]);
+
+    const existingSet = new Set(targetEntries.map(e => `${e.sourceId}|${e.divId}`));
+    const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
+
+    console.log(`\n⏳ Entradas pendientes: ${pendingEntries.length}`);
+
+    if (pendingEntries.length === 0) { 
+      console.log("✅ Todo está traducido.");
+      return; 
+    }
+
+    const batches = createOptimizedBatches(pendingEntries);
+    console.log(`📦 Lotes generados: ${batches.length}\n`);
+    
+    await processAllBatches(batches, pendingEntries.length);
+    
+    const finalMin = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
+    console.log(`\n✨ COMPLETADO en ${finalMin} minutos`);
+  } catch (error) { 
+    console.error(`\n❌ Error Crítico:`, error);
+    process.exit(1);
+  }
+}
+
+main();
+
+
+
