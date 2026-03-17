@@ -8,9 +8,9 @@
     left: 0;
     right: 0;
     max-height: 60vh;
-    background: var(--card-bg, #fff);
-    border-top: 2px solid var(--primary, #4a90d9);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+    background: var(--bg-container); /* Actualizado */
+    border-top: 3px solid var(--accent); /* Actualizado */
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
     transform: translateY(100%);
     transition: transform 0.3s ease;
     z-index: 1000;
@@ -28,8 +28,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--border, #e0e0e0);
-    background: var(--card-bg, #fff);
+    border-bottom: 1px solid var(--border); /* Actualizado */
+    background: var(--bg-container); /* Actualizado */
     border-radius: 16px 16px 0 0;
 }
 
@@ -45,23 +45,23 @@
 
 .commentary-bottom-ref {
     font-weight: 600;
-    color: var(--primary, #4a90d9);
+    color: var(--accent); /* Actualizado */
     font-size: 1rem;
 }
 
 .commentary-bottom-close {
     background: none;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     cursor: pointer;
-    color: var(--text-secondary, #666);
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.2s;
+    color: var(--text-muted); /* Actualizado */
+    padding: 0 8px;
+    line-height: 1;
+    transition: color 0.2s;
 }
 
 .commentary-bottom-close:hover {
-    background: var(--hover-bg, #f0f0f0);
+    color: var(--accent); /* Actualizado para coincidir con Strong */
 }
 
 .commentary-bottom-content {
@@ -74,14 +74,14 @@
 .commentary-loading {
     text-align: center;
     padding: 32px;
-    color: var(--text-secondary, #666);
+    color: var(--text-muted); /* Actualizado */
 }
 
 /* Empty state */
 .commentary-empty {
     text-align: center;
     padding: 32px;
-    color: var(--text-secondary, #666);
+    color: var(--text-muted); /* Actualizado */
 }
 
 .commentary-empty-hint {
@@ -98,7 +98,7 @@
 .commentary-sources-header h4 {
     margin: 0;
     font-size: 1rem;
-    color: var(--text-primary, #333);
+    color: var(--text-main); /* Actualizado */
 }
 
 .commentary-sources-list {
@@ -112,8 +112,8 @@
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    background: var(--bg-secondary, #f5f5f5);
-    border: 1px solid var(--border, #e0e0e0);
+    background: var(--bg-filters); /* Actualizado */
+    border: 1px solid var(--border); /* Actualizado */
     border-radius: 8px;
     cursor: pointer;
     text-align: left;
@@ -121,8 +121,8 @@
 }
 
 .commentary-source-btn:hover {
-    background: var(--primary-light, #e3f2fd);
-    border-color: var(--primary, #4a90d9);
+    border-color: var(--accent); /* Actualizado */
+    transform: translateY(-1px);
 }
 
 .source-info {
@@ -134,24 +134,24 @@
 
 .source-name {
     font-weight: 600;
-    color: var(--text-primary, #333);
+    color: var(--text-main); /* Actualizado */
 }
 
 .source-author {
     font-size: 0.85rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-muted); /* Actualizado */
 }
 
 .source-count {
     font-size: 0.8rem;
-    color: var(--text-secondary, #666);
-    background: var(--bg-tertiary, #eee);
+    color: var(--text-muted); /* Actualizado */
+    background: var(--border); /* Actualizado */
     padding: 2px 8px;
     border-radius: 12px;
 }
 
 .source-arrow {
-    color: var(--primary, #4a90d9);
+    color: var(--accent); /* Actualizado */
     font-size: 1.2rem;
 }
 
@@ -162,27 +162,27 @@
     gap: 12px;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--border, #e0e0e0);
+    border-bottom: 1px solid var(--border); /* Actualizado */
 }
 
 .commentary-back-btn {
     background: none;
-    border: 1px solid var(--border, #e0e0e0);
+    border: 1px solid var(--border); /* Actualizado */
     padding: 6px 12px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.9rem;
-    color: var(--primary, #4a90d9);
+    color: var(--accent); /* Actualizado */
     transition: all 0.2s;
 }
 
 .commentary-back-btn:hover {
-    background: var(--primary-light, #e3f2fd);
+    border-color: var(--accent);
 }
 
 .commentary-source-title {
     font-weight: 500;
-    color: var(--text-secondary, #666);
+    color: var(--text-muted); /* Actualizado */
     font-size: 0.9rem;
 }
 
@@ -195,27 +195,27 @@
 
 .commentary-entry {
     padding: 16px;
-    background: var(--bg-secondary, #f9f9f9);
+    background: var(--bg-filters); /* Actualizado */
     border-radius: 8px;
-    border-left: 3px solid var(--primary, #4a90d9);
+    border-left: 3px solid var(--accent); /* Actualizado */
 }
 
 .commentary-entry-title {
     margin: 0 0 8px 0;
     font-size: 1rem;
-    color: var(--primary, #4a90d9);
+    color: var(--accent); /* Actualizado */
 }
 
 .commentary-verse-range {
     font-size: 0.85rem;
-    color: var(--text-secondary, #666);
+    color: var(--text-muted); /* Actualizado */
     margin-bottom: 8px;
     font-style: italic;
 }
 
 .commentary-entry-content {
     line-height: 1.6;
-    color: var(--text-primary, #333);
+    color: var(--text-main); /* Actualizado */
 }
 
 .commentary-entry-content p {
@@ -233,7 +233,7 @@
 }
 
 #reference:hover {
-    color: var(--primary, #4a90d9);
+    color: var(--accent); /* Actualizado */
     text-decoration: underline;
 }
 
@@ -249,11 +249,10 @@
     opacity: 0.7;
 }
 
-/* PAra referencia de traduccion IA */
-
+/* Para referencia de traduccion IA */
 .translation-hint {
     font-size: 0.8em;
-    color: var(--text-secondary);
+    color: var(--text-muted); /* Actualizado */
     margin-left: 8px;
 }
 
@@ -264,8 +263,9 @@
 
 .translation-badge {
     font-size: 0.75em;
-    background: var(--accent-light, #e3f2fd);
-    color: var(--accent, #1976d2);
+    background: var(--bg-filters); /* Actualizado */
+    color: var(--accent); /* Actualizado */
+    border: 1px solid var(--accent);
     padding: 2px 8px;
     border-radius: 12px;
     margin-left: auto;
