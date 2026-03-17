@@ -38,7 +38,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          npm ci
+          npm install
           npm install fast-xml-parser
       
       - name: Generate Prisma Client
