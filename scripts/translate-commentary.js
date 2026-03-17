@@ -239,9 +239,9 @@ function createOptimizedBatches(entries) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🔧 OBTENER ENTRADAS CON PAGINACIÓN + DEBUG
+// 🔧 OBTENER ENTRADAS CON PAGINACIÓN (SIN .timeout())
 // ═══════════════════════════════════════════════════════════════════
-async function getAllEntriesOptimized(lang, pageSize = 1000) {
+async function getAllEntriesOptimized(lang, pageSize = 500) {
   let allEntries = [];
   let page = 0;
   let lastBatchSize = pageSize;
@@ -253,15 +253,15 @@ async function getAllEntriesOptimized(lang, pageSize = 1000) {
       const from = page * pageSize;
       const to = from + pageSize - 1;
 
-      console.log(`   📄 Descargando página ${page + 1} (${from}-${to})...`);
+      console.log(`   📄 Página ${page + 1} (${from}-${to})...`);
 
+      // ✅ SIN .timeout() - Supabase lo maneja solo
       const { data, error } = await supabase
         .from("CommentaryEntry")
-        .select("*", { count: "exact" })
+        .select("*")
         .eq("language", lang)
         .order("id", { ascending: true })
-        .range(from, to)
-        .timeout(60000); // ← TIMEOUT MÁS LARGO
+        .range(from, to);
 
       if (error) {
         console.error(`❌ Error en página ${page}:`, error.message);
@@ -276,18 +276,19 @@ async function getAllEntriesOptimized(lang, pageSize = 1000) {
       lastBatchSize = data.length;
       allEntries = allEntries.concat(data);
 
-      console.log(`   ✅ Obtenidos ${data.length} comentarios (Total: ${allEntries.length})`);
+      console.log(`   ✅ Obtenidos ${data.length} (Total: ${allEntries.length})`);
 
-      await sleep(500); // Pausa entre páginas
+      // Pausa entre páginas
+      await sleep(300);
       page++;
 
     } catch (error) {
-      console.error(`❌ Fallo obteniendo ${lang} página ${page}:`, error.message);
+      console.error(`❌ Fallo en página ${page}:`, error.message);
       throw error;
     }
   }
 
-  console.log(`✅ TOTAL en "${lang}": ${allEntries.length} comentarios\n`);
+  console.log(`✅ TOTAL "${lang}": ${allEntries.length}\n`);
   return allEntries;
 }
 
@@ -382,13 +383,13 @@ async function main() {
   const startTime = Date.now();
 
   try {
-    // 📥 Obtener comentarios EN PARALELO con paginación
+    // 📥 Obtener comentarios EN PARALELO
     const [enEntries, targetEntries] = await Promise.all([
-      getAllEntriesOptimized("en", 1000),
-      getAllEntriesOptimized(TARGET_LANG, 1000)
+      getAllEntriesOptimized("en"),
+      getAllEntriesOptimized(TARGET_LANG)
     ]);
 
-    // 🔍 Crear set de ya traducidos (combina sourceId + divId)
+    // 🔍 Crear set de ya traducidos
     const existingSet = new Set(
       targetEntries.map(e => `${e.sourceId}|${e.divId}`)
     );
