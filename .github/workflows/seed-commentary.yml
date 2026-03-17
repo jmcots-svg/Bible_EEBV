@@ -39,7 +39,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-       - name: Verify XML files exist
+      - name: Verify XML files exist
         run: |
           echo "📁 Verificando archivos MHC..."
           ls -la MHC/ || echo "⚠️ Directorio MHC no encontrado"
