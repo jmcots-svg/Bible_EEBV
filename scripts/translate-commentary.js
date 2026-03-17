@@ -9,7 +9,10 @@ require("dotenv").config();
 // ═══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const TARGET_LANG = process.env.TARGET_LANG || "es";
+
+// CAMBIO 1: El idioma objetivo por defecto ahora es "ca" (Catalán)
+const TARGET_LANG = process.env.TARGET_LANG || "ca"; 
+
 const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
@@ -120,7 +123,8 @@ const stats = {
 // ═══════════════════════════════════════════════════════════════════
 // GOOGLE TRANSLATE FALLBACK
 // ═══════════════════════════════════════════════════════════════════
-async function translateWithGoogleTranslate(text, targetLang = "es", retries = 3) {
+// CAMBIO 2: targetLang por defecto es "ca"
+async function translateWithGoogleTranslate(text, targetLang = "ca", retries = 3) {
   if (!text || text.trim() === "") return text;
   const textToTranslate = text.substring(0, 4500);
 
@@ -271,12 +275,11 @@ async function getAllEntriesOptimized(lang, pageSize = 100) {
           throw new Error(`Demasiados errores consecutivos en ${lang}`);
         }
         
-        // Reintentar página con espera
         await sleep(5000 * consecutiveErrors);
         continue;
       }
 
-      consecutiveErrors = 0; // Reset contador
+      consecutiveErrors = 0; 
       
       if (!data) {
         console.log(`⚠️  Sin datos en página ${page}`);
@@ -288,7 +291,7 @@ async function getAllEntriesOptimized(lang, pageSize = 100) {
 
       console.log(`   ✅ Obtenidos ${data.length} (Total: ${allEntries.length})`);
 
-      await sleep(200); // Pausa corta
+      await sleep(200); 
       page++;
 
     } catch (error) {
