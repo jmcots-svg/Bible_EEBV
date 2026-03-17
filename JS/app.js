@@ -16,7 +16,12 @@ import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, u
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
-
+import { 
+    initTTS, 
+    stopTTS, 
+    setTTSGender, 
+    getTTSGender 
+} from './tts.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -88,6 +93,47 @@ document.addEventListener('DOMContentLoaded', () => {
         showError,
         navigateToVerse
     });
+
+    // =====================
+// INICIALIZAR TTS
+// =====================
+initTTS({
+    ttsPlayBtn:          document.getElementById('ttsPlayBtn'),
+    ttsPauseBtn:         document.getElementById('ttsPauseBtn'),
+    ttsStopBtn:          document.getElementById('ttsStopBtn'),
+    ttsNextBtn:          document.getElementById('ttsNextBtn'),
+    ttsSpeedSlider:      document.getElementById('ttsSpeedSlider'),
+    ttsSpeedLabel:       document.getElementById('ttsSpeedLabel'),
+    ttsStatus:           document.getElementById('ttsStatus'),
+    ttsProgressContainer:document.getElementById('ttsProgressContainer'),
+    ttsProgressFill:     document.getElementById('ttsProgressFill'),
+    ttsTimeCurrent:      document.getElementById('ttsTimeCurrent'),
+    ttsTimeTotal:        document.getElementById('ttsTimeTotal'),
+    ttsFragmentLabel:    document.getElementById('ttsFragmentLabel'),
+    ttsGenderToggle:     document.getElementById('ttsGenderToggle'),
+});
+
+// Toggle mostrar/ocultar barra TTS
+const ttsBar       = document.getElementById('ttsBar');
+const ttsToggleBtn = document.getElementById('ttsToggleBtn');
+const ttsCloseBar  = document.getElementById('ttsCloseBar');
+
+ttsToggleBtn?.addEventListener('click', () => {
+    ttsBar.classList.toggle('visible');
+});
+
+ttsCloseBar?.addEventListener('click', () => {
+    stopTTS();
+    ttsBar.classList.remove('visible');
+});
+
+// Detener TTS al cambiar de modo
+modeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        stopTTS();
+    });
+});
+
 
     // =====================
     // 1. SELECCIÓN DE ELEMENTOS
