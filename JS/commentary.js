@@ -117,29 +117,7 @@ async function loadCommentarySources() {
             params.append('verse', currentReference.verse);
         }
         
-        let sources = await fetchJSON(`${API_URL}/api/commentary/sources?${params}`);
-        
-        // ✅ Si no hay fuentes en el idioma actual y no es inglés, buscar en inglés
-        if ((!sources || sources.length === 0) && lang !== 'en') {
-            console.log(`[Commentary] No hay fuentes en ${lang}, buscando en inglés...`);
-            
-            const enParams = new URLSearchParams({
-                bookOrder: currentReference.bookOrder,
-                chapter: currentReference.chapter,
-                language: 'en'
-            });
-            
-            if (currentReference.verse) {
-                enParams.append('verse', currentReference.verse);
-            }
-            
-            sources = await fetchJSON(`${API_URL}/api/commentary/sources?${enParams}`);
-            
-            if (sources && sources.length > 0) {
-                // Marcar que necesitaremos traducir
-                sources = sources.map(s => ({ ...s, needsTranslation: true }));
-            }
-        }
+        const sources = await fetchJSON(`${API_URL}/api/commentary/sources?${params}`);
         
         if (!sources || sources.length === 0) {
             content.innerHTML = `
@@ -206,35 +184,21 @@ async function loadCommentaryEntries(sourceId, needsTranslation = false) {
     const content = elements.commentaryBottomContent;
     const lang = getCommentaryLanguage();
     
-    const loadingMessage = needsTranslation 
-        ? '🌐 Traduciendo comentario...' 
-        : '📖 Cargando comentario...';
-    
-    content.innerHTML = `<div class="commentary-loading">${loadingMessage}</div>`;
+    content.innerHTML = `<div class="commentary-loading">📖 Cargando comentario...</div>`;
     
     try {
-        let data;
-        let translationMethod = null;
+        const params = new URLSearchParams({
+            bookOrder: currentReference.bookOrder,
+            chapter: currentReference.chapter,
+            language: lang,
+            sourceId: sourceId
+        });
         
-        if (needsTranslation && lang !== 'en') {
-            // ✅ TRADUCCIÓN ON-THE-FLY
-            data = await loadAndTranslateEntries(sourceId, lang);
-            translationMethod = data.translationMethod;
-        } else {
-            // Carga normal
-            const params = new URLSearchParams({
-                bookOrder: currentReference.bookOrder,
-                chapter: currentReference.chapter,
-                language: lang,
-                sourceId: sourceId
-            });
-            
-            if (currentReference.verse) {
-                params.append('verse', currentReference.verse);
-            }
-            
-            data = await fetchJSON(`${API_URL}/api/commentary?${params}`);
+        if (currentReference.verse) {
+            params.append('verse', currentReference.verse);
         }
+        
+        const data = await fetchJSON(`${API_URL}/api/commentary?${params}`);
         
         if (!data.entries || data.entries.length === 0) {
             content.innerHTML = `
@@ -249,7 +213,40 @@ async function loadCommentaryEntries(sourceId, needsTranslation = false) {
             return;
         }
         
-        renderCommentaryEntries(data, translationMethod);
+        // Traducir las entradas que lo necesitan
+        const entriesToTranslate = data.entries.filter(e => e.needsTranslation);
+        
+        if (entriesToTranslate.length > 0 && lang !== 'en') {
+            content.innerHTML = `<div class="commentary-loading">🌐 Traduciendo ${entriesToTranslate.length} entrada(s)...</div>`;
+            
+            let translationMethod = null;
+            
+            for (let i = 0; i < data.entries.length; i++) {
+                const entry = data.entries[i];
+                if (entry.needsTranslation) {
+                    try {
+                        const translated = await translateEntry(entry, sourceId, lang);
+                        data.entries[i] = {
+                            ...entry,
+                            title: translated.entry.title || entry.title,
+                            content: translated.entry.content || entry.content,
+                            contentHtml: translated.entry.contentHtml || entry.contentHtml,
+                            needsTranslation: false,
+                            wasTranslated: true
+                        };
+                        translationMethod = translated.method;
+                    } catch (e) {
+                        console.warn(`Error traduciendo entrada ${entry.id}:`, e);
+                        // Mantener en inglés si falla
+                        data.entries[i].translationFailed = true;
+                    }
+                }
+            }
+            
+            renderCommentaryEntries(data, translationMethod);
+        } else {
+            renderCommentaryEntries(data, null);
+        }
         
     } catch (e) {
         console.error('Error cargando entradas:', e);
