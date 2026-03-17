@@ -166,13 +166,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // IDIOMA
+    // IDIOMA
     const savedLanguage = localStorage.getItem('appLanguage') || 'es';
     if (languageSelect) {
         languageSelect.value = savedLanguage;
-        languageSelect.addEventListener('change', (e) => {
+        languageSelect.addEventListener('change', async (e) => { // <-- Añadir async aquí
             const newLanguage = e.target.value;
             localStorage.setItem('appLanguage', newLanguage);
+            
+            // 1. Aplicar traducciones de la interfaz
             applyTranslations(newLanguage);
+            
+            // 2. Mostrar mensaje de carga (opcional pero recomendado)
+            content.innerHTML = `<p class="loading">${t('changingVersion', newLanguage)}</p>`;
+            
+            // 3. Recargar las versiones filtradas por el nuevo idioma
+            await loadVersions(); 
+            
+            // 4. Recargar vista Strong si estaba abierta
             reloadCurrentStrongIfOpen();
         });
     }
@@ -741,21 +752,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // =====================
     async function loadVersions() {
         try {
-            const versions = await fetchJSON(`${API_URL}/api/versions`);
+            // 1. Obtenemos el idioma actual de los ajustes
+            const currentLang = localStorage.getItem('appLanguage') || 'es';
+            
+            // 2. Traemos todas las versiones del backend (cacheadas y rápidas)
+            const allVersions = await fetchJSON(`${API_URL}/api/versions`);
+            
+            // 3. Filtramos por el idioma actual
+            let versions = allVersions.filter(v => v.language === currentLang);
+            
+            // Fallback: si por alguna razón no hay versiones para ese idioma, mostramos todas
+            if (versions.length === 0) {
+                versions = allVersions;
+            }
+
+            // 4. Llenamos los desplegables
             [versionSelect, concVersion, compVersionA, compVersionB].forEach((sel) => {
-                const currentVal = sel.value;
+                const currentVal = sel.value; // Guardamos el valor seleccionado actualmente
                 sel.innerHTML = '';
+                
                 versions.forEach((v, j) => {
                     const opt = document.createElement('option');
                     opt.value = v.name;
                     opt.textContent = v.fullName;
-                    if (sel === compVersionB ? j === 1 : j === 0) opt.selected = true;
+                    
+                    // Selección por defecto (Comparación B selecciona el 2do, el resto el 1ro)
+                    if (sel === compVersionB && versions.length > 1 ? j === 1 : j === 0) {
+                        opt.selected = true;
+                    }
                     sel.appendChild(opt);
                 });
-                if (currentVal) sel.value = currentVal;
+
+                // Si la versión que estaba seleccionada sigue estando disponible en este idioma, la mantenemos
+                if (currentVal && Array.from(sel.options).some(opt => opt.value === currentVal)) {
+                    sel.value = currentVal;
+                }
             });
+
+            // 5. Cargar libros para las versiones seleccionadas
             if (versionSelect.value) loadBooks(versionSelect.value);
-            if (compVersionA.value) loadCompBooks();
+            if (compVersionA.value && currentMode === 'comparacion') loadCompBooks();
+            
         } catch (e) {
             console.error('Error cargando versiones:', e);
             if (versionSelect.value) loadBooks(versionSelect.value);
