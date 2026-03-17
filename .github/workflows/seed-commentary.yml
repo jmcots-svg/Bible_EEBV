@@ -39,11 +39,13 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Verify XML files exist
+       - name: Verify XML files exist
         run: |
-          echo "📁 Verificando archivos de comentarios..."
-          ls -la data/MHC/ || echo "⚠️ Directorio data/MHC no encontrado"
-          test -f data/MHC/mhc1.xml && echo "✅ mhc1.xml encontrado" || echo "❌ mhc1.xml NO encontrado"
-      
+          echo "📁 Verificando archivos MHC..."
+          ls -la MHC/ || echo "⚠️ Directorio MHC no encontrado"
+          for i in 1 2 3 4 5 6; do
+            test -f MHC/mhc${i}.xml && echo "✅ mhc${i}.xml OK" || echo "❌ mhc${i}.xml NO encontrado"
+          done
+          
       - name: Run Commentary Seed
         run: node seed_henry.js
