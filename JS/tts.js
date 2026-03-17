@@ -1,15 +1,13 @@
 // ============================================================
-// TTS MODULE - Text to Speech con Puter.js
+// JS/tts.js - Text to Speech con Puter.js
 // ============================================================
 
-// Mapa de idiomas de la interfaz → códigos de voz Puter
 const LANG_MAP = {
     'es': 'es-ES',
     'ca': 'ca-ES',
     'en': 'en-US'
 };
 
-// Voces disponibles por idioma y género
 const VOICES_DATA = [
     { name: 'Arlet',    lang: 'ca-ES', gender: 'female' },
     { name: 'Conchita', lang: 'es-ES', gender: 'female' },
@@ -23,18 +21,16 @@ const VOICES_DATA = [
 
 const MAX_CHARS = 3000;
 
-// Estado interno del módulo
 let _state = {
-    puterLoaded: false,
-    isPaused: false,
+    puterLoaded:          false,
+    isPaused:             false,
     currentFragmentIndex: 0,
-    textFragments: [],
-    allAudios: [],
-    globalAudio: new Audio(),
-    currentGender: localStorage.getItem('ttsGender') || 'female'
+    textFragments:        [],
+    allAudios:            [],
+    globalAudio:          new Audio(),
+    currentGender:        localStorage.getItem('ttsGender') || 'female'
 };
 
-// Referencias a elementos del DOM (se asignan en init)
 let _els = {};
 
 // ─────────────────────────────────────────────
@@ -48,30 +44,25 @@ export function initTTS(elements) {
 }
 
 // ─────────────────────────────────────────────
-// OBTENER TEXTO ACTIVO DE LA PANTALLA
+// TEXTO ACTIVO
 // ─────────────────────────────────────────────
-
-/**
- * Extrae el texto visible actualmente en pantalla.
- * Prioridad: panel de comentarios (si está abierto) → contenido principal
- */
 export function getActiveText() {
-    // 1. Panel de comentarios inferior (si está visible)
-    const commentaryPanel = document.getElementById('commentaryBottomPanel');
+    // 1. Panel de comentarios si está visible
+    const commentaryPanel   = document.getElementById('commentaryBottomPanel');
     const commentaryContent = document.getElementById('commentaryBottomContent');
+
     if (
         commentaryPanel &&
         commentaryContent &&
-        !commentaryPanel.classList.contains('hidden') &&
-        commentaryPanel.style.display !== 'none' &&
+        getComputedStyle(commentaryPanel).display !== 'none' &&
         commentaryContent.innerText?.trim()
     ) {
         return commentaryContent.innerText.trim();
     }
 
-    // 2. Contenido principal (versículos u otro modo activo)
+    // 2. Contenido principal
     const content = document.getElementById('content');
-    if (content) {
+    if (content && content.innerText?.trim()) {
         return content.innerText.trim();
     }
 
@@ -79,7 +70,7 @@ export function getActiveText() {
 }
 
 // ─────────────────────────────────────────────
-// CONTROL DE GÉNERO (desde ajustes)
+// GÉNERO
 // ─────────────────────────────────────────────
 export function setTTSGender(gender) {
     _state.currentGender = gender;
@@ -92,49 +83,42 @@ export function getTTSGender() {
 }
 
 function _applyGender(gender) {
-    if (_els.ttsGenderToggle) {
-        _els.ttsGenderToggle.dataset.gender = gender;
-        const labelMale   = _els.ttsGenderToggle.querySelector('[data-label="male"]');
-        const labelFemale = _els.ttsGenderToggle.querySelector('[data-label="female"]');
-        if (labelMale)   labelMale.classList.toggle('active',   gender === 'male');
-        if (labelFemale) labelFemale.classList.toggle('active', gender === 'female');
-    }
+    if (!_els.ttsGenderToggle) return;
+    _els.ttsGenderToggle.querySelectorAll('button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === gender);
+    });
 }
 
 // ─────────────────────────────────────────────
-// SELECCIÓN DE VOZ
+// VOZ Y LANG
 // ─────────────────────────────────────────────
-function _getVoice() {
-    const appLang  = localStorage.getItem('appLanguage') || 'es';
-    const puterLang = LANG_MAP[appLang] || 'es-ES';
-    const gender    = _state.currentGender;
-
-    const candidates = VOICES_DATA.filter(
-        v => v.lang === puterLang && v.gender === gender
-    );
-
-    // Fallback: mismo idioma, cualquier género
-    if (candidates.length === 0) {
-        const fallback = VOICES_DATA.filter(v => v.lang === puterLang);
-        return fallback[0]?.name || 'Lucia';
-    }
-
-    return candidates[0].name;
-}
-
 function _getLang() {
     const appLang = localStorage.getItem('appLanguage') || 'es';
     return LANG_MAP[appLang] || 'es-ES';
 }
 
+function _getVoice(lang) {
+    const gender     = _state.currentGender;
+    const candidates = VOICES_DATA.filter(v => v.lang === lang && v.gender === gender);
+
+    if (candidates.length > 0) return candidates[0].name;
+
+    // Fallback: mismo idioma cualquier género
+    const fallback = VOICES_DATA.filter(v => v.lang === lang);
+    if (fallback.length > 0) return fallback[0].name;
+
+    // Fallback final: Lucia
+    return 'Lucia';
+}
+
 // ─────────────────────────────────────────────
-// FRAGMENTACIÓN DE TEXTO
+// FRAGMENTACIÓN
 // ─────────────────────────────────────────────
 function _splitText(text) {
     if (text.length <= MAX_CHARS) return [text];
 
     const fragments = [];
-    let current = '';
+    let current     = '';
     const paragraphs = text.split('\n\n');
 
     for (const para of paragraphs) {
@@ -158,66 +142,82 @@ function _splitText(text) {
             }
         }
     }
-
     if (current) fragments.push(current);
     return fragments;
 }
 
 // ─────────────────────────────────────────────
-// PLAYBACK
+// PLAYBACK PRINCIPAL
 // ─────────────────────────────────────────────
 export async function startTTSPlayback() {
+    // Comprobar Puter
+    if (!_state.puterLoaded || !window.puter) {
+        _setStatus('⏳ Motor de voz no listo. Espera un momento...', 'loading');
+        return;
+    }
+
+    // Obtener texto
     const text = getActiveText();
     if (!text) {
-        _setStatus('⚠️ No hay texto para reproducir', 'warning');
-        return;
-    }
-    if (!_state.puterLoaded) {
-        _setStatus('⏳ Puter.js aún no está listo...', 'loading');
+        _setStatus('⚠️ No hay texto visible para reproducir', 'warning');
         return;
     }
 
-    const voice    = _getVoice();
+    // Obtener idioma y voz
     const language = _getLang();
+    const voice    = _getVoice(language);
 
+    console.log('[TTS] Idioma:', language, '| Voz:', voice, '| Chars:', text.length);
+
+    // Preparar estado
     _state.textFragments        = _splitText(text);
     _state.currentFragmentIndex = 0;
     _state.allAudios            = [];
     _state.isPaused             = false;
 
-    _showProgressPanel(true);
     _setPlayBtn(false);
+    _showProgressPanel(true);
     _setStatus(
-        `🎙️ Generando ${_state.textFragments.length} fragmento(s)...`,
+        `🎙️ Generando audio (${_state.textFragments.length} fragmento${_state.textFragments.length > 1 ? 's' : ''})...`,
         'generating'
     );
 
     try {
         for (let i = 0; i < _state.textFragments.length; i++) {
             _setStatus(
-                `🎙️ Fragmento ${i + 1} / ${_state.textFragments.length}...`,
+                `🎙️ Preparando fragmento ${i + 1} de ${_state.textFragments.length}...`,
                 'generating'
             );
+
+            console.log('[TTS] Llamando puter.ai.txt2speech con:', {
+                text: _state.textFragments[i].substring(0, 50) + '...',
+                voice,
+                language
+            });
+
             const audio = await window.puter.ai.txt2speech(
                 _state.textFragments[i],
-                { voice, engine: 'neural', language }
+                language,   // ← Puter espera: (text, lang, voice) o (text, options)
+                voice
             );
+
+            if (!audio) throw new Error('Puter no devolvió audio');
             _state.allAudios.push(audio);
         }
 
-        _setStatus('✅ Reproduciendo...', 'playing');
+        _setStatus('🔊 Reproduciendo...', 'playing');
         _playFragment(0);
 
     } catch (err) {
-        _setStatus(`❌ Error: ${err.message}`, 'error');
+        console.error('[TTS] Error completo:', err);
+        _setStatus(`❌ Error: ${err.message || JSON.stringify(err)}`, 'error');
         _showProgressPanel(false);
         _setPlayBtn(true);
     }
 }
 
 export function stopTTS() {
-    _state.globalAudio.pause();
-    _state.globalAudio.currentTime = 0;
+    try { _state.globalAudio.pause(); } catch(e) {}
     _state.isPaused = false;
     _showProgressPanel(false);
     _setPlayBtn(true);
@@ -252,7 +252,6 @@ function _playFragment(index) {
     _state.globalAudio          = _state.allAudios[index];
     _state.isPaused             = false;
 
-    // Actualizar UI de fragmento
     if (_els.ttsFragmentLabel) {
         _els.ttsFragmentLabel.textContent =
             `Fragmento ${index + 1} de ${_state.allAudios.length}`;
@@ -261,17 +260,18 @@ function _playFragment(index) {
     _setPauseBtn(false);
     _applySpeed(_getCurrentSpeed());
 
-    // Desbloquear autoplay en Safari/iOS
+    // Desbloquear autoplay Safari/iOS
     const silent = new Audio(
         'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'
     );
     silent.play().then(() => silent.pause()).catch(() => {});
 
-    _state.globalAudio.play().catch(err => {
-        _setStatus(`❌ ${err.message}`, 'error');
+    _state.globalAudio.play().then(() => {
+        _setStatus('🔊 Reproduciendo...', 'playing');
+    }).catch(err => {
+        _setStatus(`❌ Error al reproducir: ${err.message}`, 'error');
     });
 
-    // Progreso
     _state.globalAudio.addEventListener('timeupdate', _updateProgress);
 
     _state.globalAudio.onended = () => {
@@ -287,9 +287,9 @@ function _playFragment(index) {
 
 function _updateProgress() {
     const audio = _state.globalAudio;
-    if (!audio.duration) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
+    if (!audio || !audio.duration) return;
 
+    const pct = (audio.currentTime / audio.duration) * 100;
     if (_els.ttsProgressFill)
         _els.ttsProgressFill.style.width = pct + '%';
     if (_els.ttsTimeCurrent)
@@ -302,13 +302,11 @@ function _updateProgress() {
 // VELOCIDAD
 // ─────────────────────────────────────────────
 function _getCurrentSpeed() {
-    return _els.ttsSpeedSlider
-        ? parseFloat(_els.ttsSpeedSlider.value)
-        : 1.0;
+    return _els.ttsSpeedSlider ? parseFloat(_els.ttsSpeedSlider.value) : 1.0;
 }
 
 function _applySpeed(value) {
-    _state.globalAudio.playbackRate = value;
+    try { _state.globalAudio.playbackRate = parseFloat(value); } catch(e) {}
     if (_els.ttsSpeedLabel)
         _els.ttsSpeedLabel.textContent = parseFloat(value).toFixed(2) + 'x';
 }
@@ -318,8 +316,8 @@ function _applySpeed(value) {
 // ─────────────────────────────────────────────
 function _setStatus(msg, type) {
     if (!_els.ttsStatus) return;
-    _els.ttsStatus.textContent  = msg;
-    _els.ttsStatus.className    = `tts-status tts-status--${type}`;
+    _els.ttsStatus.textContent = msg;
+    _els.ttsStatus.className   = `tts-status tts-status--${type}`;
 }
 
 function _setPlayBtn(enabled) {
@@ -343,48 +341,63 @@ function _formatTime(sec) {
 }
 
 // ─────────────────────────────────────────────
-// EVENTOS INTERNOS
+// EVENTOS
 // ─────────────────────────────────────────────
 function _bindEvents() {
-    _els.ttsPlayBtn  ?.addEventListener('click', startTTSPlayback);
-    _els.ttsPauseBtn ?.addEventListener('click', togglePauseTTS);
-    _els.ttsStopBtn  ?.addEventListener('click', stopTTS);
-    _els.ttsNextBtn  ?.addEventListener('click', playNextFragment);
+    _els.ttsPlayBtn    ?.addEventListener('click', startTTSPlayback);
+    _els.ttsPauseBtn   ?.addEventListener('click', togglePauseTTS);
+    _els.ttsStopBtn    ?.addEventListener('click', stopTTS);
+    _els.ttsNextBtn    ?.addEventListener('click', playNextFragment);
     _els.ttsSpeedSlider?.addEventListener('input', e => _applySpeed(e.target.value));
 
-    // Toggle género desde ajustes
     if (_els.ttsGenderToggle) {
         _els.ttsGenderToggle.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', () => {
-                setTTSGender(btn.dataset.value);
-            });
+            btn.addEventListener('click', () => setTTSGender(btn.dataset.value));
         });
     }
 }
 
 // ─────────────────────────────────────────────
-// CARGA DE PUTER.JS
+// CARGA PUTER.JS
 // ─────────────────────────────────────────────
 function _loadPuter() {
-    // Si ya está cargado globalmente
     if (window.puter) {
         _onPuterReady();
         return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://js.puter.com/v2/';
-    script.onload  = _onPuterReady;
-    script.onerror = _onPuterError;
+    // Esperar a que Puter cargue si ya hay un script en el HTML
+    const existing = document.querySelector('script[src*="puter.com"]');
+    if (existing) {
+        existing.addEventListener('load', _onPuterReady);
+        existing.addEventListener('error', _onPuterError);
+        return;
+    }
+
+    // Inyectar el script dinámicamente
+    const script    = document.createElement('script');
+    script.src      = 'https://js.puter.com/v2/';
+    script.onload   = _onPuterReady;
+    script.onerror  = _onPuterError;
     document.head.appendChild(script);
 }
 
 function _onPuterReady() {
-    _state.puterLoaded = true;
-    _setPlayBtn(true);
-    _setStatus('✅ Listo para reproducir', 'ready');
+    // Pequeño delay para asegurar que puter.ai está inicializado
+    setTimeout(() => {
+        if (window.puter && window.puter.ai) {
+            _state.puterLoaded = true;
+            _setPlayBtn(true);
+            _setStatus('✅ Listo para reproducir', 'ready');
+            console.log('[TTS] Puter.js cargado correctamente');
+        } else {
+            _setStatus('⚠️ Puter.js cargado pero sin módulo AI', 'warning');
+            console.warn('[TTS] window.puter.ai no disponible');
+        }
+    }, 500);
 }
 
 function _onPuterError() {
     _setStatus('❌ Error cargando Puter.js (¿Adblocker activo?)', 'error');
+    console.error('[TTS] No se pudo cargar Puter.js');
 }
