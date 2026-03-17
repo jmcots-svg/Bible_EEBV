@@ -16,7 +16,7 @@ import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, u
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
-import { initTTS, stopTTS } from './tts.js';
+import { initTTS, stopTTS, attachTTSButton } from './tts.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -484,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         updateCopyButtonVisibility();
+        attachTTSButton(verses);
     }
 
     // =====================
