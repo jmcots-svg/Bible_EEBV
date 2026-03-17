@@ -1,6 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
 const { GoogleGenAI } = require("@google/genai");
-const axios = require("axios");
 const pLimit = require("p-limit");
 require("dotenv").config();
 
@@ -9,423 +8,123 @@ require("dotenv").config();
 // ═══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-
-// CAMBIO 1: El idioma objetivo por defecto ahora es "ca" (Catalán)
 const TARGET_LANG = process.env.TARGET_LANG || "ca"; 
 
 const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
-  console.error("❌ Error: Faltan variables de entorno");
+  console.error("❌ Error: Faltan variables de entorno (Supabase o Gemini Keys)");
   process.exit(1);
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const NUM_PROJECTS = Math.floor(GEMINI_KEYS.length / 2) || GEMINI_KEYS.length;
-const PROJECTS = [];
-
-for (let i = 0; i < NUM_PROJECTS; i++) {
-  const projectKeys = [];
-  if (GEMINI_KEYS[i]) projectKeys.push(GEMINI_KEYS[i]);
-  if (GEMINI_KEYS[i + NUM_PROJECTS]) projectKeys.push(GEMINI_KEYS[i + NUM_PROJECTS]);
-  PROJECTS.push({ id: i + 1, keys: projectKeys, currentKeyIdx: 0 });
-}
-
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
-  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
-  { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
+  { name: 'gemini-1.5-flash', rpm: 15 },
+  { name: 'gemini-1.5-flash-8b', rpm: 15 } // Usamos ambos modelos gratuitos para duplicar la velocidad
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-// RATE LIMITER (Project-Aware)
+// SMART RATE LIMITER (Matemáticamente exacto)
 // ═══════════════════════════════════════════════════════════════════
-class ProjectAwareRateLimiter {
-  constructor(projects, models) {
-    this.projects = projects;
-    this.models = models;
-    this.projectStats = new Map();
-    
-    this.projects.forEach(p => {
-      const modelMap = new Map();
-      this.models.forEach(m => {
-        modelMap.set(m.name, {
-          requestTimestamps: [],
-          requestsToday: 0,
-          dayStart: Date.now(),
-          exhaustedUntil: 0
+class SmartRateLimiter {
+  constructor(keys, models) {
+    this.slots = [];
+    keys.forEach(key => {
+      models.forEach(model => {
+        this.slots.push({ 
+          key, 
+          model: model.name, 
+          rpm: model.rpm, 
+          history: [], 
+          exhaustedUntil: 0 
         });
       });
-      this.projectStats.set(p.id, modelMap);
     });
-    this.currentProjectIdx = 0;
   }
 
-  _isAvailable(projectId, model) {
-    const stats = this.projectStats.get(projectId).get(model.name);
+  getBestSlot() {
     const now = Date.now();
-    if (stats.exhaustedUntil > now) return false;
-    
-    const oneMinAgo = now - 60000;
-    stats.requestTimestamps = stats.requestTimestamps.filter(ts => ts > oneMinAgo);
-    
-    if (stats.requestTimestamps.length >= model.rpm - 1) return false;
-    if (now - stats.dayStart > 86400000) {
-      stats.requestsToday = 0;
-      stats.dayStart = now;
-    }
-    if (stats.requestsToday >= model.rpd - 1) return false;
-    return true;
-  }
+    let minWaitMs = Infinity;
 
-  _reserveFromProject(project, model) {
-    const stats = this.projectStats.get(project.id).get(model.name);
-    stats.requestTimestamps.push(Date.now());
-    stats.requestsToday++;
-    const key = project.keys[project.currentKeyIdx];
-    project.currentKeyIdx = (project.currentKeyIdx + 1) % project.keys.length;
-    return key;
-  }
+    for (const slot of this.slots) {
+      // Limpiar historial de peticiones de hace más de 60 segundos
+      slot.history = slot.history.filter(ts => now - ts < 60000);
 
-  getBestKeyAndModel() {
-    for (const model of this.models) {
-      for (let i = 0; i < this.projects.length; i++) {
-        const pIdx = (this.currentProjectIdx + i) % this.projects.length;
-        const project = this.projects[pIdx];
-        if (this._isAvailable(project.id, model)) {
-          this.currentProjectIdx = (pIdx + 1) % this.projects.length;
-          const key = this._reserveFromProject(project, model);
-          return { key, model: model.name, projectId: project.id, available: true };
-        }
+      // Si la clave/modelo está bloqueada por un error 429
+      if (slot.exhaustedUntil > now) {
+        const wait = slot.exhaustedUntil - now;
+        if (wait < minWaitMs) minWaitMs = wait;
+        continue;
+      }
+
+      // Si hay capacidad en este minuto
+      if (slot.history.length < slot.rpm) {
+        slot.history.push(now);
+        return { available: true, key: slot.key, model: slot.model, waitMs: 0 };
+      } else {
+        // Calcular cuánto falta exactamente para que la petición más antigua cumpla 60s
+        const wait = 60000 - (now - slot.history[0]);
+        if (wait < minWaitMs) minWaitMs = wait;
       }
     }
-    return { key: null, model: null, projectId: null, available: false };
+
+    // Si todo está lleno, devolvemos el tiempo de espera exacto hasta el próximo hueco
+    return { available: false, waitMs: minWaitMs === Infinity ? 5000 : minWaitMs };
   }
 
-  recordRateLimit(projectId, modelName) {
-    const stats = this.projectStats.get(projectId).get(modelName);
-    stats.exhaustedUntil = Date.now() + 65000;
+  markExhausted(key, model) {
+    const slot = this.slots.find(s => s.key === key && s.model === model);
+    if (slot) slot.exhaustedUntil = Date.now() + 61000; // Bloqueo de seguridad de 61 segundos
   }
 }
 
-const rateLimiter = new ProjectAwareRateLimiter(PROJECTS, MODELS);
+const rateLimiter = new SmartRateLimiter(GEMINI_KEYS, MODELS);
+
+const stats = { 'gemini-1.5-flash': 0, 'gemini-1.5-flash-8b': 0 };
 
 // ═══════════════════════════════════════════════════════════════════
-// ESTADÍSTICAS
-// ═══════════════════════════════════════════════════════════════════
-const stats = {
-  byModel: { 'gemini-3.1-flash-lite-preview': 0, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash': 0 },
-  google: 0,
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// GOOGLE TRANSLATE FALLBACK
-// ═══════════════════════════════════════════════════════════════════
-// CAMBIO 2: targetLang por defecto es "ca"
-async function translateWithGoogleTranslate(text, targetLang = "ca", retries = 3) {
-  if (!text || text.trim() === "") return text;
-  const textToTranslate = text.substring(0, 4500);
-
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(textToTranslate)}`;
-      const response = await axios.get(url, { timeout: 15000, headers: { "User-Agent": "Mozilla/5.0" } });
-      return response.data[0].map(item => item[0]).filter(Boolean).join("");
-    } catch (error) {
-      const isRateLimit = error.response?.status === 429;
-      if (isRateLimit && attempt < retries) {
-        const waitTime = 15000 * attempt;
-        console.log(`   ⏳ GT Rate limit, esperando ${waitTime / 1000}s...`);
-        await sleep(waitTime);
-      } else if (attempt === retries) {
-        return text;
-      }
-    }
-  }
-  return text;
-}
-
-async function translateBatchWithGoogleTranslate(entriesBatch, targetLang) {
-  const results = [];
-  for (const entry of entriesBatch) {
-    results.push({
-      id: entry.id, 
-      title: entry.title ? await translateWithGoogleTranslate(entry.title, targetLang) : "",
-      content: entry.content ? await translateWithGoogleTranslate(entry.content, targetLang) : "",
-      contentHtml: entry.contentHtml ? await translateWithGoogleTranslate(entry.contentHtml, targetLang) : ""
-    });
-    await sleep(400);
-  }
-  stats.google += entriesBatch.length;
-  return results;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR BATCH
+// TRADUCTOR GEMINI (Motor Principal)
 // ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
   const payload = entriesBatch.map(entry => ({
-    id: entry.id, title: entry.title || "", content: entry.content || "", contentHtml: entry.contentHtml || ""
+    id: entry.id, 
+    title: entry.title || "", 
+    content: entry.content || "", 
+    contentHtml: entry.contentHtml || ""
   }));
 
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
-  const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return only valid JSON array.`;
+  const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return ONLY a valid JSON array.`;
 
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    let keyInfo = rateLimiter.getBestKeyAndModel();
+  let attempts = 0;
+  while (attempts < 5) { 
+    const slot = rateLimiter.getBestSlot();
     
-    if (!keyInfo.available) {
-      if (keyInfo.waitMs > 0 && keyInfo.waitMs <= 15000) {
-        await sleep(keyInfo.waitMs);
-        keyInfo = rateLimiter.getBestKeyAndModel();
-      }
-    }
-    
-    if (!keyInfo.available || !keyInfo.key) {
-      return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
+    if (!slot.available) {
+      // Espera quirúrgica: solo duerme el tiempo exacto necesario
+      await sleep(slot.waitMs + 100); 
+      continue;
     }
 
     try {
-      const ai = new GoogleGenAI({ apiKey: keyInfo.key });
+      const ai = new GoogleGenAI({ apiKey: slot.key });
       const response = await ai.models.generateContent({
-        model: keyInfo.model,
+        model: slot.model,
         contents: JSON.stringify(payload),
-        config: { systemInstruction: systemPrompt, temperature: 0.1, responseMimeType: "application/json" },
-      });
-
-      let responseText = response.text.replace(/^```(?:json)?\n?/i, '').replace(/\n?```$/i, '').trim();
-      const translatedArray = JSON.parse(responseText);
-      
-      if (!Array.isArray(translatedArray) || translatedArray.length !== entriesBatch.length) throw new Error("Incompleto");
-
-      stats.byModel[keyInfo.model] += entriesBatch.length;
-      return translatedArray;
-
-    } catch (error) {
-      const isRateLimit = error.status === 429 || error.message?.includes('429') || error.message?.includes('EXHAUSTED');
-      
-      if (isRateLimit) {
-        rateLimiter.recordRateLimit(keyInfo.projectId, keyInfo.model);
-        await sleep(2000);
-        continue;
-      }
-      
-      return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
-    }
-  }
-  
-  return await translateBatchWithGoogleTranslate(entriesBatch, TARGET_LANG);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// BATCHING
-// ═══════════════════════════════════════════════════════════════════
-function createOptimizedBatches(entries) {
-  const MAX_CHARS = 12000;
-  const MAX_ENTRIES = 8;
-  const batches = [];
-  let currentBatch = [], currentChars = 0;
-
-  for (const entry of entries) {
-    const len = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
-    if ((currentChars + len > MAX_CHARS || currentBatch.length >= MAX_ENTRIES) && currentBatch.length > 0) {
-      batches.push(currentBatch);
-      currentBatch = [];
-      currentChars = 0;
-    }
-    currentBatch.push(entry);
-    currentChars += len;
-  }
-  if (currentBatch.length > 0) batches.push(currentBatch);
-  return batches;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// 🔧 OBTENER ENTRADAS CON PAGINACIÓN PEQUEÑA + RETRY
-// ═══════════════════════════════════════════════════════════════════
-async function getAllEntriesOptimized(lang, pageSize = 100) {
-  let allEntries = [];
-  let page = 0;
-  let lastBatchSize = pageSize;
-  let consecutiveErrors = 0;
-
-  console.log(`\n📥 Obteniendo comentarios en "${lang}"...`);
-
-  while (lastBatchSize === pageSize && consecutiveErrors < 3) {
-    try {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
-
-      console.log(`   📄 Página ${page + 1} (${from}-${to})...`);
-
-      const { data, error } = await supabase
-        .from("CommentaryEntry")
-        .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume, createdAt", { count: "exact" })
-        .eq("language", lang)
-        .order("id", { ascending: true })
-        .range(from, to);
-
-      if (error) {
-        consecutiveErrors++;
-        console.error(`❌ Error en página ${page} (intento ${consecutiveErrors}):`, error.message);
-        
-        if (consecutiveErrors >= 3) {
-          throw new Error(`Demasiados errores consecutivos en ${lang}`);
-        }
-        
-        await sleep(5000 * consecutiveErrors);
-        continue;
-      }
-
-      consecutiveErrors = 0; 
-      
-      if (!data) {
-        console.log(`⚠️  Sin datos en página ${page}`);
-        break;
-      }
-
-      lastBatchSize = data.length;
-      allEntries = allEntries.concat(data);
-
-      console.log(`   ✅ Obtenidos ${data.length} (Total: ${allEntries.length})`);
-
-      await sleep(200); 
-      page++;
-
-    } catch (error) {
-      console.error(`❌ Fallo crítico en ${lang} página ${page}:`, error.message);
-      throw error;
-    }
-  }
-
-  console.log(`✅ TOTAL "${lang}": ${allEntries.length}\n`);
-  return allEntries;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// PROCESADOR DE LOTES
-// ═══════════════════════════════════════════════════════════════════
-async function processAllBatches(batches, totalEntries) {
-  const limit = pLimit(5);
-  
-  let processed = 0, dbBuffer = [];
-  const startTime = Date.now();
-
-  const processBatch = async (batchEn, index) => {
-    if (index < 5) await sleep(index * 1500); 
-    else await sleep(500 + Math.random() * 500);
-
-    const translatedBatch = await translateBatchOptimized(batchEn);
-    
-    if (translatedBatch?.length > 0) {
-      translatedBatch.forEach(transItem => {
-        const orig = batchEn.find(e => e.id === transItem.id);
-        if (orig) {
-          dbBuffer.push({
-            sourceId: orig.sourceId, 
-            language: TARGET_LANG, 
-            bookAbbr: orig.bookAbbr,
-            bookOrder: orig.bookOrder, 
-            chapter: orig.chapter, 
-            verseStart: orig.verseStart,
-            verseEnd: orig.verseEnd, 
-            title: transItem.title || null,
-            content: transItem.content || orig.content, 
-            contentHtml: transItem.contentHtml || null,
-            divId: orig.divId, 
-            sectionType: orig.sectionType, 
-            volume: orig.volume
-          });
-          processed++;
+        config: {
+          systemInstruction: systemPrompt,
+          temperature: 0.1,
+          responseMimeType: "application/json"
         }
       });
-    }
 
-    if (processed % 100 < 10) {
-      const elapsed = (Date.now() - startTime) / 1000 / 60;
-      const rate = processed / elapsed;
-      const eta = (totalEntries - processed) / rate;
-      console.log(`\n📊 ${processed}/${totalEntries} | ${rate.toFixed(0)}/min | ETA: ${eta.toFixed(0)}min`);
-      console.log(`   📈 3.1: ${stats.byModel['gemini-3.1-flash-lite-preview']} | 2.5L: ${stats.byModel['gemini-2.5-flash-lite']} | 2.5: ${stats.byModel['gemini-2.5-flash']} | 🌐: ${stats.google}`);
-    }
+      // Limpieza robusta por si Gemini añade formato Markdown
+      let responseText = response.text || "";
+      responseText = responseText.replace(/^
+http://googleusercontent.com/immersive_entry_chip/0
 
-    if (dbBuffer.length >= 100) {
-      const toInsert = dbBuffer.splice(0, 100);
-      try {
-        const { error } = await supabase.from("CommentaryEntry").insert(toInsert);
-        if (error) {
-          console.error(`❌ Error guardando: ${error.message}`);
-        } else {
-          console.log(`   💾 Guardados ${toInsert.length}`);
-        }
-      } catch (err) {
-        console.error(`❌ Error en insert:`, err.message);
-      }
-    }
-  };
+Con estos cambios, el script exprime al máximo cada clave sin colisionar con Google y mantiene la base de datos limpia de errores de inserción concurrente.
 
-  await Promise.all(batches.map((b, idx) => limit(() => processBatch(b, idx))));
-
-  if (dbBuffer.length > 0) {
-    try {
-      const { error } = await supabase.from("CommentaryEntry").insert(dbBuffer);
-      if (!error) console.log(`   💾 Guardados finales ${dbBuffer.length}`);
-    } catch (err) {
-      console.error(`❌ Error en guardado final:`, err.message);
-    }
-  }
-
-  return processed;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MAIN ✨
-// ═══════════════════════════════════════════════════════════════════
-async function main() {
-  console.log(`
-╔═══════════════════════════════════════════════════════════════════════════╗
-║  🚀 TRADUCTOR v6 "A TODA MÁQUINA" (Prioridad Velocidad)                   ║
-║  EN → ${TARGET_LANG.toUpperCase()}                                                                ║
-╚═══════════════════════════════════════════════════════════════════════════╝
-`);
-
-  const startTime = Date.now();
-
-  try {
-    const [enEntries, targetEntries] = await Promise.all([
-      getAllEntriesOptimized("en"),
-      getAllEntriesOptimized(TARGET_LANG)
-    ]);
-
-    const existingSet = new Set(
-      targetEntries.map(e => `${e.sourceId}|${e.divId}`)
-    );
-
-    console.log(`\n📊 ANÁLISIS:`);
-    console.log(`   📝 Comentarios EN: ${enEntries.length}`);
-    console.log(`   ✅ Comentarios ${TARGET_LANG}: ${targetEntries.length}`);
-
-    const pendingEntries = enEntries.filter(
-      e => !existingSet.has(`${e.sourceId}|${e.divId}`)
-    );
-
-    console.log(`   ⏳ PENDIENTES: ${pendingEntries.length}\n`);
-
-    if (pendingEntries.length === 0) { 
-      console.log("✅ ¡Todo traducido!");
-      return; 
-    }
-
-    const batches = createOptimizedBatches(pendingEntries);
-    await processAllBatches(batches, pendingEntries.length);
-    
-    console.log(`\n✅ COMPLETADO en ${((Date.now() - startTime) / 1000 / 60).toFixed(1)} min`);
-  } catch (error) { 
-    console.error(`\n❌ Error: ${error.message}`);
-    process.exit(1);
-  }
-}
-
-main();
+¿Quieres que hagamos alguna prueba con un idioma en concreto o te preparo las instrucciones para desplegarlo?
