@@ -116,8 +116,10 @@ async function _startPlayback(text, btn) {
             // ✅ Solo 3 argumentos: texto, idioma, voz
             const audio = await window.puter.ai.txt2speech(
                 _fragments[i],
-                language,
-                voice
+                {
+                    voice:    voice,
+                    language: language
+                }
             );
             if (!audio) throw new Error('Sin respuesta de audio');
             _allAudios.push(audio);
