@@ -55,6 +55,9 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
   const path = url.pathname;
 
+  // =====================================================
+  // Health check
+  // =====================================================
   if (path === "/" || path === "/health") {
     return new Response(JSON.stringify({ status: "ok" }), {
       headers: makeHeaders("no-store"),
@@ -62,6 +65,126 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // =====================================================
+    // /api/cache/force-refresh - LIMPIEZA DE CACHÉ
+    // =====================================================
+    if (path === "/api/cache/force-refresh") {
+      const token = url.searchParams.get("token");
+      const SECRET = Deno.env.get("CACHE_SECRET");
+
+      console.log("[Cache] Token recibido:", token ? "***" : "null");
+      console.log("[Cache] Secret configurado:", SECRET ? "***" : "NO CONFIGURADO");
+
+      if (!SECRET) {
+        return new Response(JSON.stringify({ 
+          error: "CACHE_SECRET no configurado en el servidor" 
+        }), {
+          status: 500,
+          headers: makeHeaders("no-store"),
+        });
+      }
+
+      if (token !== SECRET) {
+        return new Response(JSON.stringify({ error: "No autorizado" }), {
+          status: 401,
+          headers: makeHeaders("no-store"),
+        });
+      }
+
+      // 1. Limpiar TODA la memoria
+      const memKeysCount = Object.keys(serverCache).length;
+      Object.keys(serverCache).forEach((k) => delete serverCache[k]);
+
+      // 2. Limpiar TODAS las claves de Deno KV
+      const deletedKeys: string[] = [];
+      for await (const entry of kv.list({ prefix: [] })) {
+        await kv.delete(entry.key);
+        deletedKeys.push(JSON.stringify(entry.key));
+      }
+
+      // 3. Obtener datos frescos de DB
+      const { rows: versions } = await pool.query(
+        `SELECT id, name, "fullName", language 
+         FROM "BibleVersion" 
+         ORDER BY language ASC, id ASC`
+      );
+
+      // 4. Pre-popular ambas cachés con datos correctos
+      setCache("versions", versions);
+      await kvSet(["versions"], versions, TTL_1D_MS);
+
+      // También pre-popular los libros de cada versión
+      for (const v of versions) {
+        const { rows: books } = await pool.query(
+          `SELECT b.id, b.name, b.testament, b."bookOrder"
+           FROM "Book" b
+           JOIN "BibleVersion" bv ON b."versionId" = bv.id
+           WHERE bv.name = \$1
+           ORDER BY b."bookOrder" ASC`,
+          [v.name]
+        );
+        
+        setCache("books-" + v.name, books);
+        await kvSet(["books", v.name], books, TTL_1D_MS);
+      }
+
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          deletedMemoryKeys: memKeysCount,
+          deletedKvKeys: deletedKeys.length,
+          refreshedVersions: versions.map((v: any) => v.name),
+          kjvPresent: versions.some((v: any) => v.name === "KJV"),
+        }, null, 2),
+        { headers: makeHeaders("no-store") }
+      );
+    }
+
+    // =====================================================
+    // /api/debug/versions - DIAGNÓSTICO
+    // =====================================================
+    if (path === "/api/debug/versions") {
+      const memVersions = getCached("versions");
+      const kvVersions = await kvGet<any[]>(["versions"]);
+      
+      const { rows: dbVersions } = await pool.query(
+        `SELECT id, name, "fullName", language 
+         FROM "BibleVersion" 
+         ORDER BY language ASC, id ASC`
+      );
+
+      const getNames = (arr: any[] | null) => arr?.map((v: any) => v.name) ?? null;
+
+      return new Response(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        sources: {
+          memory: {
+            data: getNames(memVersions),
+            hasKJV: memVersions?.some((v: any) => v.name === "KJV") ?? false,
+            count: memVersions?.length ?? 0,
+          },
+          kv: {
+            data: getNames(kvVersions),
+            hasKJV: kvVersions?.some((v: any) => v.name === "KJV") ?? false,
+            count: kvVersions?.length ?? 0,
+          },
+          database: {
+            data: getNames(dbVersions),
+            hasKJV: dbVersions.some((v: any) => v.name === "KJV"),
+            count: dbVersions.length,
+          },
+        },
+        diagnosis: !dbVersions.some((v: any) => v.name === "KJV")
+          ? "❌ KJV NO está en la base de datos"
+          : kvVersions && !kvVersions.some((v: any) => v.name === "KJV")
+          ? "⚠️ KJV está en DB pero NO en Deno KV (caché corrupta)"
+          : memVersions && !memVersions.some((v: any) => v.name === "KJV")
+          ? "⚠️ KJV está en DB y KV pero NO en memoria"
+          : "✅ KJV presente en todas las capas",
+      }, null, 2), {
+        headers: makeHeaders("no-store"),
+      });
+    }
 
     // =====================================================
     // /api/versions
@@ -87,7 +210,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        "SELECT id, name, \"fullName\", language FROM \"BibleVersion\" ORDER BY language ASC, id ASC"
+        `SELECT id, name, "fullName", language FROM "BibleVersion" ORDER BY language ASC, id ASC`
       );
 
       setCache(memKey, rows);
@@ -124,11 +247,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        "SELECT b.id, b.name, b.testament, b.\"bookOrder\""
-        + " FROM \"Book\" b"
-        + " JOIN \"BibleVersion\" v ON b.\"versionId\" = v.id"
-        + " WHERE v.name = \$1"
-        + " ORDER BY b.\"bookOrder\" ASC",
+        `SELECT b.id, b.name, b.testament, b."bookOrder"
+         FROM "Book" b
+         JOIN "BibleVersion" v ON b."versionId" = v.id
+         WHERE v.name = \$1
+         ORDER BY b."bookOrder" ASC`,
         [version]
       );
 
@@ -153,7 +276,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        "SELECT id, number FROM \"Chapter\" WHERE \"bookId\" = \$1 ORDER BY number ASC",
+        `SELECT id, number FROM "Chapter" WHERE "bookId" = \$1 ORDER BY number ASC`,
         [bookId]
       );
 
@@ -176,15 +299,15 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      let query = "SELECT number, text FROM \"Verse\" WHERE \"chapterId\" = \$1";
+      let query = `SELECT number, text FROM "Verse" WHERE "chapterId" = \$1`;
       const params: any[] = [chId];
 
       if (vNum) {
-        query += " AND number = \$2";
+        query += ` AND number = \$2`;
         params.push(Number(vNum));
       }
 
-      query += " ORDER BY number ASC";
+      query += ` ORDER BY number ASC`;
 
       const { rows } = await pool.query(query, params);
 
@@ -209,14 +332,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        "SELECT v.text, bv.name as version, b.name as bookName"
-        + " FROM \"Verse\" v"
-        + " JOIN \"Chapter\" c ON v.\"chapterId\" = c.id"
-        + " JOIN \"Book\" b ON c.\"bookId\" = b.id"
-        + " JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id"
-        + " WHERE v.number = \$1"
-        + " AND c.number = \$2"
-        + " AND b.\"bookOrder\" = \$3",
+        `SELECT v.text, bv.name as version, b.name as bookName
+         FROM "Verse" v
+         JOIN "Chapter" c ON v."chapterId" = c.id
+         JOIN "Book" b ON c."bookId" = b.id
+         JOIN "BibleVersion" bv ON b."versionId" = bv.id
+         WHERE v.number = \$1
+         AND c.number = \$2
+         AND b."bookOrder" = \$3`,
         [verse, chapter, bookOrder]
       );
 
@@ -234,8 +357,6 @@ Deno.serve(async (req: Request) => {
       const testament = url.searchParams.get("testament") || "ALL";
       const exact = url.searchParams.get("exact") === "true";
 
-      console.log("[API Search] query:", queryText, "version:", version, "testament:", testament, "exact:", exact);
-
       const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
       const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
       const offset = (page - 1) * limit;
@@ -252,30 +373,32 @@ Deno.serve(async (req: Request) => {
 
       let testamentFilter = "";
       if (testament !== "ALL") {
-        testamentFilter = " AND b.\"testament\" = $" + paramIndex;
+        testamentFilter = ` AND b."testament" = 
+$$
+{paramIndex}`;
         params.push(testament);
         paramIndex++;
       }
 
       const searchFilter = exact
-        ? " AND unaccent(lower(v.\"text\")) ~* ('\\m' || unaccent(lower(\$2)) || '\\M')"
-        : " AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'";
+        ? ` AND unaccent(lower(v."text")) ~* ('\\m' || unaccent(lower($2)) || '\\M')`
+        : ` AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'`;
 
-      const baseFrom = "FROM \"Verse\" v "
-        + "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id "
-        + "JOIN \"Book\" b ON c.\"bookId\" = b.id "
-        + "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id "
-        + "WHERE bv.name = \$1"
-        + searchFilter
-        + testamentFilter;
+      const baseFrom = `FROM "Verse" v 
+        JOIN "Chapter" c ON v."chapterId" = c.id 
+        JOIN "Book" b ON c."bookId" = b.id 
+        JOIN "BibleVersion" bv ON b."versionId" = bv.id 
+        WHERE bv.name = $1${searchFilter}${testamentFilter}`;
 
-      const countSql = "SELECT COUNT(*) as total " + baseFrom;
+      const countSql = `SELECT COUNT(*) as total ${baseFrom}`;
 
-      const dataSql = "SELECT v.\"number\" AS verse, v.\"text\" AS text, c.\"number\" AS chapter, "
-        + "b.\"name\" AS book, b.\"testament\", b.\"bookOrder\" "
-        + baseFrom
-        + " ORDER BY b.\"bookOrder\", c.\"number\", v.\"number\""
-        + " LIMIT $" + paramIndex + " OFFSET $" + (paramIndex + 1);
+      const dataSql = `SELECT v."number" AS verse, v."text" AS text, c."number" AS chapter, 
+        b."name" AS book, b."testament", b."bookOrder" 
+        ${baseFrom}
+        ORDER BY b."bookOrder", c."number", v."number"
+        LIMIT
+$$
+{paramIndex} OFFSET $${paramIndex + 1}`;
 
       params.push(limit, offset);
 
@@ -302,67 +425,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-// =====================================================
-// /api/cache/force-refresh - SOLUCIÓN DEFINITIVA
-// =====================================================
-if (path === "/api/cache/force-refresh") {
-  const token = url.searchParams.get("token");
-  const SECRET = Deno.env.get("CACHE_SECRET");
-
-  if (token !== SECRET) {
-    return new Response(JSON.stringify({ error: "No autorizado" }), {
-      status: 401,
-      headers: makeHeaders("no-store"),
-    });
-  }
-
-  // 1. Limpiar TODA la memoria
-  Object.keys(serverCache).forEach((k) => delete serverCache[k]);
-
-  // 2. Limpiar TODAS las claves de Deno KV
-  const deletedKeys: string[] = [];
-  for await (const entry of kv.list({ prefix: [] })) {
-    await kv.delete(entry.key);
-    deletedKeys.push(JSON.stringify(entry.key));
-  }
-
-  // 3. Obtener datos frescos de DB
-  const { rows: versions } = await pool.query(
-    `SELECT id, name, "fullName", language 
-     FROM "BibleVersion" 
-     ORDER BY language ASC, id ASC`
-  );
-
-  // 4. Pre-popular ambas cachés con datos correctos
-  setCache("versions", versions);
-  await kvSet(["versions"], versions, TTL_1D_MS);
-
-  // También pre-popular los libros de cada versión
-  for (const v of versions) {
-    const { rows: books } = await pool.query(
-      `SELECT b.id, b.name, b.testament, b."bookOrder"
-       FROM "Book" b
-       JOIN "BibleVersion" bv ON b."versionId" = bv.id
-       WHERE bv.name = \$1
-       ORDER BY b."bookOrder" ASC`,
-      [v.name]
-    );
-    
-    setCache("books-" + v.name, books);
-    await kvSet(["books", v.name], books, TTL_1D_MS);
-  }
-
-  return new Response(
-    JSON.stringify({
-      ok: true,
-      deletedKvKeys: deletedKeys.length,
-      refreshedVersions: versions.map((v: any) => v.name),
-      kjvPresent: versions.some((v: any) => v.name === "KJV"),
-    }, null, 2),
-    { headers: makeHeaders("no-store") }
-  );
-}
-
     // =====================================================
     // /api/versions/strongs
     // =====================================================
@@ -376,7 +438,7 @@ if (path === "/api/cache/force-refresh") {
       }
 
       const { rows } = await pool.query(
-        "SELECT id, name, \"fullName\", language FROM \"BibleVersion\" WHERE \"hasStrongs\" = true ORDER BY id ASC"
+        `SELECT id, name, "fullName", language FROM "BibleVersion" WHERE "hasStrongs" = true ORDER BY id ASC`
       );
 
       setCache(memKey, rows);
@@ -398,11 +460,11 @@ if (path === "/api/cache/force-refresh") {
       }
 
       const { rows } = await pool.query(
-        "SELECT v.number AS \"verseNumber\", w.text, w.strong, w.position"
-        + " FROM \"Word\" w"
-        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
-        + " WHERE v.\"chapterId\" = \$1"
-        + " ORDER BY v.number ASC, w.position ASC",
+        `SELECT v.number AS "verseNumber", w.text, w.strong, w.position
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE v."chapterId" = \$1
+         ORDER BY v.number ASC, w.position ASC`,
         [chId]
       );
 
@@ -446,26 +508,26 @@ if (path === "/api/cache/force-refresh") {
       const offset = (page - 1) * limit;
 
       const { rows: countRows } = await pool.query(
-        "SELECT COUNT(DISTINCT v.id) AS total"
-        + " FROM \"Word\" w"
-        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
-        + " WHERE w.strong = \$1",
+        `SELECT COUNT(DISTINCT v.id) AS total
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         WHERE w.strong = \$1`,
         [strong]
       );
       const total = parseInt(countRows[0].total);
 
       const { rows } = await pool.query(
-        "SELECT b.name AS book, b.\"bookOrder\", b.testament,"
-        + " c.number AS chapter, v.number AS verse, v.text,"
-        + " ARRAY_AGG(DISTINCT w.text) AS matched_words"
-        + " FROM \"Word\" w"
-        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
-        + " JOIN \"Chapter\" c ON v.\"chapterId\" = c.id"
-        + " JOIN \"Book\" b ON c.\"bookId\" = b.id"
-        + " WHERE w.strong = \$1"
-        + " GROUP BY b.id, c.id, v.id, b.name, b.\"bookOrder\", b.testament, c.number, v.number, v.text"
-        + " ORDER BY b.\"bookOrder\", c.number, v.number"
-        + " LIMIT \$2 OFFSET \$3",
+        `SELECT b.name AS book, b."bookOrder", b.testament,
+         c.number AS chapter, v.number AS verse, v.text,
+         ARRAY_AGG(DISTINCT w.text) AS matched_words
+         FROM "Word" w
+         JOIN "Verse" v ON w."verseId" = v.id
+         JOIN "Chapter" c ON v."chapterId" = c.id
+         JOIN "Book" b ON c."bookId" = b.id
+         WHERE w.strong = \$1
+         GROUP BY b.id, c.id, v.id, b.name, b."bookOrder", b.testament, c.number, v.number, v.text
+         ORDER BY b."bookOrder", c.number, v.number
+         LIMIT \$2 OFFSET \$3`,
         [strong, limit, offset]
       );
 
@@ -496,7 +558,7 @@ if (path === "/api/cache/force-refresh") {
 
       if (!availableLangs) {
         const { rows } = await pool.query(
-          "SELECT DISTINCT \"definitionLang\" FROM \"StrongEntry\""
+          `SELECT DISTINCT "definitionLang" FROM "StrongEntry"`
         );
         availableLangs = rows.map((r: any) => r.definitionLang);
         setCache(langsMemKey, availableLangs);
@@ -520,11 +582,11 @@ if (path === "/api/cache/force-refresh") {
       }
 
       const { rows: entryRows } = await pool.query(
-        "SELECT strong, language, \"definitionLang\", lemma, translit, pronunciation,"
-        + " morphology, \"speechLang\", definition, exegesis,"
-        + " explanation, \"kjvDefinition\", \"strongsDef\", \"strongsDerivation\""
-        + " FROM \"StrongEntry\""
-        + " WHERE strong = \$1 AND \"definitionLang\" = \$2",
+        `SELECT strong, language, "definitionLang", lemma, translit, pronunciation,
+         morphology, "speechLang", definition, exegesis,
+         explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
+         FROM "StrongEntry"
+         WHERE strong = \$1 AND "definitionLang" = \$2`,
         [code, defLang]
       );
 
@@ -532,14 +594,12 @@ if (path === "/api/cache/force-refresh") {
       let usedLang = defLang;
 
       if (!entry && defLang !== "en") {
-        console.log("[Strong] " + code + ": \"" + defLang + "\" no encontrado, fallback a inglés");
-
         const { rows: enRows } = await pool.query(
-          "SELECT strong, language, \"definitionLang\", lemma, translit, pronunciation,"
-          + " morphology, \"speechLang\", definition, exegesis,"
-          + " explanation, \"kjvDefinition\", \"strongsDef\", \"strongsDerivation\""
-          + " FROM \"StrongEntry\""
-          + " WHERE strong = \$1 AND \"definitionLang\" = 'en'",
+          `SELECT strong, language, "definitionLang", lemma, translit, pronunciation,
+           morphology, "speechLang", definition, exegesis,
+           explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
+           FROM "StrongEntry"
+           WHERE strong = \$1 AND "definitionLang" = 'en'`,
           [code]
         );
 
@@ -555,17 +615,17 @@ if (path === "/api/cache/force-refresh") {
       }
 
       const { rows: relRows } = await pool.query(
-        "SELECT sr.\"toStrong\", sr.\"relationType\","
-        + " se.lemma AS \"toLemma\","
-        + " se.translit AS \"toTranslit\","
-        + " se.\"kjvDefinition\" AS \"toKjvDefinition\""
-        + " FROM \"StrongRelation\" sr"
-        + " LEFT JOIN \"StrongEntry\" se"
-        + "   ON sr.\"toStrong\" = se.strong"
-        + "   AND se.\"definitionLang\" = \$2"
-        + " WHERE sr.\"fromStrong\" = \$1"
-        + "   AND sr.\"fromDefLang\" = \$2"
-        + " ORDER BY sr.\"relationType\", sr.\"toStrong\"",
+        `SELECT sr."toStrong", sr."relationType",
+         se.lemma AS "toLemma",
+         se.translit AS "toTranslit",
+         se."kjvDefinition" AS "toKjvDefinition"
+         FROM "StrongRelation" sr
+         LEFT JOIN "StrongEntry" se
+           ON sr."toStrong" = se.strong
+           AND se."definitionLang" = \$2
+         WHERE sr."fromStrong" = \$1
+           AND sr."fromDefLang" = \$2
+         ORDER BY sr."relationType", sr."toStrong"`,
         [code, usedLang]
       );
 
@@ -607,55 +667,9 @@ if (path === "/api/cache/force-refresh") {
     }
 
     // =====================================================
-// /api/debug/versions - TEMPORAL PARA DIAGNÓSTICO
-// =====================================================
-if (path === "/api/debug/versions") {
-  const memVersions = getCached("versions");
-  const kvVersions = await kvGet<any[]>(["versions"]);
-  
-  const { rows: dbVersions } = await pool.query(
-    `SELECT id, name, "fullName", language 
-     FROM "BibleVersion" 
-     ORDER BY language ASC, id ASC`
-  );
-
-  const getNames = (arr: any[] | null) => arr?.map((v: any) => v.name) ?? null;
-
-  return new Response(JSON.stringify({
-    timestamp: new Date().toISOString(),
-    sources: {
-      memory: {
-        data: getNames(memVersions),
-        hasKJV: memVersions?.some((v: any) => v.name === "KJV") ?? false,
-        count: memVersions?.length ?? 0,
-      },
-      kv: {
-        data: getNames(kvVersions),
-        hasKJV: kvVersions?.some((v: any) => v.name === "KJV") ?? false,
-        count: kvVersions?.length ?? 0,
-      },
-      database: {
-        data: getNames(dbVersions),
-        hasKJV: dbVersions.some((v: any) => v.name === "KJV"),
-        count: dbVersions.length,
-      },
-    },
-    diagnosis: !dbVersions.some((v: any) => v.name === "KJV")
-      ? "❌ KJV NO está en la base de datos"
-      : kvVersions && !kvVersions.some((v: any) => v.name === "KJV")
-      ? "⚠️ KJV está en DB pero NO en Deno KV (caché corrupta)"
-      : memVersions && !memVersions.some((v: any) => v.name === "KJV")
-      ? "⚠️ KJV está en DB y KV pero NO en memoria"
-      : "✅ KJV presente en todas las capas",
-  }, null, 2), {
-    headers: makeHeaders("no-store"),
-  });
-}
-
-    // =====================================================
     // 404
     // =====================================================
-    return new Response(JSON.stringify({ error: "404" }), {
+    return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404,
       headers: makeHeaders("no-store"),
     });
