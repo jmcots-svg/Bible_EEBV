@@ -239,7 +239,7 @@ Deno.serve(async (req: Request) => {
       const testament = url.searchParams.get("testament") || "ALL";
       const exact = url.searchParams.get("exact") === "true";
 
-      console.log(`[API Search] query: "${queryText}", version: "${version}", testament: "${testament}", exact: ${exact}`);
+      console.log("[API Search] query:", queryText, "version:", version, "testament:", testament, "exact:", exact);
 
       const page = Math.max(1, Number(url.searchParams.get("page")) || 1);
       const limit = Math.min(50, Math.max(1, Number(url.searchParams.get("limit")) || 20));
@@ -257,38 +257,30 @@ Deno.serve(async (req: Request) => {
 
       let testamentFilter = "";
       if (testament !== "ALL") {
-        testamentFilter = ` AND b."testament" = 
-$$
-{paramIndex}`;
+        testamentFilter = " AND b.\"testament\" = $" + paramIndex;
         params.push(testament);
         paramIndex++;
       }
 
       const searchFilter = exact
-        ? `AND unaccent(lower(v."text")) ~* ('\\m' || unaccent(lower($2)) || '\\M')`
-        : `AND unaccent(lower(v."text")) LIKE '%' || unaccent(lower($2)) || '%'`;
+        ? " AND unaccent(lower(v.\"text\")) ~* ('\\m' || unaccent(lower(\$2)) || '\\M')"
+        : " AND unaccent(lower(v.\"text\")) LIKE '%' || unaccent(lower(\$2)) || '%'";
 
-      const baseFrom =
-        `FROM "Verse" v ` +
-        `JOIN "Chapter" c ON v."chapterId" = c.id ` +
-        `JOIN "Book" b ON c."bookId" = b.id ` +
-        `JOIN "BibleVersion" bv ON b."versionId" = bv.id ` +
-        `WHERE bv.name = $1 ` +
-        searchFilter +
-        testamentFilter;
+      const baseFrom = "FROM \"Verse\" v "
+        + "JOIN \"Chapter\" c ON v.\"chapterId\" = c.id "
+        + "JOIN \"Book\" b ON c.\"bookId\" = b.id "
+        + "JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id "
+        + "WHERE bv.name = \$1"
+        + searchFilter
+        + testamentFilter;
 
-      const countSql = `SELECT COUNT(*) as total ` + baseFrom;
+      const countSql = "SELECT COUNT(*) as total " + baseFrom;
 
-      const dataSql =
-        `SELECT v."number" AS verse, v."text" AS text, c."number" AS chapter, ` +
-        `b."name" AS book, b."testament", b."bookOrder" ` +
-        baseFrom +
-        ` ORDER BY b."bookOrder", c."number", v."number"` +
-        ` LIMIT
-$$
-{paramIndex} OFFSET 
-$$
-{paramIndex + 1}`;
+      const dataSql = "SELECT v.\"number\" AS verse, v.\"text\" AS text, c.\"number\" AS chapter, "
+        + "b.\"name\" AS book, b.\"testament\", b.\"bookOrder\" "
+        + baseFrom
+        + " ORDER BY b.\"bookOrder\", c.\"number\", v.\"number\""
+        + " LIMIT $" + paramIndex + " OFFSET $" + (paramIndex + 1);
 
       params.push(limit, offset);
 
