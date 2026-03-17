@@ -9,14 +9,14 @@ const LANG_MAP = {
 };
 
 const VOICES_DATA = [
-    { name: 'Arlet',    lang: 'ca-ES', gender: 'female' },
-    { name: 'Conchita', lang: 'es-ES', gender: 'female' },
-    { name: 'Lucia',    lang: 'es-ES', gender: 'female' },
-    { name: 'Enrique',  lang: 'es-ES', gender: 'male'   },
-    { name: 'Sergio',   lang: 'es-ES', gender: 'male'   },
-    { name: 'Joanna',   lang: 'en-US', gender: 'female' },
-    { name: 'Matthew',  lang: 'en-US', gender: 'male'   },
-    { name: 'Joey',     lang: 'en-US', gender: 'male'   },
+    // Catalán
+    { name: 'Arlet',   lang: 'ca-ES', gender: 'female', engine: 'neural'   },
+    // Español
+    { name: 'Lucia',   lang: 'es-ES', gender: 'female', engine: 'neural'   },
+    { name: 'Sergioa<2', lang: 'es-ES', gender: 'male',   engine: 'neural' },
+    // Inglés
+    { name: 'Joanna',  lang: 'en-US', gender: 'female', engine: 'neural'   },
+    { name: 'Matthew', lang: 'en-US', gender: 'male',   engine: 'neural'   },
 ];
 
 const MAX_CHARS = 3000;
@@ -124,18 +124,19 @@ async function _startPlayback(text, btn) {
     _fragIndex  = 0;
 
     const language = _getLang();
-    const voice    = _getVoice(language);
+    const voiceData = _getVoice(language); 
+
+    console.log('[TTS] Lang:', language, '| Voz:', voiceData.name, '| Motor:', voiceData.engine);
 
     _setBtnState(btn, 'loading');
 
     try {
-        // Generar todos los fragmentos
         for (let i = 0; i < _fragments.length; i++) {
-            _setBtnState(btn, 'loading');
             const audio = await window.puter.ai.txt2speech(
                 _fragments[i],
                 language,
-                voice
+                voiceData.name,
+                voiceData.engine    // ← motor específico de cada voz
             );
             if (!audio) throw new Error('Sin respuesta de audio');
             _allAudios.push(audio);
@@ -145,9 +146,9 @@ async function _startPlayback(text, btn) {
         _playFragment(0, btn);
 
     } catch (err) {
-        console.error('[TTS] Error:', err);
+        console.error('[TTS] Error completo:', err);
         _setBtnState(btn, 'error');
-        btn.title = `Error: ${err.message}`;
+        btn.title = `Error: ${err.message || JSON.stringify(err)}`;
         setTimeout(() => {
             if (btn) {
                 _setBtnState(btn, 'idle');
@@ -239,10 +240,14 @@ function _getLang() {
 
 function _getVoice(lang) {
     const candidates = VOICES_DATA.filter(v => v.lang === lang && v.gender === _gender);
-    if (candidates.length) return candidates[0].name;
+    if (candidates.length) return candidates[0];
+
+    // Fallback: mismo idioma, cualquier género
     const fallback = VOICES_DATA.filter(v => v.lang === lang);
-    if (fallback.length) return fallback[0].name;
-    return 'Lucia';
+    if (fallback.length) return fallback[0];
+
+    // Fallback final
+    return { name: 'Sergio', lang: 'es-ES', gender: 'female', engine: 'neural' };
 }
 
 function _splitText(text) {
