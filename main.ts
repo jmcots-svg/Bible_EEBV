@@ -87,9 +87,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT id, name, "fullName", language
-         FROM "BibleVersion"
-         ORDER BY language ASC, id ASC`
+        "SELECT id, name, \"fullName\", language FROM \"BibleVersion\" ORDER BY language ASC, id ASC"
       );
 
       setCache(memKey, rows);
@@ -107,7 +105,7 @@ Deno.serve(async (req: Request) => {
       const cacheControl = "public, max-age=86400, stale-while-revalidate=300";
       const version = url.searchParams.get("version") || "RV60";
 
-      const memKey = `books-${version}`;
+      const memKey = "books-" + version;
       const kvKey: Deno.KvKey = ["books", version];
 
       const mem = getCached(memKey);
@@ -126,11 +124,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT b.id, b.name, b.testament, b."bookOrder"
-         FROM "Book" b
-         JOIN "BibleVersion" v ON b."versionId" = v.id
-         WHERE v.name = \$1
-         ORDER BY b."bookOrder" ASC`,
+        "SELECT b.id, b.name, b.testament, b.\"bookOrder\""
+        + " FROM \"Book\" b"
+        + " JOIN \"BibleVersion\" v ON b.\"versionId\" = v.id"
+        + " WHERE v.name = \$1"
+        + " ORDER BY b.\"bookOrder\" ASC",
         [version]
       );
 
@@ -155,10 +153,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT id, number
-         FROM "Chapter"
-         WHERE "bookId" = \$1
-         ORDER BY number ASC`,
+        "SELECT id, number FROM \"Chapter\" WHERE \"bookId\" = \$1 ORDER BY number ASC",
         [bookId]
       );
 
@@ -181,15 +176,15 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      let query = `SELECT number, text FROM "Verse" WHERE "chapterId" = \$1`;
+      let query = "SELECT number, text FROM \"Verse\" WHERE \"chapterId\" = \$1";
       const params: any[] = [chId];
 
       if (vNum) {
-        query += ` AND number = \$2`;
+        query += " AND number = \$2";
         params.push(Number(vNum));
       }
 
-      query += ` ORDER BY number ASC`;
+      query += " ORDER BY number ASC";
 
       const { rows } = await pool.query(query, params);
 
@@ -214,14 +209,14 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT v.text, bv.name as version, b.name as bookName
-         FROM "Verse" v
-         JOIN "Chapter" c ON v."chapterId" = c.id
-         JOIN "Book" b ON c."bookId" = b.id
-         JOIN "BibleVersion" bv ON b."versionId" = bv.id
-         WHERE v.number = \$1
-           AND c.number = \$2
-           AND b."bookOrder" = \$3`,
+        "SELECT v.text, bv.name as version, b.name as bookName"
+        + " FROM \"Verse\" v"
+        + " JOIN \"Chapter\" c ON v.\"chapterId\" = c.id"
+        + " JOIN \"Book\" b ON c.\"bookId\" = b.id"
+        + " JOIN \"BibleVersion\" bv ON b.\"versionId\" = bv.id"
+        + " WHERE v.number = \$1"
+        + " AND c.number = \$2"
+        + " AND b.\"bookOrder\" = \$3",
         [verse, chapter, bookOrder]
       );
 
@@ -329,25 +324,25 @@ Deno.serve(async (req: Request) => {
       ];
 
       const { rows: versions } = await pool.query(
-        `SELECT name FROM "BibleVersion" ORDER BY name ASC`
+        "SELECT name FROM \"BibleVersion\" ORDER BY name ASC"
       );
 
       for (const v of versions) {
         keysToDelete.push(["books", v.name]);
-        console.log(`[Cache Clear] Agregando: ["books", "${v.name}"]`);
+        console.log("[Cache Clear] Agregando: [\"books\", \"" + v.name + "\"]");
       }
 
       for (const key of keysToDelete) {
         await kv.delete(key);
-        console.log(`[Cache Clear] ✓ Eliminada: ${JSON.stringify(key)}`);
+        console.log("[Cache Clear] Eliminada: " + JSON.stringify(key));
       }
 
       return new Response(
         JSON.stringify({
           ok: true,
-          message: `Caché limpiada correctamente (${keysToDelete.length} claves)`,
+          message: "Caché limpiada correctamente (" + keysToDelete.length + " claves)",
           deletedKeys: keysToDelete.length,
-          versions: versions.map((v) => v.name),
+          versions: versions.map((v: any) => v.name),
         }),
         { headers: makeHeaders("no-store") }
       );
@@ -366,10 +361,7 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT id, name, "fullName", language
-         FROM "BibleVersion"
-         WHERE "hasStrongs" = true
-         ORDER BY id ASC`
+        "SELECT id, name, \"fullName\", language FROM \"BibleVersion\" WHERE \"hasStrongs\" = true ORDER BY id ASC"
       );
 
       setCache(memKey, rows);
@@ -391,11 +383,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows } = await pool.query(
-        `SELECT v.number AS "verseNumber", w.text, w.strong, w.position
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         WHERE v."chapterId" = \$1
-         ORDER BY v.number ASC, w.position ASC`,
+        "SELECT v.number AS \"verseNumber\", w.text, w.strong, w.position"
+        + " FROM \"Word\" w"
+        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
+        + " WHERE v.\"chapterId\" = \$1"
+        + " ORDER BY v.number ASC, w.position ASC",
         [chId]
       );
 
@@ -439,26 +431,26 @@ Deno.serve(async (req: Request) => {
       const offset = (page - 1) * limit;
 
       const { rows: countRows } = await pool.query(
-        `SELECT COUNT(DISTINCT v.id) AS total
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         WHERE w.strong = \$1`,
+        "SELECT COUNT(DISTINCT v.id) AS total"
+        + " FROM \"Word\" w"
+        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
+        + " WHERE w.strong = \$1",
         [strong]
       );
       const total = parseInt(countRows[0].total);
 
       const { rows } = await pool.query(
-        `SELECT b.name AS book, b."bookOrder", b.testament,
-                c.number AS chapter, v.number AS verse, v.text,
-                ARRAY_AGG(DISTINCT w.text) AS matched_words
-         FROM "Word" w
-         JOIN "Verse" v ON w."verseId" = v.id
-         JOIN "Chapter" c ON v."chapterId" = c.id
-         JOIN "Book" b ON c."bookId" = b.id
-         WHERE w.strong = \$1
-         GROUP BY b.id, c.id, v.id, b.name, b."bookOrder", b.testament, c.number, v.number, v.text
-         ORDER BY b."bookOrder", c.number, v.number
-         LIMIT \$2 OFFSET \$3`,
+        "SELECT b.name AS book, b.\"bookOrder\", b.testament,"
+        + " c.number AS chapter, v.number AS verse, v.text,"
+        + " ARRAY_AGG(DISTINCT w.text) AS matched_words"
+        + " FROM \"Word\" w"
+        + " JOIN \"Verse\" v ON w.\"verseId\" = v.id"
+        + " JOIN \"Chapter\" c ON v.\"chapterId\" = c.id"
+        + " JOIN \"Book\" b ON c.\"bookId\" = b.id"
+        + " WHERE w.strong = \$1"
+        + " GROUP BY b.id, c.id, v.id, b.name, b.\"bookOrder\", b.testament, c.number, v.number, v.text"
+        + " ORDER BY b.\"bookOrder\", c.number, v.number"
+        + " LIMIT \$2 OFFSET \$3",
         [strong, limit, offset]
       );
 
@@ -489,7 +481,7 @@ Deno.serve(async (req: Request) => {
 
       if (!availableLangs) {
         const { rows } = await pool.query(
-          `SELECT DISTINCT "definitionLang" FROM "StrongEntry"`
+          "SELECT DISTINCT \"definitionLang\" FROM \"StrongEntry\""
         );
         availableLangs = rows.map((r: any) => r.definitionLang);
         setCache(langsMemKey, availableLangs);
@@ -504,7 +496,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      const memKey = `strong-dict-${code}-${defLang}`;
+      const memKey = "strong-dict-" + code + "-" + defLang;
       const mem = getCached(memKey);
       if (mem) {
         const headers = makeHeaders("public, max-age=604800");
@@ -513,11 +505,11 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows: entryRows } = await pool.query(
-        `SELECT strong, language, "definitionLang", lemma, translit, pronunciation,
-                morphology, "speechLang", definition, exegesis,
-                explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
-         FROM "StrongEntry"
-         WHERE strong = \$1 AND "definitionLang" = \$2`,
+        "SELECT strong, language, \"definitionLang\", lemma, translit, pronunciation,"
+        + " morphology, \"speechLang\", definition, exegesis,"
+        + " explanation, \"kjvDefinition\", \"strongsDef\", \"strongsDerivation\""
+        + " FROM \"StrongEntry\""
+        + " WHERE strong = \$1 AND \"definitionLang\" = \$2",
         [code, defLang]
       );
 
@@ -525,14 +517,14 @@ Deno.serve(async (req: Request) => {
       let usedLang = defLang;
 
       if (!entry && defLang !== "en") {
-        console.log(`[Strong] ${code}: "${defLang}" no encontrado, fallback a inglés`);
+        console.log("[Strong] " + code + ": \"" + defLang + "\" no encontrado, fallback a inglés");
 
         const { rows: enRows } = await pool.query(
-          `SELECT strong, language, "definitionLang", lemma, translit, pronunciation,
-                  morphology, "speechLang", definition, exegesis,
-                  explanation, "kjvDefinition", "strongsDef", "strongsDerivation"
-           FROM "StrongEntry"
-           WHERE strong = \$1 AND "definitionLang" = 'en'`,
+          "SELECT strong, language, \"definitionLang\", lemma, translit, pronunciation,"
+          + " morphology, \"speechLang\", definition, exegesis,"
+          + " explanation, \"kjvDefinition\", \"strongsDef\", \"strongsDerivation\""
+          + " FROM \"StrongEntry\""
+          + " WHERE strong = \$1 AND \"definitionLang\" = 'en'",
           [code]
         );
 
@@ -548,21 +540,21 @@ Deno.serve(async (req: Request) => {
       }
 
       const { rows: relRows } = await pool.query(
-        `SELECT sr."toStrong", sr."relationType",
-                se.lemma AS "toLemma",
-                se.translit AS "toTranslit",
-                se."kjvDefinition" AS "toKjvDefinition"
-         FROM "StrongRelation" sr
-         LEFT JOIN "StrongEntry" se
-           ON sr."toStrong" = se.strong
-           AND se."definitionLang" = \$2
-         WHERE sr."fromStrong" = \$1
-           AND sr."fromDefLang" = \$2
-         ORDER BY sr."relationType", sr."toStrong"`,
+        "SELECT sr.\"toStrong\", sr.\"relationType\","
+        + " se.lemma AS \"toLemma\","
+        + " se.translit AS \"toTranslit\","
+        + " se.\"kjvDefinition\" AS \"toKjvDefinition\""
+        + " FROM \"StrongRelation\" sr"
+        + " LEFT JOIN \"StrongEntry\" se"
+        + "   ON sr.\"toStrong\" = se.strong"
+        + "   AND se.\"definitionLang\" = \$2"
+        + " WHERE sr.\"fromStrong\" = \$1"
+        + "   AND sr.\"fromDefLang\" = \$2"
+        + " ORDER BY sr.\"relationType\", sr.\"toStrong\"",
         [code, usedLang]
       );
 
-      const relations = relRows.map((r) => ({
+      const relations = relRows.map((r: any) => ({
         toStrong: r.toStrong,
         relationType: r.relationType,
         to: {
@@ -582,7 +574,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // =====================================================
-    // Rutas de Commentary (módulo secundario)
+    // Rutas de Commentary
     // =====================================================
     if (
       path === "/api/commentary/sources" ||
