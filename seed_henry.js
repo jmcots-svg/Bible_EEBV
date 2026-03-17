@@ -200,6 +200,9 @@ async function seed() {
     attributeNamePrefix: '',
     parseTagValue: true,
     trimValues: true,
+    htmlEntities: true,      
+    processEntities: true,   
+    entityExpansionLimit: 10000 
   });
   const parsed = parser.parse(xmlContent);
 
