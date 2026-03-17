@@ -222,6 +222,10 @@ const parser = new XMLParser({
 
 const parsed = parser.parse(xmlContent);
 
+  const rawEntries = parsed?.root?.entrada;
+  const entries = Array.isArray(rawEntries) ? rawEntries : [rawEntries];
+  console.log(`📄 Entradas en XML: ${entries.length}`);
+
   // 5. Procesar e insertar
   let inserted = 0;
   let updated  = 0;
