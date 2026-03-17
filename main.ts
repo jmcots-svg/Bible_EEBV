@@ -286,7 +286,9 @@ $$
         ` ORDER BY b."bookOrder", c."number", v."number"` +
         ` LIMIT
 $$
-{paramIndex} OFFSET $${paramIndex + 1}`;
+{paramIndex} OFFSET 
+$$
+{paramIndex + 1}`;
 
       params.push(limit, offset);
 
