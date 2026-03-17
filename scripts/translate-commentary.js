@@ -20,7 +20,6 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// RESTAURADOS TUS MODELOS ORIGINALES
 const MODELS = [
   { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
   { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
@@ -54,44 +53,37 @@ class SmartRateLimiter {
     let minWaitMs = Infinity;
 
     for (const slot of this.slots) {
-      // 1. Reiniciar contadores diarios si pasaron 24h
       if (now - slot.dayStart > 86400000) {
         slot.requestsToday = 0;
         slot.dayStart = now;
       }
 
-      // 2. Si este modelo ya consumió su límite diario, lo saltamos
       if (slot.requestsToday >= slot.rpd) continue;
 
-      // 3. Limpiar historial de peticiones del último minuto
       slot.history = slot.history.filter(ts => now - ts < 60000);
 
-      // 4. Si está bloqueado por un error 429
       if (slot.exhaustedUntil > now) {
         const wait = slot.exhaustedUntil - now;
         if (wait < minWaitMs) minWaitMs = wait;
         continue;
       }
 
-      // 5. Comprobar si hay hueco en el minuto actual
       if (slot.history.length < slot.rpm) {
         slot.history.push(now);
         slot.requestsToday++;
         return { available: true, key: slot.key, model: slot.model, waitMs: 0 };
       } else {
-        // Calcular tiempo exacto hasta que se libere un hueco en este minuto
         const wait = 60000 - (now - slot.history[0]);
         if (wait < minWaitMs) minWaitMs = wait;
       }
     }
 
-    // Si todo está lleno (o todos llegaron al límite diario), esperamos el mínimo posible
     return { available: false, waitMs: minWaitMs === Infinity ? 5000 : minWaitMs };
   }
 
   markExhausted(key, model) {
     const slot = this.slots.find(s => s.key === key && s.model === model);
-    if (slot) slot.exhaustedUntil = Date.now() + 61000; // Bloqueo de 61 segundos por 429
+    if (slot) slot.exhaustedUntil = Date.now() + 61000;
   }
 }
 
@@ -142,8 +134,9 @@ async function translateBatchOptimized(entriesBatch) {
       });
 
       let responseText = response.text || "";
-      responseText = responseText.replace(/^
-
+      
+      // FIX: Usamos \x60 en lugar de acentos graves literales para evitar SyntaxErrors
+      responseText = responseText.replace(/^\x60{3}(?:json)?\n?/i, '').replace(/\n?\x60{3}$/i, '').trim();
       
       const translatedArray = JSON.parse(responseText);
       
@@ -324,6 +317,5 @@ async function main() {
 }
 
 main();
-
 
 
