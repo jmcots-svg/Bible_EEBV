@@ -6,7 +6,7 @@ on:
       language:
         description: 'Idioma del comentario (es/en)'
         required: true
-        default: 'es'
+        default: 'en'
         type: choice
         options:
           - es
@@ -34,15 +34,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # ❌ Eliminado cache: 'npm' — requiere package-lock.json
       
       - name: Install dependencies
-        run: |
-          npm install
-          npm install fast-xml-parser
-      
-      - name: Generate Prisma Client
-        run: npx prisma generate
+        run: npm install
       
       - name: Verify XML files exist
         run: |
@@ -52,5 +47,3 @@ jobs:
       
       - name: Run Commentary Seed
         run: node seed_henry.js
-      
-   
