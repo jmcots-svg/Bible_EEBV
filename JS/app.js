@@ -16,329 +16,305 @@ import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, u
 import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
-import { 
-    initTTS, 
-    stopTTS, 
-    setTTSGender, 
-    getTTSGender 
-} from './tts.js';
+import { initTTS, stopTTS } from './tts.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
+    // =====================
+    // 1. DECLARACIONES DOM  ← SIEMPRE PRIMERO
+    // =====================
+    const versionSelect       = document.getElementById('version');
+    const bookSelect          = document.getElementById('book');
+    const chapterSelect       = document.getElementById('chapter');
+    const verseSelect         = document.getElementById('verse');
+    const content             = document.getElementById('content');
+    const reference           = document.getElementById('reference');
+    const mainTitle           = document.getElementById('mainTitle');
+    const themeCheckbox       = document.getElementById('themeCheckbox');
+    const languageSelect      = document.getElementById('languageSelect');
+
+    // Comparación
+    const compOrientationHint = document.getElementById('compOrientationHint');
+    const compChapter         = document.getElementById('compChapter');
+    const compVersionA        = document.getElementById('compVersionA');
+    const compVersionB        = document.getElementById('compVersionB');
+
+    // Tabs y paneles
+    const modeTabs            = document.querySelectorAll('.mode-tab');
+    const panelLectura        = document.getElementById('panelLectura');
+    const panelConcordancia   = document.getElementById('panelConcordancia');
+    const panelComparacion    = document.getElementById('panelComparacion');
+    const panelStrong         = document.getElementById('panelStrong');
+
+    // Copiar versículos
+    const copyVersesBtn          = document.getElementById('copyVersesBtn');
+    const selectedVersesCount    = document.getElementById('selectedVersesCount');
+    const copyModal              = document.getElementById('copyModal');
+    const closeCopyModal         = document.getElementById('closeCopyModal');
+    const selectedVersesTextarea = document.getElementById('selectedVersesTextarea');
+    const doCopyBtn              = document.getElementById('doCopyBtn');
+    const copyFeedback           = document.getElementById('copyFeedback');
+
+    // Strong
+    const strongChapter       = document.getElementById('strongChapter');
+    const strongVerse         = document.getElementById('strongVerse');
+    const strongVersion       = document.getElementById('strongVersion');
+    const strongBook          = document.getElementById('strongBook');
+    const strongBottomPanel   = document.getElementById('strongBottomPanel');
+    const strongBottomCode    = document.getElementById('strongBottomCode');
+    const strongBottomCount   = document.getElementById('strongBottomCount');
+    const strongBottomClose   = document.getElementById('strongBottomClose');
+    const strongBottomContent = document.getElementById('strongBottomContent');
+
+    // Concordancia
+    const concVersion   = document.getElementById('concVersion');
+    const concTestament = document.getElementById('concTestament');
+    const concQuery     = document.getElementById('concQuery');
+    const concSearchBtn = document.getElementById('concSearchBtn');
+    const concExact     = document.getElementById('concExact');
+
+    // TTS
+    const ttsBar       = document.getElementById('ttsBar');
+    const ttsToggleBtn = document.getElementById('ttsToggleBtn');
+    const ttsCloseBar  = document.getElementById('ttsCloseBar');
 
     // =====================
-    // INICIALIZAR UI
+    // 2. VARIABLES DE ESTADO
+    // =====================
+    let selectedVerses    = [];
+    let currentVersesData = [];
+    let currentMode       = 'lectura';
+    let versesAbort       = null;
+    let isFetching        = false;
+
+    // =====================
+    // 3. INICIALIZAR UI
     // =====================
     initSettingsPanel(
         document.getElementById('settingsBtn'),
         document.getElementById('settingsPanel'),
         document.getElementById('closeSettingsBtn')
     );
-    
-    initTheme(document.getElementById('themeCheckbox'));
-    
+
+    initTheme(themeCheckbox);
+
     initFontSize(
         document.getElementById('fontKnob'),
         document.getElementById('fontTrack'),
-        document.getElementById('content')
+        content
     );
 
     // =====================
-    // INICIALIZAR STRONG
+    // 4. INICIALIZAR STRONG
     // =====================
     initStrong({
-        strongVersion: document.getElementById('strongVersion'),
-        strongBook: document.getElementById('strongBook'),
-        strongChapter: document.getElementById('strongChapter'),
-        strongVerse: document.getElementById('strongVerse'),
-        strongBottomPanel: document.getElementById('strongBottomPanel'),
-        strongBottomCode: document.getElementById('strongBottomCode'),
-        strongBottomCount: document.getElementById('strongBottomCount'),
-        strongBottomClose: document.getElementById('strongBottomClose'),
-        strongBottomContent: document.getElementById('strongBottomContent'),
-        content: document.getElementById('content'),
-        reference: document.getElementById('reference')
+        strongVersion,
+        strongBook,
+        strongChapter,
+        strongVerse,
+        strongBottomPanel,
+        strongBottomCode,
+        strongBottomCount,
+        strongBottomClose,
+        strongBottomContent,
+        content,
+        reference
     }, {
         showError,
         navigateToVerseFromStrong
     });
 
     // =====================
-    // INICIALIZAR COMPARACIÓN
+    // 5. INICIALIZAR COMPARACIÓN
     // =====================
     initComparacion({
-        compVersionA: document.getElementById('compVersionA'),
-        compVersionB: document.getElementById('compVersionB'),
+        compVersionA,
+        compVersionB,
         compBook: document.getElementById('compBook'),
-        compChapter: document.getElementById('compChapter'),
+        compChapter,
         compVerse: document.getElementById('compVerse'),
-        content: document.getElementById('content'),
-        reference: document.getElementById('reference')
+        content,
+        reference
     }, {
         updateComparisonOrientationHint
     });
 
     // =====================
-    // INICIALIZAR CONCORDANCIA
+    // 6. INICIALIZAR CONCORDANCIA
     // =====================
     initConcordancia({
-        concVersion: document.getElementById('concVersion'),
-        concTestament: document.getElementById('concTestament'),
-        concQuery: document.getElementById('concQuery'),
-        concSearchBtn: document.getElementById('concSearchBtn'),
-        concExact: document.getElementById('concExact'),
-        content: document.getElementById('content'),
-        reference: document.getElementById('reference')
+        concVersion,
+        concTestament,
+        concQuery,
+        concSearchBtn,
+        concExact,
+        content,
+        reference
     }, {
         showError,
         navigateToVerse
     });
 
-// =====================
-// 2. MODO NOCHE E IDIOMA
-// =====================
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    if (themeCheckbox) themeCheckbox.checked = true;
-}
-if (themeCheckbox) {
-    themeCheckbox.addEventListener('change', () => {
-        const isDark = themeCheckbox.checked;
-        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    });
-}
-
-// IDIOMA
-const savedLanguage = localStorage.getItem('appLanguage') || 'es';
-
-if (languageSelect) {
-    languageSelect.value = savedLanguage;
-    languageSelect.addEventListener('change', (e) => {
-        const newLanguage = e.target.value;
-        localStorage.setItem('appLanguage', newLanguage);
-        console.log('Idioma cambiado a:', newLanguage);
-        applyTranslations(newLanguage);
-        reloadCurrentStrongIfOpen();
-    });
-}
-
-// Aplicar traducción inicial
-applyTranslations(savedLanguage);
-
-function applyTranslations(lang) {
-    // Título principal
-    document.getElementById('mainTitle').textContent = t('mainTitle', lang);
-    
-    // Encabezado ajustes
-    const settingsHeader = document.querySelector('.settings-panel-header h3');
-    if (settingsHeader) settingsHeader.textContent = t('settingsTitle', lang);
-    
-    // Labels de filtros (Lectura)
-    const labels = {
-        'version': 'version',
-        'book': 'book',
-        'chapter': 'chapter',
-        'verse': 'verse'
-    };
-    
-    Object.entries(labels).forEach(([id, key]) => {
-        const label = document.querySelector(`label[for="${id}"]`);
-        if (label) label.textContent = t(key, lang);
-    });
-    
-    // Label idioma
-    const langLabel = document.querySelector(`label[for="languageSelect"]`);
-    if (langLabel) langLabel.textContent = t('language', lang);
-    
-    // Tabs
-    const tabs = document.querySelectorAll('.tab-text');
-    const tabKeys = ['lectura', 'comparacion', 'concordancia', 'strong'];
-    tabs.forEach((tab, i) => {
-        if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang);
-    });
-    updateComparacionLabels(lang);
-    updateConcordanciaLabels(lang);
-    updateStrongLabels(lang);
-    updatePlaceholders(lang);
-}
-
-function updatePlaceholders(lang) {
-    // Placeholders en modo lectura
-    if (!chapterSelect.value && !bookSelect.value) {
-        content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
-    } else if (!chapterSelect.value && bookSelect.value) {
-        content.innerHTML = `<p class="placeholder">${t('placeholderChapter', lang)}</p>`;
+    // =====================
+    // 7. MODO NOCHE E IDIOMA
+    // =====================
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        if (themeCheckbox) themeCheckbox.checked = true;
     }
-    
-    // Placeholder en modo comparación
-    const compPlaceholder = document.querySelector('[data-mode="comparacion"] .placeholder');
-    if (compPlaceholder) {
-        compPlaceholder.textContent = t('selectVersions', lang);
+    if (themeCheckbox) {
+        themeCheckbox.addEventListener('change', () => {
+            const isDark = themeCheckbox.checked;
+            document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        });
     }
-    
-    // Placeholder en modo concordancia
-    const concPlaceholder = document.querySelector('[data-mode="concordancia"] .placeholder');
-    if (concPlaceholder) {
-        concPlaceholder.textContent = t('placeholderSearch', lang);
+
+    // IDIOMA
+    const savedLanguage = localStorage.getItem('appLanguage') || 'es';
+    if (languageSelect) {
+        languageSelect.value = savedLanguage;
+        languageSelect.addEventListener('change', (e) => {
+            const newLanguage = e.target.value;
+            localStorage.setItem('appLanguage', newLanguage);
+            applyTranslations(newLanguage);
+            reloadCurrentStrongIfOpen();
+        });
     }
-    
-    // Placeholder en modo strong
-    const strongPlaceholder = document.querySelector('[data-mode="strong"] .placeholder');
-    if (strongPlaceholder) {
-        strongPlaceholder.textContent = t('placeholderStrong', lang);
-    }
-    
-    // Actualizar mensajes en resetSelects
-    const bookOption = document.querySelector('#book option:first-child');
-    if (bookOption) bookOption.textContent = t('selectBook', lang);
-    
-    const chapterOption = document.querySelector('#chapter option:first-child');
-    if (chapterOption) chapterOption.textContent = t('selectChapter', lang);
-    
-    const verseOption = document.querySelector('#verse option:first-child');
-    if (verseOption) verseOption.textContent = t('allChapter', lang);
-}
-    
-// =====================
-// 3. TABS - CAMBIO DE MODO
-// =====================
-modeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        const mode = tab.dataset.mode;
-        if (mode === currentMode) return;
-
-        const prevMode = currentMode; // ← guardamos el modo anterior
-        currentMode = mode;
-        modeTabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-
-        // Ocultar todos los paneles primero
-        panelLectura.style.display      = 'none';
-        panelConcordancia.style.display = 'none';
-        panelComparacion.style.display  = 'none';
-        panelStrong.style.display       = 'none';
-        closeStrongPanel(); // Cerrar panel inferior al cambiar de modo
-
-        if (mode === 'lectura') {
-            panelLectura.style.display = '';
-            if (chapterSelect.value) {
-                onSearch();
-            } else if (bookSelect.value) {
-                content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            } else {
-                content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            }
-
-        } else if (mode === 'concordancia') {
-            panelConcordancia.style.display = '';
-            const searchData = getCurrentSearchData();
-            if (searchData) {
-                renderSearchResults(searchData);
-            }else {
-                content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            }
-
-        } else if (mode === 'comparacion') {
-            panelComparacion.style.display = '';
-            updateComparisonOrientationHint();
-            const compData = getCurrentCompData();
-            if (compData) {
-                renderComparison();
-            }else {
-                content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
-            if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            }
-         } else if (mode === 'strong') {
-            panelStrong.style.display = '';
-            if (strongChapter.value) {
-                renderStrongChapter();
-            } else if (strongBook.value) {
-                content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            } else {
-                content.innerHTML = '<p class="placeholder">Selecciona un libro para ver los códigos Strong</p>';
-                if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
-            }
-        }
-        updateComparisonOrientationHint();
-    });
-});
-
-// =====================
-// FILTROS PLEGABLES (móvil)
-// =====================
-
-const filterToggleLectura = setupCollapsibleFilters(
-    'toggleFiltersLectura', 'filtersLectura', 'toggleRefLectura'
-);
-const filterToggleComp = setupCollapsibleFilters(
-    'toggleFiltersComp', 'filtersComp', 'toggleRefComp'
-);
-const filterToggleConc = setupCollapsibleFilters(
-    'toggleFiltersConc', 'filtersConc', 'toggleRefConc'
-);
-const filterToggleStrong = setupCollapsibleFilters(
-    'toggleFiltersStrong', 'filtersStrong', 'toggleRefStrong'
-);
-
-// Auto-plegar en móvil al seleccionar capítulo
-chapterSelect.addEventListener('change', () => {
-    setTimeout(() => {
-        if (window.innerWidth <= 600) {
-            const ref = reference?.textContent?.trim();
-            filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
-            filterToggleLectura?.collapse();
-        }
-    }, 500);
-});
-
-// Actualizar ref al cambiar versículo
-verseSelect.addEventListener('change', () => {
-    setTimeout(() => {
-        const ref = reference?.textContent?.trim();
-        filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
-    }, 200);
-});
-
-// Auto-plegar comparación al cargar resultados
-compChapter.addEventListener('change', () => {
-    setTimeout(() => {
-        if (window.innerWidth <= 600) {
-            const ref = reference?.textContent?.trim();
-            filterToggleComp?.updateRef(ref || 'Selecciona versiones');
-            filterToggleComp?.collapse();
-        }
-    }, 500);
-});
-
-// Auto-plegar concordancia al buscar
-concSearchBtn.addEventListener('click', () => {
-    setTimeout(() => {
-        if (window.innerWidth <= 600) {
-            const query = concQuery.value.trim();
-            filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
-            filterToggleConc?.collapse();
-        }
-    }, 300);
-});
-strongChapter.addEventListener('change', () => {
-    setTimeout(() => {
-        if (window.innerWidth <= 600) {
-            const ref = reference?.textContent?.trim();
-            filterToggleStrong?.updateRef(ref || 'Selecciona un libro');
-            filterToggleStrong?.collapse();
-        }
-    }, 500);
-});
-
+    applyTranslations(savedLanguage);
 
     // =====================
-    // 4. FUNCIONES MODO LECTURA
+    // 8. TABS - CAMBIO DE MODO
+    // =====================
+    modeTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const mode = tab.dataset.mode;
+            if (mode === currentMode) return;
+
+            currentMode = mode;
+            modeTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            panelLectura.style.display      = 'none';
+            panelConcordancia.style.display = 'none';
+            panelComparacion.style.display  = 'none';
+            panelStrong.style.display       = 'none';
+            closeStrongPanel();
+            closeCommentaryPanel();
+            stopTTS();
+
+            if (mode === 'lectura') {
+                panelLectura.style.display = '';
+                if (chapterSelect.value) {
+                    onSearch();
+                } else if (bookSelect.value) {
+                    content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                } else {
+                    content.innerHTML = '<p class="placeholder">Selecciona una versión y libro para comenzar</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                }
+            } else if (mode === 'concordancia') {
+                panelConcordancia.style.display = '';
+                const searchData = getCurrentSearchData();
+                if (searchData) {
+                    renderSearchResults(searchData);
+                } else {
+                    content.innerHTML = '<p class="placeholder">Escribe una palabra o frase para buscar en toda la Biblia</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                }
+            } else if (mode === 'comparacion') {
+                panelComparacion.style.display = '';
+                updateComparisonOrientationHint();
+                const compData = getCurrentCompData();
+                if (compData) {
+                    renderComparison();
+                } else {
+                    content.innerHTML = '<p class="placeholder">Selecciona dos versiones y un capítulo para comparar</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                }
+            } else if (mode === 'strong') {
+                panelStrong.style.display = '';
+                if (strongChapter.value) {
+                    renderStrongChapter();
+                } else if (strongBook.value) {
+                    content.innerHTML = '<p class="placeholder">Selecciona un capítulo</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                } else {
+                    content.innerHTML = '<p class="placeholder">Selecciona un libro para ver los códigos Strong</p>';
+                    if (reference) { reference.textContent = ''; reference.classList.remove('visible'); }
+                }
+            }
+            updateComparisonOrientationHint();
+        });
+    });
+
+    // =====================
+    // 9. FILTROS PLEGABLES (móvil)
+    // =====================
+    const filterToggleLectura = setupCollapsibleFilters(
+        'toggleFiltersLectura', 'filtersLectura', 'toggleRefLectura'
+    );
+    const filterToggleComp = setupCollapsibleFilters(
+        'toggleFiltersComp', 'filtersComp', 'toggleRefComp'
+    );
+    const filterToggleConc = setupCollapsibleFilters(
+        'toggleFiltersConc', 'filtersConc', 'toggleRefConc'
+    );
+    const filterToggleStrong = setupCollapsibleFilters(
+        'toggleFiltersStrong', 'filtersStrong', 'toggleRefStrong'
+    );
+
+    chapterSelect.addEventListener('change', () => {
+        setTimeout(() => {
+            if (window.innerWidth <= 600) {
+                const ref = reference?.textContent?.trim();
+                filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+                filterToggleLectura?.collapse();
+            }
+        }, 500);
+    });
+
+    verseSelect.addEventListener('change', () => {
+        setTimeout(() => {
+            const ref = reference?.textContent?.trim();
+            filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+        }, 200);
+    });
+
+    compChapter.addEventListener('change', () => {
+        setTimeout(() => {
+            if (window.innerWidth <= 600) {
+                const ref = reference?.textContent?.trim();
+                filterToggleComp?.updateRef(ref || 'Selecciona versiones');
+                filterToggleComp?.collapse();
+            }
+        }, 500);
+    });
+
+    concSearchBtn.addEventListener('click', () => {
+        setTimeout(() => {
+            if (window.innerWidth <= 600) {
+                const query = concQuery.value.trim();
+                filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
+                filterToggleConc?.collapse();
+            }
+        }, 300);
+    });
+
+    strongChapter.addEventListener('change', () => {
+        setTimeout(() => {
+            if (window.innerWidth <= 600) {
+                const ref = reference?.textContent?.trim();
+                filterToggleStrong?.updateRef(ref || 'Selecciona un libro');
+                filterToggleStrong?.collapse();
+            }
+        }, 500);
+    });
+
+    // =====================
+    // 10. FUNCIONES MODO LECTURA
     // =====================
     async function loadBooks(version) {
         if (!version) return;
@@ -419,9 +395,6 @@ strongChapter.addEventListener('change', () => {
         chapterSelect.disabled = false;
     }
 
-    let versesAbort = null;
-    let isFetching = false;
-
     async function onChapterChange() {
         const lang = localStorage.getItem('appLanguage') || 'es';
         if (isFetching) return;
@@ -487,46 +460,34 @@ strongChapter.addEventListener('change', () => {
     }
 
     function renderVerses(verses, vNum) {
-        const bName = bookSelect.selectedIndex >= 0 ? bookSelect.options[bookSelect.selectedIndex].text : '';
-        const chNum = chapterSelect.selectedIndex >= 0 ? chapterSelect.options[chapterSelect.selectedIndex].dataset.number : '';
+        const bName = bookSelect.selectedIndex >= 0
+            ? bookSelect.options[bookSelect.selectedIndex].text : '';
+        const chNum = chapterSelect.selectedIndex >= 0
+            ? chapterSelect.options[chapterSelect.selectedIndex].dataset.number : '';
+
         if (reference) {
             reference.textContent = `${bName} ${chNum}${vNum ? ':' + vNum : ''}`;
             reference.classList.add('visible');
         }
-        content.innerHTML = verses.map(v => `
-            <p class="verse"><span class="verse-number">${v.number}</span>${v.text}</p>
-        `).join('');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
 
-                // Guardar los datos de los versículos actuales para poder acceder a ellos al seleccionar
-        currentVersesData = verses; 
+        currentVersesData = verses;
 
         content.innerHTML = verses.map(v => `
             <p class="verse">
                 <span class="verse-number" data-verse-number="${v.number}">${v.number}</span>${v.text}
             </p>
         `).join('');
-        
-        // AÑADIDO: Añadir listeners a los números de versículo
+
         content.querySelectorAll('.verse-number').forEach(span => {
             span.addEventListener('click', toggleVerseSelection);
         });
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        updateCopyButtonVisibility(); // AÑADIDO: Actualizar el estado del botón de copiar
+        updateCopyButtonVisibility();
     }
 
     // =====================
-    // 5. FUNCIONES MODO CONCORDANCIA
-    // =====================
-
-
-    function removeAccents(str) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
-    function escapeHtml(str) { const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
-    function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
-    // =====================
-    // 5b. NAVEGACIÓN CONCORDANCIA → LECTURA
+    // 11. NAVEGACIÓN CONCORDANCIA → LECTURA
     // =====================
     async function navigateToVerse(bookName, chapterNum, verseNum) {
         const version = concVersion.value || versionSelect.value;
@@ -547,7 +508,9 @@ strongChapter.addEventListener('change', () => {
                 localStorage.setItem(`chapters_${book.id}`, JSON.stringify(chaptersData));
             }
             renderChapters(cache.chapters[book.id]);
-            const chapter = cache.chapters[book.id].find(ch => String(ch.number) === String(chapterNum));
+            const chapter = cache.chapters[book.id].find(
+                ch => String(ch.number) === String(chapterNum)
+            );
             if (!chapter) { showError(`No se encontró el capítulo ${chapterNum}`); return; }
             chapterSelect.value = chapter.id;
             const cacheKey = `${chapter.id}-all`;
@@ -559,30 +522,72 @@ strongChapter.addEventListener('change', () => {
             verseSelect.value = String(verseNum);
             currentMode = 'lectura';
             modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === 'lectura'));
-            panelLectura.style.display = '';
+            panelLectura.style.display      = '';
             panelConcordancia.style.display = 'none';
-            panelComparacion.style.display = 'none';
+            panelComparacion.style.display  = 'none';
             onSearch();
         } catch (e) { showError('Error al navegar al versículo'); }
     }
 
+    // =====================
+    // 12. NAVEGACIÓN STRONG → LECTURA
+    // =====================
+    async function navigateToVerseFromStrong(bookName, chapterNum, verseNum) {
+        const version = strongVersion.value;
+        try {
+            let lecturaVersion = version;
+            const lecturaOptions = Array.from(versionSelect.options).map(o => o.value);
+            if (!lecturaOptions.includes(version)) {
+                lecturaVersion = versionSelect.options[0]?.value || version;
+            }
+            versionSelect.value = lecturaVersion;
+            if (!cache.books[lecturaVersion]) {
+                const data = await fetchJSON(`${API_URL}/api/books?version=${lecturaVersion}`);
+                cache.books[lecturaVersion] = data;
+            }
+            renderBooks(cache.books[lecturaVersion]);
+            const book = cache.books[lecturaVersion].find(b => b.name === bookName);
+            if (!book) { showError(`No se encontró el libro "${bookName}" en ${lecturaVersion}`); return; }
+            bookSelect.value = book.id;
+            if (!cache.chapters[book.id]) {
+                const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${book.id}`);
+                cache.chapters[book.id] = chaptersData;
+            }
+            renderChapters(cache.chapters[book.id]);
+            const chapter = cache.chapters[book.id].find(
+                ch => String(ch.number) === String(chapterNum)
+            );
+            if (!chapter) { showError(`No se encontró el capítulo ${chapterNum}`); return; }
+            chapterSelect.value = chapter.id;
+            const cacheKey = `${chapter.id}-all`;
+            if (!cache.verses[cacheKey]) {
+                const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapter.id}`);
+                cache.verses[cacheKey] = versesData;
+            }
+            renderVerseSelect(cache.verses[cacheKey]);
+            verseSelect.value = String(verseNum);
+            currentMode = 'lectura';
+            modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === 'lectura'));
+            panelLectura.style.display      = '';
+            panelConcordancia.style.display = 'none';
+            panelComparacion.style.display  = 'none';
+            panelStrong.style.display       = 'none';
+            closeStrongPanel();
+            onSearch();
+        } catch (e) { showError('Error al navegar al versículo'); }
+    }
 
     // =====================
-    // 7. UTILIDADES
+    // 13. UTILIDADES
     // =====================
     function resetSelects(ids) {
         const lang = localStorage.getItem('appLanguage') || 'es';
-        const loadingText = t('loadingBooks', lang);
-        const selectBookText = t('selectBook', lang);
-        const selectChapText = t('selectChapter', lang);
-        const allChapText = t('allChapter', lang);
-        
         ids.forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            if (id === 'book')    el.innerHTML = `<option value="">${loadingText}</option>`;
-            if (id === 'chapter') el.innerHTML = `<option value="">${selectBookText}</option>`;
-            if (id === 'verse')   el.innerHTML = `<option value="">${allChapText}</option>`;
+            if (id === 'book')    el.innerHTML = `<option value="">${t('loadingBooks', lang)}</option>`;
+            if (id === 'chapter') el.innerHTML = `<option value="">${t('selectBook', lang)}</option>`;
+            if (id === 'verse')   el.innerHTML = `<option value="">${t('allChapter', lang)}</option>`;
             el.disabled = true;
         });
     }
@@ -591,42 +596,74 @@ strongChapter.addEventListener('change', () => {
         content.innerHTML = `<p class="error">❌ ${msg}</p>`;
         if (reference) reference.classList.remove('visible');
     }
+
     function updateComparisonOrientationHint() {
         if (!compOrientationHint) return;
-    
-        const isComparisonMode = currentMode === 'comparacion';
-        const isNarrowScreen = window.innerWidth <= 600; // Define 'estrecha' como <= 600px (como en tus media queries)
-    
-        // La pista solo se muestra si estamos en modo comparación y la pantalla es estrecha
-        if (isComparisonMode && isNarrowScreen) {
-            compOrientationHint.style.display = 'flex';
-        } else {
-            compOrientationHint.style.display = 'none';
-        }
+        const show = currentMode === 'comparacion' && window.innerWidth <= 600;
+        compOrientationHint.style.display = show ? 'flex' : 'none';
     }
 
-        function toggleVerseSelection(event) {
+    function applyTranslations(lang) {
+        document.getElementById('mainTitle').textContent = t('mainTitle', lang);
+        const settingsHeader = document.querySelector('.settings-panel-header h3');
+        if (settingsHeader) settingsHeader.textContent = t('settingsTitle', lang);
+        const labels = { 'version': 'version', 'book': 'book', 'chapter': 'chapter', 'verse': 'verse' };
+        Object.entries(labels).forEach(([id, key]) => {
+            const label = document.querySelector(`label[for="${id}"]`);
+            if (label) label.textContent = t(key, lang);
+        });
+        const langLabel = document.querySelector(`label[for="languageSelect"]`);
+        if (langLabel) langLabel.textContent = t('language', lang);
+        const tabs = document.querySelectorAll('.tab-text');
+        const tabKeys = ['lectura', 'comparacion', 'concordancia', 'strong'];
+        tabs.forEach((tab, i) => { if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang); });
+        updateComparacionLabels(lang);
+        updateConcordanciaLabels(lang);
+        updateStrongLabels(lang);
+        updatePlaceholders(lang);
+    }
+
+    function updatePlaceholders(lang) {
+        if (!chapterSelect.value && !bookSelect.value) {
+            content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
+        } else if (!chapterSelect.value && bookSelect.value) {
+            content.innerHTML = `<p class="placeholder">${t('placeholderChapter', lang)}</p>`;
+        }
+        const compPlaceholder = document.querySelector('[data-mode="comparacion"] .placeholder');
+        if (compPlaceholder) compPlaceholder.textContent = t('selectVersions', lang);
+        const concPlaceholder = document.querySelector('[data-mode="concordancia"] .placeholder');
+        if (concPlaceholder) concPlaceholder.textContent = t('placeholderSearch', lang);
+        const strongPlaceholder = document.querySelector('[data-mode="strong"] .placeholder');
+        if (strongPlaceholder) strongPlaceholder.textContent = t('placeholderStrong', lang);
+        const bookOption = document.querySelector('#book option:first-child');
+        if (bookOption) bookOption.textContent = t('selectBook', lang);
+        const chapterOption = document.querySelector('#chapter option:first-child');
+        if (chapterOption) chapterOption.textContent = t('selectChapter', lang);
+        const verseOption = document.querySelector('#verse option:first-child');
+        if (verseOption) verseOption.textContent = t('allChapter', lang);
+    }
+
+    // =====================
+    // 14. SELECCIÓN Y COPIA DE VERSÍCULOS
+    // =====================
+    function toggleVerseSelection(event) {
         const verseNumberSpan = event.target;
         const verseNumber = parseInt(verseNumberSpan.dataset.verseNumber);
-
         const index = selectedVerses.indexOf(verseNumber);
         if (index > -1) {
-            // Deseleccionar
             selectedVerses.splice(index, 1);
             verseNumberSpan.classList.remove('selected');
         } else {
-            // Seleccionar
             selectedVerses.push(verseNumber);
             verseNumberSpan.classList.add('selected');
         }
-        // Ordenar para mantener la secuencia y facilitar el copiado
         selectedVerses.sort((a, b) => a - b);
         updateCopyButtonVisibility();
     }
 
     function updateCopyButtonVisibility() {
         if (selectedVerses.length > 0) {
-            copyVersesBtn.style.display = 'flex'; // O 'block' si no usas flex para el botón
+            copyVersesBtn.style.display = 'flex';
             selectedVersesCount.textContent = selectedVerses.length;
         } else {
             copyVersesBtn.style.display = 'none';
@@ -635,54 +672,27 @@ strongChapter.addEventListener('change', () => {
 
     function showCopyModal() {
         if (selectedVerses.length === 0) return;
-
-        const bookName = bookSelect.options[bookSelect.selectedIndex]?.text;
-        const chapterNum = chapterSelect.options[chapterSelect.selectedIndex]?.dataset.number;
+        const bookName    = bookSelect.options[bookSelect.selectedIndex]?.text;
+        const chapterNum  = chapterSelect.options[chapterSelect.selectedIndex]?.dataset.number;
         const versionName = versionSelect.options[versionSelect.selectedIndex]?.text;
-
-        // Determinar el rango de versículos seleccionados
         let versesRange = '';
         if (selectedVerses.length === 1) {
-            versesRange = selectedVerses[0]; // Si es solo un versículo
-        } else if (selectedVerses.length > 1) {
-            // Asegúrate de que los versículos estén ordenados
-            const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
-            const firstVerse = sortedVerses[0];
-            const lastVerse = sortedVerses[sortedVerses.length - 1];
-
-            // Comprueba si la selección es consecutiva
+            versesRange = selectedVerses[0];
+        } else {
+            const sorted = [...selectedVerses].sort((a, b) => a - b);
             let isConsecutive = true;
-            for (let i = 0; i < sortedVerses.length - 1; i++) {
-                if (sortedVerses[i+1] !== sortedVerses[i] + 1) {
-                    isConsecutive = false;
-                    break;
-                }
+            for (let i = 0; i < sorted.length - 1; i++) {
+                if (sorted[i + 1] !== sorted[i] + 1) { isConsecutive = false; break; }
             }
-
-            if (isConsecutive) {
-                versesRange = `${firstVerse}-${lastVerse}`; // Si es un rango consecutivo
-            } else {
-                // Si no es consecutivo, listar los versículos separados por comas
-                versesRange = sortedVerses.join(', ');
-            }
+            versesRange = isConsecutive
+                ? `${sorted[0]}-${sorted[sorted.length - 1]}`
+                : sorted.join(', ');
         }
-
-        // Formato de la cabecera: "Levítico 4:1-3 (LBLA)"
-        let headerText = `${bookName} ${chapterNum}`;
-        if (versesRange) {
-            headerText += `:${versesRange}`;
-        }
-        headerText += ` (${versionName}):\n\n`; // Nueva línea doble al final
-
-        let textToCopy = headerText;
-
+        let textToCopy = `${bookName} ${chapterNum}:${versesRange} (${versionName}):\n\n`;
         selectedVerses.forEach(vNum => {
             const verse = currentVersesData.find(v => v.number === vNum);
-            if (verse) {
-                textToCopy += `${verse.number}. ${verse.text}\n`;
-            }
+            if (verse) textToCopy += `${verse.number}. ${verse.text}\n`;
         });
-
         selectedVersesTextarea.value = textToCopy.trim();
         copyFeedback.textContent = '';
         copyModal.style.display = 'flex';
@@ -690,17 +700,14 @@ strongChapter.addEventListener('change', () => {
 
     function hideCopyModal() {
         copyModal.style.display = 'none';
-        copyFeedback.textContent = ''; // Limpiar feedback al cerrar
+        copyFeedback.textContent = '';
     }
 
     async function copySelectedVersesToClipboard() {
         try {
             await navigator.clipboard.writeText(selectedVersesTextarea.value);
             copyFeedback.textContent = '¡Copiado al portapapeles!';
-            // Opcional: Cerrar el modal automáticamente después de un tiempo
-            // setTimeout(hideCopyModal, 2000); 
         } catch (err) {
-            console.error('Error al copiar:', err);
             copyFeedback.textContent = 'Error al copiar. Por favor, intenta de nuevo.';
         }
     }
@@ -711,159 +718,62 @@ strongChapter.addEventListener('change', () => {
             span.classList.remove('selected');
         });
         updateCopyButtonVisibility();
-        hideCopyModal(); // Asegurarse de que el modal también se oculte
+        hideCopyModal();
     }
 
-    // AÑADIDO: Limpiar selecciones al cambiar de capítulo o libro
-    // (Opcional, pero mejora la UX para evitar selecciones "fantasmas")
-    chapterSelect.addEventListener('change', clearSelections);
-    bookSelect.addEventListener('change', clearSelections);
-    versionSelect.addEventListener('change', clearSelections);
-
-
-
     // =====================
-    // PANEL INFERIOR STRONG
+    // 15. EVENTOS
     // =====================
-
-    async function navigateToVerseFromStrong(bookName, chapterNum, verseNum) {
-        // Navegar al panel de lectura sin perder contexto de Strong
-        const version = strongVersion.value;
-
-        try {
-            // Asegurar que tenemos la versión Strong seleccionada en lectura
-            // Primero verificar si esta versión existe en el selector de lectura
-            let lecturaVersion = version;
-            const lecturaOptions = Array.from(versionSelect.options).map(o => o.value);
-            if (!lecturaOptions.includes(version)) {
-                // Usar la primera versión disponible en lectura
-                lecturaVersion = versionSelect.options[0]?.value || version;
-            }
-
-            versionSelect.value = lecturaVersion;
-
-            if (!cache.books[lecturaVersion]) {
-                const data = await fetchJSON(`${API_URL}/api/books?version=${lecturaVersion}`);
-                cache.books[lecturaVersion] = data;
-            }
-            renderBooks(cache.books[lecturaVersion]);
-
-            const book = cache.books[lecturaVersion].find(b => b.name === bookName);
-            if (!book) {
-                showError(`No se encontró el libro "${bookName}" en ${lecturaVersion}`);
-                return;
-            }
-
-            bookSelect.value = book.id;
-
-            if (!cache.chapters[book.id]) {
-                const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${book.id}`);
-                cache.chapters[book.id] = chaptersData;
-            }
-            renderChapters(cache.chapters[book.id]);
-
-            const chapter = cache.chapters[book.id].find(ch => String(ch.number) === String(chapterNum));
-            if (!chapter) {
-                showError(`No se encontró el capítulo ${chapterNum}`);
-                return;
-            }
-
-            chapterSelect.value = chapter.id;
-
-            const cacheKey = `${chapter.id}-all`;
-            if (!cache.verses[cacheKey]) {
-                const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapter.id}`);
-                cache.verses[cacheKey] = versesData;
-            }
-            renderVerseSelect(cache.verses[cacheKey]);
-            verseSelect.value = String(verseNum);
-
-            // Cambiar a modo lectura
-            currentMode = 'lectura';
-            modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === 'lectura'));
-            panelLectura.style.display = '';
-            panelConcordancia.style.display = 'none';
-            panelComparacion.style.display = 'none';
-            panelStrong.style.display = 'none';
-            closeStrongPanel();
-
-            onSearch();
-
-        } catch (e) {
-            showError('Error al navegar al versículo');
-        }
-    }
-
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-
-    
-    // =====================
-    // 8. EVENTOS
-    // =====================
-    
     versionSelect.addEventListener('change', onVersionChange);
     bookSelect.addEventListener('change', onBookChange);
     chapterSelect.addEventListener('change', onChapterChange);
     verseSelect.addEventListener('change', onSearch);
 
-    // Sincronizar versión lectura ↔ concordancia
+    chapterSelect.addEventListener('change', clearSelections);
+    bookSelect.addEventListener('change', clearSelections);
+    versionSelect.addEventListener('change', clearSelections);
+
     concVersion.addEventListener('change', () => { versionSelect.value = concVersion.value; });
     versionSelect.addEventListener('change', () => { concVersion.value = versionSelect.value; });
 
-
-        // Eventos para selección y copiado
     copyVersesBtn.addEventListener('click', showCopyModal);
     closeCopyModal.addEventListener('click', hideCopyModal);
     doCopyBtn.addEventListener('click', copySelectedVersesToClipboard);
-    
-    // Opcional: Cerrar el modal si se hace clic fuera de él
     window.addEventListener('click', (event) => {
-        if (event.target === copyModal) {
-            hideCopyModal();
-        }
+        if (event.target === copyModal) hideCopyModal();
     });
 
     // =====================
-    // 9. CARGA INICIAL - Versiones dinámicas
+    // 16. CARGA INICIAL
     // =====================
     async function loadVersions() {
         try {
             const versions = await fetchJSON(`${API_URL}/api/versions`);
-
-            // Poblar Lectura, Concordancia y Comparación
-            [versionSelect, concVersion, compVersionA, compVersionB].forEach((sel, i) => {
+            [versionSelect, concVersion, compVersionA, compVersionB].forEach((sel) => {
                 const currentVal = sel.value;
                 sel.innerHTML = '';
                 versions.forEach((v, j) => {
                     const opt = document.createElement('option');
                     opt.value = v.name;
                     opt.textContent = v.fullName;
-                    // compVersionB arranca en la segunda versión por defecto
                     if (sel === compVersionB ? j === 1 : j === 0) opt.selected = true;
                     sel.appendChild(opt);
                 });
                 if (currentVal) sel.value = currentVal;
             });
-
             if (versionSelect.value) loadBooks(versionSelect.value);
             if (compVersionA.value) loadCompBooks();
-
         } catch (e) {
             console.error('Error cargando versiones:', e);
             if (versionSelect.value) loadBooks(versionSelect.value);
         }
     }
-    
+
     loadVersions();
     loadStrongVersions();
 
     // =====================
-    // 10. NAVEGACIÓN ENTRE CAPÍTULOS
+    // 17. NAVEGACIÓN ENTRE CAPÍTULOS
     // =====================
     function cambiarCapitulo(direccion) {
         const opciones = Array.from(chapterSelect.options).filter(opt => opt.value !== "");
@@ -897,136 +807,59 @@ strongChapter.addEventListener('change', () => {
         }
     }, { passive: true });
 
-    updateComparisonOrientationHint(); // Llamada inicial al cargar la página.
-    window.addEventListener('resize', updateComparisonOrientationHint); // Escucha cambios de tamaño/orientación.
+    updateComparisonOrientationHint();
+    window.addEventListener('resize', updateComparisonOrientationHint);
 
+    // =====================
+    // 18. INICIALIZAR COMENTARIOS
+    // =====================
+    initCommentary({
+        commentaryBottomPanel:   document.getElementById('commentaryBottomPanel'),
+        commentaryBottomRef:     document.getElementById('commentaryBottomRef'),
+        commentaryBottomClose:   document.getElementById('commentaryBottomClose'),
+        commentaryBottomContent: document.getElementById('commentaryBottomContent')
+    }, {});
 
-// =====================
-// INICIALIZAR COMENTARIOS
-// =====================
-initCommentary({
-    commentaryBottomPanel: document.getElementById('commentaryBottomPanel'),
-    commentaryBottomRef: document.getElementById('commentaryBottomRef'),
-    commentaryBottomClose: document.getElementById('commentaryBottomClose'),
-    commentaryBottomContent: document.getElementById('commentaryBottomContent')
-}, {});
+    // =====================
+    // 19. REFERENCE CLICKEABLE → COMENTARIOS
+    // =====================
+    if (reference) {
+        reference.style.cursor = 'pointer';
+        reference.title = 'Click para ver comentarios';
+        reference.addEventListener('click', () => {
+            if (currentMode !== 'lectura') return;
+            const refText = reference.textContent?.trim();
+            if (!refText) return;
+            openCommentaryForReference(refText, versionSelect.value);
+        });
+    }
 
-// =====================
-// HACER CLICKEABLE EL TÍTULO (reference)
-// =====================
-if (reference) {
-    reference.style.cursor = 'pointer';
-    reference.title = 'Click para ver comentarios';
-    
-    reference.addEventListener('click', () => {
-        // Solo funciona en modo lectura
-        if (currentMode !== 'lectura') return;
-        
-        const refText = reference.textContent?.trim();
-        if (!refText) return;
-        
-        const versionName = versionSelect.value;
-        openCommentaryForReference(refText, versionName);
+    // =====================
+    // 20. INICIALIZAR TTS  ← SIEMPRE AL FINAL
+    // =====================
+    initTTS({
+        ttsPlayBtn:           document.getElementById('ttsPlayBtn'),
+        ttsPauseBtn:          document.getElementById('ttsPauseBtn'),
+        ttsStopBtn:           document.getElementById('ttsStopBtn'),
+        ttsNextBtn:           document.getElementById('ttsNextBtn'),
+        ttsSpeedSlider:       document.getElementById('ttsSpeedSlider'),
+        ttsSpeedLabel:        document.getElementById('ttsSpeedLabel'),
+        ttsStatus:            document.getElementById('ttsStatus'),
+        ttsProgressContainer: document.getElementById('ttsProgressContainer'),
+        ttsProgressFill:      document.getElementById('ttsProgressFill'),
+        ttsTimeCurrent:       document.getElementById('ttsTimeCurrent'),
+        ttsTimeTotal:         document.getElementById('ttsTimeTotal'),
+        ttsFragmentLabel:     document.getElementById('ttsFragmentLabel'),
+        ttsGenderToggle:      document.getElementById('ttsGenderToggle'),
     });
-}
 
-// En los cambios de modo, cerrar el panel de comentarios:
-// Dentro del listener de modeTabs, añadir:
-closeCommentaryPanel();
+    ttsToggleBtn?.addEventListener('click', () => {
+        ttsBar.classList.toggle('visible');
+    });
 
-// =====================
-// INICIALIZAR TTS
-// =====================
-initTTS({
-    ttsPlayBtn:          document.getElementById('ttsPlayBtn'),
-    ttsPauseBtn:         document.getElementById('ttsPauseBtn'),
-    ttsStopBtn:          document.getElementById('ttsStopBtn'),
-    ttsNextBtn:          document.getElementById('ttsNextBtn'),
-    ttsSpeedSlider:      document.getElementById('ttsSpeedSlider'),
-    ttsSpeedLabel:       document.getElementById('ttsSpeedLabel'),
-    ttsStatus:           document.getElementById('ttsStatus'),
-    ttsProgressContainer:document.getElementById('ttsProgressContainer'),
-    ttsProgressFill:     document.getElementById('ttsProgressFill'),
-    ttsTimeCurrent:      document.getElementById('ttsTimeCurrent'),
-    ttsTimeTotal:        document.getElementById('ttsTimeTotal'),
-    ttsFragmentLabel:    document.getElementById('ttsFragmentLabel'),
-    ttsGenderToggle:     document.getElementById('ttsGenderToggle'),
-});
-
-// Toggle mostrar/ocultar barra TTS
-const ttsBar       = document.getElementById('ttsBar');
-const ttsToggleBtn = document.getElementById('ttsToggleBtn');
-const ttsCloseBar  = document.getElementById('ttsCloseBar');
-
-ttsToggleBtn?.addEventListener('click', () => {
-    ttsBar.classList.toggle('visible');
-});
-
-ttsCloseBar?.addEventListener('click', () => {
-    stopTTS();
-    ttsBar.classList.remove('visible');
-});
-
-// Detener TTS al cambiar de modo
-modeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
+    ttsCloseBar?.addEventListener('click', () => {
         stopTTS();
+        ttsBar.classList.remove('visible');
     });
-});
-
-
-    // =====================
-    // 1. SELECCIÓN DE ELEMENTOS
-    // =====================
-    const versionSelect  = document.getElementById('version');
-    const bookSelect     = document.getElementById('book');
-    const chapterSelect  = document.getElementById('chapter');
-    const verseSelect    = document.getElementById('verse');
-    const content        = document.getElementById('content');
-    const reference      = document.getElementById('reference');
-    const mainTitle      = document.getElementById('mainTitle');
-    const themeCheckbox  = document.getElementById('themeCheckbox');
-    const languageSelect = document.getElementById('languageSelect');
-
-    // Comparación
-    const compOrientationHint = document.getElementById('compOrientationHint');
-
-    // Tabs y paneles
-    const modeTabs         = document.querySelectorAll('.mode-tab');
-    const panelLectura     = document.getElementById('panelLectura');
-    const panelConcordancia= document.getElementById('panelConcordancia');
-    const panelComparacion = document.getElementById('panelComparacion');
-
-    const copyVersesBtn = document.getElementById('copyVersesBtn');
-    const selectedVersesCount = document.getElementById('selectedVersesCount');
-    const copyModal = document.getElementById('copyModal');
-    const closeCopyModal = document.getElementById('closeCopyModal');
-    const selectedVersesTextarea = document.getElementById('selectedVersesTextarea');
-    const doCopyBtn = document.getElementById('doCopyBtn');
-    const copyFeedback = document.getElementById('copyFeedback');
-
-        // Strong
-    //const strongVersion  = document.getElementById('strongVersion');
-    //const strongBook     = document.getElementById('strongBook');
-    const strongChapter  = document.getElementById('strongChapter');
-    const strongVerse    = document.getElementById('strongVerse');
-    const panelStrong    = document.getElementById('panelStrong');
-
-    // Panel inferior Strong
-    const strongBottomPanel   = document.getElementById('strongBottomPanel');
-    const strongBottomCode    = document.getElementById('strongBottomCode');
-    const strongBottomCount   = document.getElementById('strongBottomCount');
-    const strongBottomClose   = document.getElementById('strongBottomClose');
-    const strongBottomContent = document.getElementById('strongBottomContent');
-
-    // Cache para Strong
-    //let currentStrongCode = null;
-    //let strongWordsCache = {}; // chapterId -> data
-
-    let selectedVerses = []; // Array para almacenar los IDs/números de los versículos seleccionados
-    let currentVersesData = []; // Para tener acceso a los datos del capítulo actual
-
-    let currentMode = 'lectura';
-
 
 }); // ← fin DOMContentLoaded
