@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/strong-responsive.css">
   <link rel="stylesheet" href="css/commentary.css">
+  <link rel="stylesheet" href="css/tts.css">
   
   <!-- <link rel="stylesheet" href="css/styles.css"> -->
   
@@ -21,6 +22,7 @@
     <h1 id="mainTitle">📖 Biblia Digital</h1>
 
     <!-- Botón de ajustes -->
+    <button id="ttsToggleBtn" class="tts-toggle-btn" title="Texto a voz">
     <button id="settingsBtn" class="settings-btn" title="Ajustes">
       ☰
     </button>
@@ -61,6 +63,15 @@
       <option value="en">English</option>
     </select>
   </div>
+
+  <!-- Dentro de .settings-panel-body, después del selector de idioma -->
+<div class="settings-item">
+    <label>Voz TTS</label>
+    <div id="ttsGenderToggle" class="tts-gender-toggle">
+        <button data-value="female" data-label="female" class="active">👩 Mujer</button>
+        <button data-value="male"   data-label="male">👨 Hombre</button>
+    </div>
+</div>
 </div>
     </div>
   </div>
@@ -348,6 +359,51 @@
     </div>
 
   </div>
+
+  <!-- ======================== -->
+<!-- BARRA TTS                -->
+<!-- ======================== -->
+<div id="ttsBar" class="tts-bar">
+
+    <!-- Fila principal -->
+    <div class="tts-top-row">
+        <button id="ttsPlayBtn" class="tts-play-btn" disabled>▶️ Reproducir</button>
+        <span   id="ttsStatus"  class="tts-status tts-status--loading">
+            ⏳ Cargando motor de voz...
+        </span>
+        <button id="ttsCloseBar" class="tts-close-bar" title="Cerrar">✕</button>
+    </div>
+
+    <!-- Progreso -->
+    <div id="ttsProgressContainer" class="tts-progress-container">
+        <div class="tts-progress-info">
+            <span id="ttsFragmentLabel">Fragmento 1 de 1</span>
+        </div>
+        <div class="tts-progress-bar">
+            <div id="ttsProgressFill" class="tts-progress-fill"></div>
+        </div>
+        <div class="tts-time">
+            <span id="ttsTimeCurrent">0:00</span> /
+            <span id="ttsTimeTotal">0:00</span>
+        </div>
+
+        <!-- Controles + velocidad -->
+        <div class="tts-controls-row">
+            <button id="ttsPauseBtn" class="tts-btn tts-btn--pause">⏸️ Pausar</button>
+            <button id="ttsStopBtn"  class="tts-btn tts-btn--stop" >⏹️ Parar</button>
+            <button id="ttsNextBtn"  class="tts-btn tts-btn--next" >⏭️ Siguiente</button>
+
+            <div class="tts-speed-group">
+                <label for="ttsSpeedSlider">⚡ Velocidad</label>
+                <input  id="ttsSpeedSlider" type="range"
+                        class="tts-speed-slider"
+                        min="0.5" max="2" step="0.25" value="1">
+                <span id="ttsSpeedLabel" class="tts-speed-label">1.00x</span>
+            </div>
+        </div>
+    </div>
+  </div>
+  
   
   <script type="module" script src="JS/app.js"></script>
 </body>
