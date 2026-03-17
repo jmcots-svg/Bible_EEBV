@@ -94,100 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
         navigateToVerse
     });
 
-    // =====================
-// INICIALIZAR TTS
-// =====================
-initTTS({
-    ttsPlayBtn:          document.getElementById('ttsPlayBtn'),
-    ttsPauseBtn:         document.getElementById('ttsPauseBtn'),
-    ttsStopBtn:          document.getElementById('ttsStopBtn'),
-    ttsNextBtn:          document.getElementById('ttsNextBtn'),
-    ttsSpeedSlider:      document.getElementById('ttsSpeedSlider'),
-    ttsSpeedLabel:       document.getElementById('ttsSpeedLabel'),
-    ttsStatus:           document.getElementById('ttsStatus'),
-    ttsProgressContainer:document.getElementById('ttsProgressContainer'),
-    ttsProgressFill:     document.getElementById('ttsProgressFill'),
-    ttsTimeCurrent:      document.getElementById('ttsTimeCurrent'),
-    ttsTimeTotal:        document.getElementById('ttsTimeTotal'),
-    ttsFragmentLabel:    document.getElementById('ttsFragmentLabel'),
-    ttsGenderToggle:     document.getElementById('ttsGenderToggle'),
-});
-
-// Toggle mostrar/ocultar barra TTS
-const ttsBar       = document.getElementById('ttsBar');
-const ttsToggleBtn = document.getElementById('ttsToggleBtn');
-const ttsCloseBar  = document.getElementById('ttsCloseBar');
-
-ttsToggleBtn?.addEventListener('click', () => {
-    ttsBar.classList.toggle('visible');
-});
-
-ttsCloseBar?.addEventListener('click', () => {
-    stopTTS();
-    ttsBar.classList.remove('visible');
-});
-
-// Detener TTS al cambiar de modo
-modeTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        stopTTS();
-    });
-});
-
-
-    // =====================
-    // 1. SELECCIÓN DE ELEMENTOS
-    // =====================
-    const versionSelect  = document.getElementById('version');
-    const bookSelect     = document.getElementById('book');
-    const chapterSelect  = document.getElementById('chapter');
-    const verseSelect    = document.getElementById('verse');
-    const content        = document.getElementById('content');
-    const reference      = document.getElementById('reference');
-    const mainTitle      = document.getElementById('mainTitle');
-    const themeCheckbox  = document.getElementById('themeCheckbox');
-    const languageSelect = document.getElementById('languageSelect');
-
-    // Comparación
-    const compOrientationHint = document.getElementById('compOrientationHint');
-
-    // Tabs y paneles
-    const modeTabs         = document.querySelectorAll('.mode-tab');
-    const panelLectura     = document.getElementById('panelLectura');
-    const panelConcordancia= document.getElementById('panelConcordancia');
-    const panelComparacion = document.getElementById('panelComparacion');
-
-    const copyVersesBtn = document.getElementById('copyVersesBtn');
-    const selectedVersesCount = document.getElementById('selectedVersesCount');
-    const copyModal = document.getElementById('copyModal');
-    const closeCopyModal = document.getElementById('closeCopyModal');
-    const selectedVersesTextarea = document.getElementById('selectedVersesTextarea');
-    const doCopyBtn = document.getElementById('doCopyBtn');
-    const copyFeedback = document.getElementById('copyFeedback');
-
-        // Strong
-    //const strongVersion  = document.getElementById('strongVersion');
-    //const strongBook     = document.getElementById('strongBook');
-    const strongChapter  = document.getElementById('strongChapter');
-    const strongVerse    = document.getElementById('strongVerse');
-    const panelStrong    = document.getElementById('panelStrong');
-
-    // Panel inferior Strong
-    const strongBottomPanel   = document.getElementById('strongBottomPanel');
-    const strongBottomCode    = document.getElementById('strongBottomCode');
-    const strongBottomCount   = document.getElementById('strongBottomCount');
-    const strongBottomClose   = document.getElementById('strongBottomClose');
-    const strongBottomContent = document.getElementById('strongBottomContent');
-
-    // Cache para Strong
-    //let currentStrongCode = null;
-    //let strongWordsCache = {}; // chapterId -> data
-
-    let selectedVerses = []; // Array para almacenar los IDs/números de los versículos seleccionados
-    let currentVersesData = []; // Para tener acceso a los datos del capítulo actual
-
-    let currentMode = 'lectura';
-
 // =====================
 // 2. MODO NOCHE E IDIOMA
 // =====================
@@ -1027,5 +933,100 @@ if (reference) {
 // En los cambios de modo, cerrar el panel de comentarios:
 // Dentro del listener de modeTabs, añadir:
 closeCommentaryPanel();
+
+// =====================
+// INICIALIZAR TTS
+// =====================
+initTTS({
+    ttsPlayBtn:          document.getElementById('ttsPlayBtn'),
+    ttsPauseBtn:         document.getElementById('ttsPauseBtn'),
+    ttsStopBtn:          document.getElementById('ttsStopBtn'),
+    ttsNextBtn:          document.getElementById('ttsNextBtn'),
+    ttsSpeedSlider:      document.getElementById('ttsSpeedSlider'),
+    ttsSpeedLabel:       document.getElementById('ttsSpeedLabel'),
+    ttsStatus:           document.getElementById('ttsStatus'),
+    ttsProgressContainer:document.getElementById('ttsProgressContainer'),
+    ttsProgressFill:     document.getElementById('ttsProgressFill'),
+    ttsTimeCurrent:      document.getElementById('ttsTimeCurrent'),
+    ttsTimeTotal:        document.getElementById('ttsTimeTotal'),
+    ttsFragmentLabel:    document.getElementById('ttsFragmentLabel'),
+    ttsGenderToggle:     document.getElementById('ttsGenderToggle'),
+});
+
+// Toggle mostrar/ocultar barra TTS
+const ttsBar       = document.getElementById('ttsBar');
+const ttsToggleBtn = document.getElementById('ttsToggleBtn');
+const ttsCloseBar  = document.getElementById('ttsCloseBar');
+
+ttsToggleBtn?.addEventListener('click', () => {
+    ttsBar.classList.toggle('visible');
+});
+
+ttsCloseBar?.addEventListener('click', () => {
+    stopTTS();
+    ttsBar.classList.remove('visible');
+});
+
+// Detener TTS al cambiar de modo
+modeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        stopTTS();
+    });
+});
+
+
+    // =====================
+    // 1. SELECCIÓN DE ELEMENTOS
+    // =====================
+    const versionSelect  = document.getElementById('version');
+    const bookSelect     = document.getElementById('book');
+    const chapterSelect  = document.getElementById('chapter');
+    const verseSelect    = document.getElementById('verse');
+    const content        = document.getElementById('content');
+    const reference      = document.getElementById('reference');
+    const mainTitle      = document.getElementById('mainTitle');
+    const themeCheckbox  = document.getElementById('themeCheckbox');
+    const languageSelect = document.getElementById('languageSelect');
+
+    // Comparación
+    const compOrientationHint = document.getElementById('compOrientationHint');
+
+    // Tabs y paneles
+    const modeTabs         = document.querySelectorAll('.mode-tab');
+    const panelLectura     = document.getElementById('panelLectura');
+    const panelConcordancia= document.getElementById('panelConcordancia');
+    const panelComparacion = document.getElementById('panelComparacion');
+
+    const copyVersesBtn = document.getElementById('copyVersesBtn');
+    const selectedVersesCount = document.getElementById('selectedVersesCount');
+    const copyModal = document.getElementById('copyModal');
+    const closeCopyModal = document.getElementById('closeCopyModal');
+    const selectedVersesTextarea = document.getElementById('selectedVersesTextarea');
+    const doCopyBtn = document.getElementById('doCopyBtn');
+    const copyFeedback = document.getElementById('copyFeedback');
+
+        // Strong
+    //const strongVersion  = document.getElementById('strongVersion');
+    //const strongBook     = document.getElementById('strongBook');
+    const strongChapter  = document.getElementById('strongChapter');
+    const strongVerse    = document.getElementById('strongVerse');
+    const panelStrong    = document.getElementById('panelStrong');
+
+    // Panel inferior Strong
+    const strongBottomPanel   = document.getElementById('strongBottomPanel');
+    const strongBottomCode    = document.getElementById('strongBottomCode');
+    const strongBottomCount   = document.getElementById('strongBottomCount');
+    const strongBottomClose   = document.getElementById('strongBottomClose');
+    const strongBottomContent = document.getElementById('strongBottomContent');
+
+    // Cache para Strong
+    //let currentStrongCode = null;
+    //let strongWordsCache = {}; // chapterId -> data
+
+    let selectedVerses = []; // Array para almacenar los IDs/números de los versículos seleccionados
+    let currentVersesData = []; // Para tener acceso a los datos del capítulo actual
+
+    let currentMode = 'lectura';
+
 
 }); // ← fin DOMContentLoaded
