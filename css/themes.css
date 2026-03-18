@@ -1,14 +1,30 @@
 /* =====================================================
    THEMES / SKINS
-   Sobreescriben las variables de base.css
    ===================================================== */
 
 /* =====================================================
-   SKIN 1 — Classic (azul pizarra / lavanda / crema)
-   Por defecto, coincide con base.css
+   SKIN 1 — Classic (azul/violeta original)
    ===================================================== */
 :root,
 [data-skin="classic"] {
+    --bg-body:       linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --accent:        #667eea;
+    --bg-filters:    #f8f9fa;
+    --bg-container:  #ffffff;
+    --border:        #dee2e6;
+    --text-main:     #2d3748;
+    --text-muted:    #495057;
+    --card-hover:    #f0f4ff;
+    --bg-header:     linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+    --tab-active-text: #1e3a5f;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.2);
+}
+
+/* =====================================================
+   SKIN 2 — Celeste (azul pizarra / lavanda)
+   ===================================================== */
+[data-skin="celeste"] {
     --bg-body:       linear-gradient(160deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
     --accent:        #7B8DC4;
     --bg-filters:    #F0F2F9;
@@ -19,10 +35,12 @@
     --card-hover:    #E8ECF8;
     --bg-header:     linear-gradient(135deg, #4A5A9A 0%, #6B7DC4 100%);
     --tab-active-text: #2A2E45;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.2);
 }
 
 /* =====================================================
-   SKIN 2 — Scriptorium (acero / marfil / taupe / mauve)
+   SKIN 3 — Scriptorium (acero / marfil / taupe)
    ===================================================== */
 [data-skin="scriptorium"] {
     --bg-body:       linear-gradient(160deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
@@ -35,12 +53,14 @@
     --card-hover:    #E4DDD4;
     --bg-header:     linear-gradient(135deg, #4A6A78 0%, #7B9BAA 100%);
     --tab-active-text: #2C2420;
+    --tab-active:    rgba(255,255,255,0.92);
+    --tab-inactive:  rgba(255,255,255,0.18);
 }
 
 /* =====================================================
-   SKIN 3 — Aurora Pink (rosas pastel muy suaves)
+   SKIN 4 — Blossom (rosas pastel suaves)
    ===================================================== */
-[data-skin="aurora"] {
+[data-skin="blossom"] {
     --bg-body:       linear-gradient(160deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
     --accent:        #C9849A;
     --bg-filters:    #FEF4F8;
@@ -51,6 +71,8 @@
     --card-hover:    #FDEAF2;
     --bg-header:     linear-gradient(135deg, #A05878 0%, #C9849A 100%);
     --tab-active-text: #3A2030;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.25);
 }
 
 /* =====================================================
@@ -58,7 +80,24 @@
    ===================================================== */
 
 /* Classic oscuro */
-[data-theme="dark"][data-skin="classic"] {
+[data-theme="dark"][data-skin="classic"],
+[data-theme="dark"]:not([data-skin]) {
+    --bg-body:      linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --bg-container: #1e293b;
+    --bg-filters:   #334155;
+    --border:       #4a5568;
+    --text-main:    #f1f5f9;
+    --text-muted:   #cbd5e0;
+    --accent:       #a5b4fc;
+    --card-hover:   #2d3a4f;
+    --bg-header:    linear-gradient(135deg, #020617 0%, #0f172a 100%);
+    --tab-active:   rgba(255,255,255,0.15);
+    --tab-inactive: rgba(255,255,255,0.1);
+    --tab-active-text: #e2e8f0;
+}
+
+/* Celeste oscuro */
+[data-theme="dark"][data-skin="celeste"] {
     --bg-body:      linear-gradient(160deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
     --bg-container: #1E2235;
     --bg-filters:   #252A42;
@@ -68,6 +107,9 @@
     --accent:       #9AA3CC;
     --card-hover:   #2A3060;
     --bg-header:    linear-gradient(135deg, #0E1228 0%, #1A2040 100%);
+    --tab-active:   rgba(255,255,255,0.15);
+    --tab-inactive: rgba(255,255,255,0.08);
+    --tab-active-text: #E0E4F4;
 }
 
 /* Scriptorium oscuro */
@@ -81,10 +123,13 @@
     --accent:       #9BBCCC;
     --card-hover:   #2E2418;
     --bg-header:    linear-gradient(135deg, #0E181E 0%, #1A2830 100%);
+    --tab-active:   rgba(255,255,255,0.12);
+    --tab-inactive: rgba(255,255,255,0.07);
+    --tab-active-text: #EDE8DC;
 }
 
-/* Aurora oscuro */
-[data-theme="dark"][data-skin="aurora"] {
+/* Blossom oscuro */
+[data-theme="dark"][data-skin="blossom"] {
     --bg-body:      linear-gradient(160deg, #2E1828 0%, #251828 60%, #1E1824 100%);
     --bg-container: #261820;
     --bg-filters:   #301E28;
@@ -94,6 +139,9 @@
     --accent:       #E898B8;
     --card-hover:   #3A2030;
     --bg-header:    linear-gradient(135deg, #1A0E14 0%, #2E1828 100%);
+    --tab-active:   rgba(255,255,255,0.12);
+    --tab-inactive: rgba(255,255,255,0.08);
+    --tab-active-text: #F8E8F0;
 }
 
 /* =====================================================
@@ -102,7 +150,7 @@
 .skin-selector {
     display: flex;
     align-items: flex-start;
-    gap: 16px;
+    gap: 14px;
     margin-top: 4px;
 }
 
@@ -115,8 +163,8 @@
 }
 
 .skin-dot {
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: 3px solid transparent;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -137,16 +185,20 @@
 .skin-dot::after  { right: 0; }
 
 /* Classic */
-.skin-dot[data-skin="classic"]::before      { background: #7B8DC4; }
-.skin-dot[data-skin="classic"]::after       { background: #9AA3CC; }
+.skin-dot[data-skin="classic"]::before     { background: #667eea; }
+.skin-dot[data-skin="classic"]::after      { background: #764ba2; }
+
+/* Celeste */
+.skin-dot[data-skin="celeste"]::before     { background: #7B8DC4; }
+.skin-dot[data-skin="celeste"]::after      { background: #9AA3CC; }
 
 /* Scriptorium */
-.skin-dot[data-skin="scriptorium"]::before  { background: #7B9BAA; }
-.skin-dot[data-skin="scriptorium"]::after   { background: #907068; }
+.skin-dot[data-skin="scriptorium"]::before { background: #7B9BAA; }
+.skin-dot[data-skin="scriptorium"]::after  { background: #907068; }
 
-/* Aurora */
-.skin-dot[data-skin="aurora"]::before       { background: #C9849A; }
-.skin-dot[data-skin="aurora"]::after        { background: #FDCEDF; }
+/* Blossom */
+.skin-dot[data-skin="blossom"]::before     { background: #C9849A; }
+.skin-dot[data-skin="blossom"]::after      { background: #FDCEDF; }
 
 /* Activo */
 .skin-dot.active {
@@ -163,7 +215,7 @@
 }
 
 .skin-label {
-    font-size: 0.72rem;
+    font-size: 0.70rem;
     color: var(--text-muted);
     text-align: center;
     white-space: nowrap;
