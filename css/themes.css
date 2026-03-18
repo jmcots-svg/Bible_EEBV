@@ -221,9 +221,11 @@
    ===================================================== */
 .skin-selector {
     display: flex;
+    flex-wrap: wrap;        /* ← clave: permite 2 filas */
     align-items: flex-start;
-    gap: 14px;
+    gap: 12px;
     margin-top: 4px;
+    max-width: 220px;       /* 3 dots por fila */
 }
 
 .skin-option {
