@@ -26,7 +26,7 @@ const MODELS = [
   { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
 ];
 
-let abortProcess = false; // Bandera de apagado de emergencia
+let abortProcess = false;
 
 // ═══════════════════════════════════════════════════════════════════
 // SMART RATE LIMITER (Con sistema de 3 Strikes)
@@ -45,7 +45,7 @@ class SmartRateLimiter {
           requestsToday: 0,
           dayStart: Date.now(),
           exhaustedUntil: 0,
-          consecutive429s: 0 // <--- Nuevo contador de bloqueos
+          consecutive429s: 0
         });
       });
     });
@@ -62,12 +62,10 @@ class SmartRateLimiter {
         slot.consecutive429s = 0;
       }
 
-      // Si alcanzó el límite diario (teórico o forzado por 3 strikes)
       if (slot.requestsToday >= slot.rpd) continue;
 
       slot.history = slot.history.filter(ts => now - ts < 60000);
 
-      // Si está bloqueado temporalmente por un 429
       if (slot.exhaustedUntil > now) {
         const wait = slot.exhaustedUntil - now;
         if (wait < minWaitMs) minWaitMs = wait;
@@ -93,9 +91,8 @@ class SmartRateLimiter {
       slot.exhaustedUntil = Date.now() + 61000;
       slot.consecutive429s++;
 
-      // Si el error dice "quota" explícitamente, o llevamos 3 bloqueos seguidos
       if (isDailyQuotaMessage || slot.consecutive429s >= 3) {
-        slot.requestsToday = slot.rpd; // Lo marcamos como agotado por hoy
+        slot.requestsToday = slot.rpd;
         console.log(`\n⚠️ Clave y Modelo (${model}) deshabilitados por hoy (Límite alcanzado).`);
       }
     }
@@ -103,17 +100,12 @@ class SmartRateLimiter {
 
   recordSuccess(key, model) {
     const slot = this.slots.find(s => s.key === key && s.model === model);
-    if (slot) slot.consecutive429s = 0; // Reseteamos los strikes
+    if (slot) slot.consecutive429s = 0;
   }
 }
 
 const rateLimiter = new SmartRateLimiter(GEMINI_KEYS, MODELS);
-
-const stats = { 
-  'gemini-3.1-flash-lite-preview': 0, 
-  'gemini-2.5-flash-lite': 0, 
-  'gemini-2.5-flash': 0 
-};
+const stats = { 'gemini-3.1-flash-lite-preview': 0, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash': 0 };
 
 // ═══════════════════════════════════════════════════════════════════
 // TRADUCTOR GEMINI (Motor Principal)
@@ -159,7 +151,7 @@ async function translateBatchOptimized(entriesBatch) {
         contents: JSON.stringify(payload),
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.1, // Baja temperatura para que el JSON sea estricto
+          temperature: 0.1,
           responseMimeType: "application/json"
         }
       });
@@ -182,14 +174,12 @@ async function translateBatchOptimized(entriesBatch) {
       lastErrorMessage = error.message?.replace(/\n/g, ' ') || "Error desconocido";
       const msg = lastErrorMessage.toLowerCase();
       
-      // Comprobamos si es un error de Rate Limit
       const isRateLimit = error.status === 429 || msg.includes('429') || msg.includes('exhausted');
-      const isDailyQuota = msg.includes('quota'); // Google suele usar la palabra "quota" para límites diarios
+      const isDailyQuota = msg.includes('quota');
 
       if (isRateLimit) {
         rateLimiter.markExhausted(slot.key, slot.model, isDailyQuota);
       } else {
-        // Puede ser error 503, JSON mal formado, o Filtro de Seguridad
         await sleep(2000); 
       }
     }
@@ -225,35 +215,78 @@ function createOptimizedBatches(entries) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// EXTRACCIÓN DE DATOS DE SUPABASE
+// EXTRACCIÓN DE DATOS DE SUPABASE (ANTI-TIMEOUTS)
 // ═══════════════════════════════════════════════════════════════════
-async function getAllEntriesOptimized(lang, pageSize = 500) {
-  let allEntries = [];
-  let page = 0;
+async function getTargetIdentifiers(lang) {
+  let allIdentifiers = [];
+  let lastId = null;
   let hasMore = true;
+  const pageSize = 1000; // Bloques grandes porque solo pedimos 3 columnas pequeñas
 
-  process.stdout.write(`\n📥 Cargando datos en "${lang}"... `);
+  process.stdout.write(`\n📥 Mapeando traducciones existentes en "${lang}"... `);
 
   while (hasMore) {
-    const from = page * pageSize;
-    const to = from + pageSize - 1;
-
-    const { data, error } = await supabase
+    let query = supabase
       .from("CommentaryEntry")
-      .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume")
+      .select("id, sourceId, divId") // ¡CLAVE! Sin descargar HTML pesado
       .eq("language", lang)
       .order("id", { ascending: true })
-      .range(from, to);
+      .limit(pageSize);
 
+    if (lastId !== null) query = query.gt("id", lastId); // Paginación por cursor (Súper rápida)
+
+    const { data, error } = await query;
     if (error) throw error;
+    
     if (data.length < pageSize) hasMore = false;
-
-    allEntries = allEntries.concat(data);
-    page++;
-    process.stdout.write(`\r📥 Cargando datos en "${lang}"... ✅ ${allEntries.length} cargados.`);
+    
+    if (data.length > 0) {
+      lastId = data[data.length - 1].id;
+      allIdentifiers = allIdentifiers.concat(data);
+    }
+    process.stdout.write(`\r📥 Mapeando traducciones existentes en "${lang}"... ✅ ${allIdentifiers.length} cargados.`);
   }
   console.log("");
-  return allEntries;
+  return new Set(allIdentifiers.map(e => `${e.sourceId}|${e.divId}`));
+}
+
+async function getPendingEnglishEntries(existingSet) {
+  let pendingEntries = [];
+  let lastId = null;
+  let hasMore = true;
+  const pageSize = 500;
+  let totalChecked = 0;
+
+  process.stdout.write(`\n📥 Buscando textos en "en" pendientes de traducir... `);
+
+  while (hasMore) {
+    let query = supabase
+      .from("CommentaryEntry")
+      .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume")
+      .eq("language", "en")
+      .order("id", { ascending: true })
+      .limit(pageSize);
+
+    if (lastId !== null) query = query.gt("id", lastId); // Paginación por cursor
+
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    if (data.length < pageSize) hasMore = false;
+    
+    if (data.length > 0) {
+      lastId = data[data.length - 1].id;
+      totalChecked += data.length;
+      
+      // Filtramos sobre la marcha para liberar RAM: Solo guardamos los que faltan
+      const newPending = data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
+      pendingEntries = pendingEntries.concat(newPending);
+    }
+    
+    process.stdout.write(`\r📥 Buscando textos en "en"... 🔍 Revisados: ${totalChecked} | 📝 Pendientes: ${pendingEntries.length}`);
+  }
+  console.log("");
+  return pendingEntries;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -320,37 +353,32 @@ async function processAllBatches(batches, totalEntries) {
 async function main() {
   console.log(`
 ╔═════════════════════════════════════════════════════════════════╗
-║  ⚡ TRADUCTOR GEMINI PURO (Anti-Bloqueos + 5 Hilos)             ║
+║  ⚡ TRADUCTOR GEMINI PURO (Anti-Timeouts + 5 Hilos)             ║
 ║  EN → ${TARGET_LANG.toUpperCase().padEnd(60, ' ')}║
 ╚═════════════════════════════════════════════════════════════════╝
 `);
   const startTime = Date.now();
 
   try {
-    const [enEntries, targetEntries] = await Promise.all([
-      getAllEntriesOptimized("en"),
-      getAllEntriesOptimized(TARGET_LANG)
-    ]);
+    // 1. Obtener identificadores del idioma destino (rápido, no descarga textos)
+    const existingSet = await getTargetIdentifiers(TARGET_LANG);
 
-    const existingSet = new Set(targetEntries.map(e => `${e.sourceId}|${e.divId}`));
-    const pendingEntries = enEntries.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
-
-    console.log(`\n⏳ Entradas pendientes: ${pendingEntries.length}`);
+    // 2. Obtener textos de origen filtrando sobre la marcha (no satura RAM)
+    const pendingEntries = await getPendingEnglishEntries(existingSet);
 
     if (pendingEntries.length === 0) { 
-      console.log("✅ Todo está traducido.");
+      console.log("✅ Todo está traducido y al día.");
       return; 
     }
 
     const batches = createOptimizedBatches(pendingEntries);
-    console.log(`📦 Lotes generados: ${batches.length}\n`);
+    console.log(`📦 Lotes generados a traducir: ${batches.length}\n`);
     
     await processAllBatches(batches, pendingEntries.length);
     
     const finalMin = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
     if (abortProcess) {
       console.log(`\n⚠️ Proceso detenido por falta de cuotas. Se avanzó durante ${finalMin} minutos.`);
-      // Cerramos con código 0 para que Github Actions lo marque como "Success" y vuelva a ejecutar mañana.
       process.exit(0); 
     } else {
       console.log(`\n✨ COMPLETADO en ${finalMin} minutos`);
