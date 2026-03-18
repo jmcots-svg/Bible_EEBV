@@ -305,9 +305,10 @@
 }
 
 /* Estado maximizado: desde debajo de la cabecera hasta el fondo seguro */
+/* Estado maximizado: desde el header hacia abajo, tapando las pestañas */
 .commentary-bottom-panel.maximized {
     position: fixed;
-    top: var(--app-header-height, 108px); /* ajustable desde JS */
+    top: var(--app-header-height, 56px); /* solo la altura del <header> */
     bottom: 0;
     left: 0;
     right: 0;
@@ -323,7 +324,6 @@
 
 .commentary-bottom-panel.maximized .commentary-bottom-content {
     flex: 1;
-    /* Respeta la barra inferior del iPhone */
     padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
