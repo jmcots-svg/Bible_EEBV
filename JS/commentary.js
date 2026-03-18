@@ -158,22 +158,25 @@ function updateMaximizeIcon(isMaximized) {
     if (!btn) return;
     
     if (isMaximized) {
-        // Icono de restaurar: dos flechas diagonales apuntándose
+        // Restaurar: flechas apuntando hacia DENTRO (se acercan)
         btn.innerHTML = `
             <svg width="14" height="14" viewBox="0 0 14 14">
-                <polyline points="9,1 13,1 13,5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="13" y1="1" x2="8" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                <polyline points="5,13 1,13 1,9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                <line x1="1" y1="13" x2="6" y2="8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="1,5 5,5 5,1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="5" y1="5" x2="1" y2="1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="13,9 9,9 9,13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="9" y1="9" x2="13" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
         `;
         btn.setAttribute('aria-label', 'Restaurar');
         btn.setAttribute('title', 'Restaurar');
     } else {
-        // Icono de maximizar: barra alta ‾
+        // Maximizar: flechas apuntando hacia FUERA (se alejan)
         btn.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 14 2">
-                <line x1="0" y1="1" x2="14" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 14 14">
+                <polyline points="1,5 1,1 5,1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="1" y1="1" x2="6" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="13,9 13,13 9,13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="13" y1="13" x2="8" y2="8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
         `;
         btn.setAttribute('aria-label', 'Maximizar');
