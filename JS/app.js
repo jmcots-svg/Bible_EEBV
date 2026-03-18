@@ -882,12 +882,79 @@ document.addEventListener('DOMContentLoaded', () => {
     // =====================
     // 18. INICIALIZAR COMENTARIOS
     // =====================
+
+    // Nueva función que simula el comportamiento de Concordancia y Strong
+    async function navigateToCommentaryReference(bookName, chapterNum, verseNum) {
+        const version = versionSelect.value; // Usamos la versión de lectura actual
+        content.innerHTML = '<p class="loading">📖 Abriendo en modo lectura...</p>';
+        
+        try {
+            // 1. Cargar libros si no están en caché
+            if (!cache.books[version]) {
+                const data = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+                cache.books[version] = data;
+            }
+            renderBooks(cache.books[version]);
+            
+            // 2. Buscar y seleccionar el libro
+            const book = cache.books[version].find(b => b.name === bookName);
+            if (!book) { showError(`No se encontró el libro "${bookName}"`); return; }
+            bookSelect.value = book.id;
+            
+            // 3. Cargar capítulos del libro
+            if (!cache.chapters[book.id]) {
+                const chaptersData = await fetchJSON(`${API_URL}/api/chapters?bookId=${book.id}`);
+                cache.chapters[book.id] = chaptersData;
+            }
+            renderChapters(cache.chapters[book.id]);
+            
+            // 4. Buscar y seleccionar el capítulo
+            const chapter = cache.chapters[book.id].find(ch => String(ch.number) === String(chapterNum));
+            if (!chapter) { showError(`No se encontró el capítulo ${chapterNum}`); return; }
+            chapterSelect.value = chapter.id;
+            
+            // 5. Cargar versículos
+            const cacheKey = `${chapter.id}-all`;
+            if (!cache.verses[cacheKey]) {
+                const versesData = await fetchJSON(`${API_URL}/api/verses?chapterId=${chapter.id}`);
+                cache.verses[cacheKey] = versesData;
+            }
+            renderVerseSelect(cache.verses[cacheKey]);
+            
+            // 6. Seleccionar versículo si hay uno, sino, cargar todo el capítulo
+            verseSelect.value = verseNum ? String(verseNum) : "";
+            
+            // 7. Cambiar la interfaz al modo "lectura"
+            currentMode = 'lectura';
+            modeTabs.forEach(t => t.classList.toggle('active', t.dataset.mode === 'lectura'));
+            panelLectura.style.display      = '';
+            panelConcordancia.style.display = 'none';
+            panelComparacion.style.display  = 'none';
+            panelStrong.style.display       = 'none';
+            
+            // 8. Cargar el texto en pantalla
+            onSearch();
+            
+        } catch (e) { 
+            showError('Error al navegar a la referencia del comentario'); 
+        }
+    }
+
+    // Inicializamos inyectando el callback
     initCommentary({
         commentaryBottomPanel:   document.getElementById('commentaryBottomPanel'),
         commentaryBottomRef:     document.getElementById('commentaryBottomRef'),
         commentaryBottomClose:   document.getElementById('commentaryBottomClose'),
         commentaryBottomContent: document.getElementById('commentaryBottomContent')
-    }, {});
+    }, {
+        onLoadReference: (book, chapter, verse) => {
+            navigateToCommentaryReference(book, chapter, verse);
+            
+            // Opcional: Si quieres que el panel de comentarios se cierre automáticamente
+            // al hacer clic para que tengas toda la pantalla para leer, descomenta la siguiente línea:
+            // closeCommentaryPanel();
+        }
+    });
 
     // =====================
     // 19. REFERENCE CLICKEABLE → COMENTARIOS
