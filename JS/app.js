@@ -353,9 +353,57 @@ document.addEventListener('DOMContentLoaded', () => {
     async function onVersionChange() {
         const lang = localStorage.getItem('appLanguage') || 'es';
         const version = versionSelect.value;
-        resetSelects(['book', 'chapter', 'verse']);
-        content.innerHTML = `<p class="placeholder">${t('changingVersion', lang)}</p>`;
+        
+        // 1. GUARDAR EL ESTADO ACTUAL ANTES DE RECARGAR
+        // Guardamos el nombre del libro (es más seguro que el ID, por si cambia entre versiones)
+        const currentBookName = bookSelect.selectedIndex > 0 ? bookSelect.options[bookSelect.selectedIndex].text : null;
+        // Guardamos el número del capítulo usando el dataset
+        const currentChapterNum = chapterSelect.selectedIndex > 0 ? chapterSelect.options[chapterSelect.selectedIndex].dataset.number : null;
+        // Guardamos el versículo
+        const currentVerseNum = verseSelect.value;
+
+        // 2. MOSTRAR MENSAJE DE "CAMBIANDO VERSIÓN..."
+        content.innerHTML = `<p class="loading">${t('changingVersion', lang)}</p>`;
+
+        // Deshabilitar los selects temporalmente para evitar clics mientras carga
+        bookSelect.disabled = true;
+        chapterSelect.disabled = true;
+        verseSelect.disabled = true;
+
+        // 3. CARGAR LOS LIBROS DE LA NUEVA VERSIÓN
         await loadBooks(version);
+
+        // 4. RESTAURAR LAS SELECCIONES AUTOMÁTICAMENTE
+        if (currentBookName) {
+            // Buscar la opción del libro por su nombre en la nueva versión
+            const bookOption = Array.from(bookSelect.options).find(opt => opt.text === currentBookName);
+            
+            if (bookOption) {
+                bookSelect.value = bookOption.value;
+                await onBookChange(); // Carga los capítulos del libro restaurado
+                
+                if (currentChapterNum) {
+                    // Buscar la opción del capítulo por su número
+                    const chapterOption = Array.from(chapterSelect.options).find(opt => opt.dataset.number === String(currentChapterNum));
+                    
+                    if (chapterOption) {
+                        chapterSelect.value = chapterOption.value;
+                        await onChapterChange(); // Carga los versículos y muestra el capítulo
+                        
+                        if (currentVerseNum) {
+                            // Si había un versículo específico, lo restauramos y filtramos
+                            verseSelect.value = currentVerseNum;
+                            await onSearch(); 
+                        }
+                        return; // Terminamos aquí si la restauración fue exitosa
+                    }
+                }
+            }
+        }
+        
+        // 5. SI NO HABÍA NADA SELECCIONADO (O FALLÓ LA RESTAURACIÓN)
+        resetSelects(['book', 'chapter', 'verse']);
+        content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
     }
 
     async function onBookChange() {
