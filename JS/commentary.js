@@ -28,6 +28,33 @@ export function initCommentary(els, cbs) {
     if (maximizeBtn) {
         maximizeBtn.addEventListener('click', toggleMaximize);
     }
+
+    // ── NUEVO: Hacer el encabezado clicable ──
+    if (elements.commentaryBottomRef) {
+        // Le damos estilo de cursor para que el usuario sepa que es clicable
+        elements.commentaryBottomRef.style.cursor = 'pointer';
+        elements.commentaryBottomRef.title = 'Cargar en el panel de lectura';
+        
+        // Agregamos el evento de clic
+        elements.commentaryBottomRef.addEventListener('click', () => {
+            if (currentReference && callbacks.onLoadReference) {
+                // Construimos el string "Libro Capitulo:Versiculo"
+                const verseText = currentReference.verse ? `:${currentReference.verse}` : '';
+                const refString = `${currentReference.book} ${currentReference.chapter}${verseText}`;
+                
+                // Llamamos a la función de app.js
+                callbacks.onLoadReference(refString);
+            }
+        });
+        
+        // Opcional: un pequeño efecto hover usando JS si no quieres editar el CSS
+        elements.commentaryBottomRef.addEventListener('mouseenter', () => {
+            elements.commentaryBottomRef.style.textDecoration = 'underline';
+        });
+        elements.commentaryBottomRef.addEventListener('mouseleave', () => {
+            elements.commentaryBottomRef.style.textDecoration = 'none';
+        });
+    }
 }
 
 function parseReference(refText) {
