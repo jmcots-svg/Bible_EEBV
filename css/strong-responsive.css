@@ -157,11 +157,10 @@
     display: none;
 }
 
-/* Estado maximizado */
-/* Estado maximizado */
+/* Estado maximizado: desde el header hacia abajo, tapando las pestañas */
 .strong-bottom-panel.maximized {
     position: fixed;
-    top: var(--app-header-height, 108px);
+    top: var(--app-header-height, 56px); /* solo la altura del <header> */
     bottom: 0;
     left: 0;
     right: 0;
@@ -171,6 +170,14 @@
     transform: translateY(0) !important;
     padding: 16px 20px;
     overflow: visible;
+    display: flex;
+    flex-direction: column;
+}
+
+.strong-bottom-panel.maximized .strong-bottom-content {
+    max-height: none;
+    flex: 1;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 .strong-bottom-panel.maximized .strong-bottom-content {
