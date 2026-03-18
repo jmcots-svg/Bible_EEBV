@@ -111,19 +111,61 @@
   font-weight: 600;
 }
 
-.strong-bottom-close {
-  background: none;
-  border: none;
-  font-size: 1.8rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0 8px;
-  line-height: 1;
-  transition: color 0.2s;
+/* ===================== */
+/* CONTROLES STRONG      */
+/* (Minimizar, Maximizar, Cerrar) */
+/* ===================== */
+
+.strong-bottom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
-.strong-bottom-close:hover {
-  color: var(--accent);
+.strong-control-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    opacity: 0.45;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.strong-control-btn:hover {
+    opacity: 0.85;
+    color: var(--accent);
+}
+
+.strong-control-btn:active {
+    opacity: 1;
+}
+
+/* Estado minimizado */
+.strong-bottom-panel.minimized {
+    max-height: 55vh !important;
+    padding: 16px 20px !important;
+    transform: translateY(calc(100% - 52px));
+}
+
+.strong-bottom-panel.minimized .strong-bottom-content {
+    display: none;
+}
+
+/* Estado maximizado */
+.strong-bottom-panel.maximized {
+    max-height: 100vh !important;
+    height: 100vh;
+    border-radius: 0;
+}
+
+.strong-bottom-panel.maximized .strong-bottom-content {
+    max-height: calc(100vh - 70px);
 }
 
 .strong-bottom-content {
@@ -525,9 +567,23 @@
   }
 
   /* Panel Strong responsive */
-  .strong-bottom-panel.open {
-    max-height: 65vh;
-  }
+.strong-bottom-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--bg-container);
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2);
+  transition: max-height 0.4s ease, padding 0.4s ease, transform 0.3s ease, height 0.3s ease;
+  z-index: 1000;
+  padding: 0 20px;
+  transform: translateY(0);
+  display: flex;
+  flex-direction: column;
+}
 
   .strong-bottom-content {
     max-height: calc(65vh - 70px);
