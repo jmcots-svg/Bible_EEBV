@@ -636,16 +636,22 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (!chapterSelect.value && bookSelect.value) {
             content.innerHTML = `<p class="placeholder">${t('placeholderChapter', lang)}</p>`;
         }
+    
         const compPlaceholder = document.querySelector('[data-mode="comparacion"] .placeholder');
         if (compPlaceholder) compPlaceholder.textContent = t('selectVersions', lang);
+    
         const concPlaceholder = document.querySelector('[data-mode="concordancia"] .placeholder');
         if (concPlaceholder) concPlaceholder.textContent = t('placeholderSearch', lang);
+    
         const strongPlaceholder = document.querySelector('[data-mode="strong"] .placeholder');
         if (strongPlaceholder) strongPlaceholder.textContent = t('placeholderStrong', lang);
+    
         const bookOption = document.querySelector('#book option:first-child');
         if (bookOption) bookOption.textContent = t('selectBook', lang);
+    
         const chapterOption = document.querySelector('#chapter option:first-child');
         if (chapterOption) chapterOption.textContent = t('selectChapter', lang);
+    
         const verseOption = document.querySelector('#verse option:first-child');
         if (verseOption) verseOption.textContent = t('allChapter', lang);
     }
