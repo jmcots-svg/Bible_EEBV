@@ -611,19 +611,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyTranslations(lang) {
-        document.getElementById('mainTitle').textContent = t('mainTitle', lang);
+        const titleEl = document.getElementById('mainTitle');
+        if (titleEl) titleEl.textContent = t('mainTitle', lang);
+    
         const settingsHeader = document.querySelector('.settings-panel-header h3');
         if (settingsHeader) settingsHeader.textContent = t('settingsTitle', lang);
+    
         const labels = { 'version': 'version', 'book': 'book', 'chapter': 'chapter', 'verse': 'verse' };
         Object.entries(labels).forEach(([id, key]) => {
             const label = document.querySelector(`label[for="${id}"]`);
             if (label) label.textContent = t(key, lang);
         });
+    
         const langLabel = document.querySelector(`label[for="languageSelect"]`);
         if (langLabel) langLabel.textContent = t('language', lang);
+    
         const tabs = document.querySelectorAll('.tab-text');
         const tabKeys = ['lectura', 'comparacion', 'concordancia', 'strong'];
         tabs.forEach((tab, i) => { if (tabKeys[i]) tab.textContent = t(tabKeys[i], lang); });
+    
         updateComparacionLabels(lang);
         updateConcordanciaLabels(lang);
         updateStrongLabels(lang);
@@ -631,6 +637,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updatePlaceholders(lang) {
+
+        if (!content) return; 
+        
         if (!chapterSelect.value && !bookSelect.value) {
             content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
         } else if (!chapterSelect.value && bookSelect.value) {
