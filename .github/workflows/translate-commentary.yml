@@ -33,8 +33,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}  # ← Añadido
           GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-          # 👇 Aquí inyectamos la elección que hiciste en el menú de GitHub
           TARGET_LANG: ${{ github.event.inputs.target_lang }}
-        timeout-minutes: 360 # 6 horas máximo
+        timeout-minutes: 360
         run: npm run translate:commentary
