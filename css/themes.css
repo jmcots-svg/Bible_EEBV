@@ -145,6 +145,78 @@
 }
 
 /* =====================================================
+   SKIN 5 — Ocean (cyan / navy / amarillo)
+   ===================================================== */
+[data-skin="ocean"] {
+    --bg-body:       linear-gradient(160deg, #0099B8 0%, #003A52 100%);
+    --accent:        #0099B8;
+    --bg-filters:    #E8F6FA;
+    --bg-container:  #F2FAFB;
+    --border:        #A8D4E8;
+    --text-main:     #002A3A;
+    --text-muted:    #4A7A8A;
+    --card-hover:    #D0EDF5;
+    --bg-header:     linear-gradient(135deg, #002030 0%, #003A52 100%);
+    --tab-active-text: #002A3A;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.2);
+    --highlight-bg:  #FFF3C0;
+    --highlight-text: #7A5A00;
+}
+
+/* Ocean oscuro */
+[data-theme="dark"][data-skin="ocean"] {
+    --bg-body:      linear-gradient(160deg, #001824 0%, #002A3A 100%);
+    --bg-container: #001E2C;
+    --bg-filters:   #002638;
+    --border:       #005A78;
+    --text-main:    #D0EDF5;
+    --text-muted:   #60A8C0;
+    --accent:       #00BBD8;
+    --card-hover:   #003048;
+    --bg-header:    linear-gradient(135deg, #000E16 0%, #001824 100%);
+    --tab-active:   rgba(255,255,255,0.15);
+    --tab-inactive: rgba(255,255,255,0.08);
+    --tab-active-text: #D0EDF5;
+}
+
+/* =====================================================
+   SKIN 6 — Sunset (coral / melocotón / azul mediterráneo)
+   ===================================================== */
+[data-skin="sunset"] {
+    --bg-body:       linear-gradient(160deg, #F04E2A 0%, #F0B090 40%, #2B7EC4 100%);
+    --accent:        #F04E2A;
+    --bg-filters:    #FDF0EA;
+    --bg-container:  #FEFAF8;
+    --border:        #F0C8B0;
+    --text-main:     #2A1A10;
+    --text-muted:    #8A5A40;
+    --card-hover:    #FAE8DC;
+    --bg-header:     linear-gradient(135deg, #1A3A6A 0%, #2B7EC4 100%);
+    --tab-active-text: #2A1A10;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.22);
+    --highlight-bg:  #D0E8FF;
+    --highlight-text: #1A3A6A;
+}
+
+/* Sunset oscuro */
+[data-theme="dark"][data-skin="sunset"] {
+    --bg-body:      linear-gradient(160deg, #2A1808 0%, #1A3A6A 100%);
+    --bg-container: #1E1008;
+    --bg-filters:   #281808;
+    --border:       #5A3020;
+    --text-main:    #FAE8DC;
+    --text-muted:   #C09070;
+    --accent:       #FF7050;
+    --card-hover:   #301808;
+    --bg-header:    linear-gradient(135deg, #0A1828 0%, #1A3A6A 100%);
+    --tab-active:   rgba(255,255,255,0.12);
+    --tab-inactive: rgba(255,255,255,0.07);
+    --tab-active-text: #FAE8DC;
+}
+
+/* =====================================================
    SELECTOR DE SKIN (UI en panel ajustes)
    ===================================================== */
 .skin-selector {
