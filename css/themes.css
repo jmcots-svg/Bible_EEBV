@@ -1,65 +1,56 @@
 /* =====================================================
    THEMES / SKINS
+   Sobreescriben las variables de base.css
    ===================================================== */
 
 /* =====================================================
    SKIN 1 — Classic (azul pizarra / lavanda / crema)
+   Por defecto, coincide con base.css
    ===================================================== */
-[data-skin="classic"],
-:root {
-    --skin-primary:      #7B8DC4;
-    --skin-secondary:    #9AA3CC;
-    --skin-accent-light: #C4C9E4;
-    --skin-accent-dark:  #5A6A9E;
-    --skin-bg-gradient:  linear-gradient(160deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
-    --accent:            #7B8DC4;
-    --bg-filters:        #F0F2F9;
-    --bg-container:      #FFFFFF;
-    --border:            #D0D5EA;
-    --text-main:         #2A2E45;
-    --text-muted:        #6B7280;
+:root,
+[data-skin="classic"] {
+    --bg-body:       linear-gradient(160deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
+    --accent:        #7B8DC4;
+    --bg-filters:    #F0F2F9;
+    --bg-container:  #FFFFFF;
+    --border:        #D0D5EA;
+    --text-main:     #2A2E45;
+    --text-muted:    #6B7280;
+    --card-hover:    #E8ECF8;
+    --bg-header:     linear-gradient(135deg, #4A5A9A 0%, #6B7DC4 100%);
+    --tab-active-text: #2A2E45;
 }
 
 /* =====================================================
    SKIN 2 — Scriptorium (acero / marfil / taupe / mauve)
    ===================================================== */
 [data-skin="scriptorium"] {
-    --skin-primary:      #7B9BAA;
-    --skin-secondary:    #907068;
-    --skin-accent-light: #C4B0A4;
-    --skin-accent-dark:  #5A7A88;
-    --skin-bg-gradient:  linear-gradient(160deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
-    --accent:            #7B9BAA;
-    --bg-filters:        #EDE8DC;
-    --bg-container:      #F7F4EE;
-    --border:            #C4B0A4;
-    --text-main:         #2C2420;
-    --text-muted:        #7A6A60;
+    --bg-body:       linear-gradient(160deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
+    --accent:        #7B9BAA;
+    --bg-filters:    #EDE8DC;
+    --bg-container:  #F7F4EE;
+    --border:        #C4B0A4;
+    --text-main:     #2C2420;
+    --text-muted:    #7A6A60;
+    --card-hover:    #E4DDD4;
+    --bg-header:     linear-gradient(135deg, #4A6A78 0%, #7B9BAA 100%);
+    --tab-active-text: #2C2420;
 }
 
 /* =====================================================
    SKIN 3 — Aurora Pink (rosas pastel muy suaves)
    ===================================================== */
 [data-skin="aurora"] {
-    --skin-primary:      #E898B8;
-    --skin-secondary:    #FDCEDF;
-    --skin-accent-light: #F8D8E8;
-    --skin-accent-dark:  #C4609A;
-    --skin-bg-gradient:  linear-gradient(160deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
-    --accent:            #E898B8;
-    --bg-filters:        #FEF4F8;
-    --bg-container:      #FFFFFF;
-    --border:            #F0C8D8;
-    --text-main:         #3A2030;
-    --text-muted:        #9A7080;
-}
-
-/* =====================================================
-   FONDO BODY — modo claro
-   ===================================================== */
-body {
-    background: var(--skin-bg-gradient);
-    background-attachment: fixed;
+    --bg-body:       linear-gradient(160deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
+    --accent:        #C9849A;
+    --bg-filters:    #FEF4F8;
+    --bg-container:  #FFFFFF;
+    --border:        #F0C8D8;
+    --text-main:     #3A2030;
+    --text-muted:    #9A7080;
+    --card-hover:    #FDEAF2;
+    --bg-header:     linear-gradient(135deg, #A05878 0%, #C9849A 100%);
+    --tab-active-text: #3A2030;
 }
 
 /* =====================================================
@@ -67,44 +58,42 @@ body {
    ===================================================== */
 
 /* Classic oscuro */
-[data-theme="dark"][data-skin="classic"],
-[data-theme="dark"]:not([data-skin]) {
-    --bg-container:  #1E2235;
-    --bg-filters:    #252A42;
-    --border:        #3A4060;
-    --text-main:     #E0E4F4;
-    --text-muted:    #8890B0;
-    --accent:        #9AA3CC;
-}
-[data-theme="dark"][data-skin="classic"] body,
-[data-theme="dark"]:not([data-skin]) body {
-    background: linear-gradient(160deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
+[data-theme="dark"][data-skin="classic"] {
+    --bg-body:      linear-gradient(160deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
+    --bg-container: #1E2235;
+    --bg-filters:   #252A42;
+    --border:       #3A4060;
+    --text-main:    #E0E4F4;
+    --text-muted:   #8890B0;
+    --accent:       #9AA3CC;
+    --card-hover:   #2A3060;
+    --bg-header:    linear-gradient(135deg, #0E1228 0%, #1A2040 100%);
 }
 
 /* Scriptorium oscuro */
 [data-theme="dark"][data-skin="scriptorium"] {
-    --bg-container:  #1E1A16;
-    --bg-filters:    #26201A;
-    --border:        #4A3C30;
-    --text-main:     #EDE8DC;
-    --text-muted:    #907868;
-    --accent:        #9BBCCC;
-}
-[data-theme="dark"][data-skin="scriptorium"] body {
-    background: linear-gradient(160deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
+    --bg-body:      linear-gradient(160deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
+    --bg-container: #1E1A16;
+    --bg-filters:   #26201A;
+    --border:       #4A3C30;
+    --text-main:    #EDE8DC;
+    --text-muted:   #907868;
+    --accent:       #9BBCCC;
+    --card-hover:   #2E2418;
+    --bg-header:    linear-gradient(135deg, #0E181E 0%, #1A2830 100%);
 }
 
 /* Aurora oscuro */
 [data-theme="dark"][data-skin="aurora"] {
-    --bg-container:  #261820;
-    --bg-filters:    #301E28;
-    --border:        #5A3048;
-    --text-main:     #F8E8F0;
-    --text-muted:    #C090A8;
-    --accent:        #E898B8;
-}
-[data-theme="dark"][data-skin="aurora"] body {
-    background: linear-gradient(160deg, #2E1828 0%, #251828 60%, #1E1824 100%);
+    --bg-body:      linear-gradient(160deg, #2E1828 0%, #251828 60%, #1E1824 100%);
+    --bg-container: #261820;
+    --bg-filters:   #301E28;
+    --border:       #5A3048;
+    --text-main:    #F8E8F0;
+    --text-muted:   #C090A8;
+    --accent:       #E898B8;
+    --card-hover:   #3A2030;
+    --bg-header:    linear-gradient(135deg, #1A0E14 0%, #2E1828 100%);
 }
 
 /* =====================================================
@@ -136,7 +125,6 @@ body {
     flex-shrink: 0;
 }
 
-/* Mitades bicolor */
 .skin-dot::before,
 .skin-dot::after {
     content: '';
@@ -150,17 +138,17 @@ body {
 
 /* Classic */
 .skin-dot[data-skin="classic"]::before      { background: #7B8DC4; }
-.skin-dot[data-skin="classic"]::after       { background: #C4C9E4; }
+.skin-dot[data-skin="classic"]::after       { background: #9AA3CC; }
 
 /* Scriptorium */
 .skin-dot[data-skin="scriptorium"]::before  { background: #7B9BAA; }
 .skin-dot[data-skin="scriptorium"]::after   { background: #907068; }
 
 /* Aurora */
-.skin-dot[data-skin="aurora"]::before       { background: #E898B8; }
+.skin-dot[data-skin="aurora"]::before       { background: #C9849A; }
 .skin-dot[data-skin="aurora"]::after        { background: #FDCEDF; }
 
-/* Estado activo */
+/* Activo */
 .skin-dot.active {
     border-color: var(--accent);
     transform: scale(1.18);
@@ -179,13 +167,4 @@ body {
     color: var(--text-muted);
     text-align: center;
     white-space: nowrap;
-}
-
-/* =====================================================
-   AJUSTE SETTINGS-ITEM para el selector
-   ===================================================== */
-.settings-item.skin-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
 }
