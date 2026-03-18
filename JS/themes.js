@@ -1,7 +1,7 @@
 // themes.js
 // Gestión de skins/temas de color
 
-const SKINS = ['classic', 'celeste', 'scriptorium', 'blossom'];
+const SKINS = ['classic', 'celeste', 'scriptorium', 'blossom', 'ocean', 'sunset'];
 const STORAGE_KEY = 'appSkin';
 
 /**
