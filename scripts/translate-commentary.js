@@ -26,8 +26,10 @@ const MODELS = [
   { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
 ];
 
+let abortProcess = false; // Bandera de apagado de emergencia
+
 // ═══════════════════════════════════════════════════════════════════
-// SMART RATE LIMITER (Control exacto de RPM y RPD)
+// SMART RATE LIMITER (Con sistema de 3 Strikes)
 // ═══════════════════════════════════════════════════════════════════
 class SmartRateLimiter {
   constructor(keys, models) {
@@ -42,7 +44,8 @@ class SmartRateLimiter {
           history: [], 
           requestsToday: 0,
           dayStart: Date.now(),
-          exhaustedUntil: 0 
+          exhaustedUntil: 0,
+          consecutive429s: 0 // <--- Nuevo contador de bloqueos
         });
       });
     });
@@ -56,12 +59,15 @@ class SmartRateLimiter {
       if (now - slot.dayStart > 86400000) {
         slot.requestsToday = 0;
         slot.dayStart = now;
+        slot.consecutive429s = 0;
       }
 
+      // Si alcanzó el límite diario (teórico o forzado por 3 strikes)
       if (slot.requestsToday >= slot.rpd) continue;
 
       slot.history = slot.history.filter(ts => now - ts < 60000);
 
+      // Si está bloqueado temporalmente por un 429
       if (slot.exhaustedUntil > now) {
         const wait = slot.exhaustedUntil - now;
         if (wait < minWaitMs) minWaitMs = wait;
@@ -81,9 +87,23 @@ class SmartRateLimiter {
     return { available: false, waitMs: minWaitMs === Infinity ? 5000 : minWaitMs };
   }
 
-  markExhausted(key, model) {
+  markExhausted(key, model, isDailyQuotaMessage) {
     const slot = this.slots.find(s => s.key === key && s.model === model);
-    if (slot) slot.exhaustedUntil = Date.now() + 61000;
+    if (slot) {
+      slot.exhaustedUntil = Date.now() + 61000;
+      slot.consecutive429s++;
+
+      // Si el error dice "quota" explícitamente, o llevamos 3 bloqueos seguidos
+      if (isDailyQuotaMessage || slot.consecutive429s >= 3) {
+        slot.requestsToday = slot.rpd; // Lo marcamos como agotado por hoy
+        console.log(`\n⚠️ Clave y Modelo (${model}) deshabilitados por hoy (Límite alcanzado).`);
+      }
+    }
+  }
+
+  recordSuccess(key, model) {
+    const slot = this.slots.find(s => s.key === key && s.model === model);
+    if (slot) slot.consecutive429s = 0; // Reseteamos los strikes
   }
 }
 
@@ -99,6 +119,8 @@ const stats = {
 // TRADUCTOR GEMINI (Motor Principal)
 // ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
+  if (abortProcess) return null;
+
   const payload = entriesBatch.map(entry => ({
     id: entry.id, 
     title: entry.title || "", 
@@ -110,12 +132,21 @@ async function translateBatchOptimized(entriesBatch) {
   const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return ONLY a valid JSON array.`;
 
   let attempts = 0;
+  let lastErrorMessage = "";
+
   while (attempts < 8) { 
+    if (abortProcess) return null;
+
     const slot = rateLimiter.getBestSlot();
     
     if (!slot.available) {
       if (slot.waitMs === Infinity) {
-        throw new Error("⚠️ Todas las cuotas diarias (RPD) de todos los modelos se han agotado.");
+        if (!abortProcess) {
+          console.log("\n\n🛑 TODAS las claves y modelos han agotado su cuota diaria.");
+          console.log("🛑 Abortando el proceso limpiamente...");
+          abortProcess = true;
+        }
+        return null;
       }
       await sleep(slot.waitMs + 100); 
       continue;
@@ -128,38 +159,45 @@ async function translateBatchOptimized(entriesBatch) {
         contents: JSON.stringify(payload),
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.1,
+          temperature: 0.1, // Baja temperatura para que el JSON sea estricto
           responseMimeType: "application/json"
         }
       });
 
       let responseText = response.text || "";
-      
-      // FIX: Usamos \x60 en lugar de acentos graves literales para evitar SyntaxErrors
       responseText = responseText.replace(/^\x60{3}(?:json)?\n?/i, '').replace(/\n?\x60{3}$/i, '').trim();
       
       const translatedArray = JSON.parse(responseText);
       
       if (!Array.isArray(translatedArray) || translatedArray.length !== entriesBatch.length) {
-        throw new Error("El modelo no devolvió la longitud correcta");
+        throw new Error("Estructura JSON truncada o incompleta");
       }
 
+      rateLimiter.recordSuccess(slot.key, slot.model);
       stats[slot.model] += entriesBatch.length;
       return translatedArray;
 
     } catch (error) {
       attempts++;
-      const isRateLimit = error.status === 429 || error.message?.includes('429') || error.message?.toLowerCase().includes('exhausted');
+      lastErrorMessage = error.message?.replace(/\n/g, ' ') || "Error desconocido";
+      const msg = lastErrorMessage.toLowerCase();
       
+      // Comprobamos si es un error de Rate Limit
+      const isRateLimit = error.status === 429 || msg.includes('429') || msg.includes('exhausted');
+      const isDailyQuota = msg.includes('quota'); // Google suele usar la palabra "quota" para límites diarios
+
       if (isRateLimit) {
-        rateLimiter.markExhausted(slot.key, slot.model);
+        rateLimiter.markExhausted(slot.key, slot.model, isDailyQuota);
       } else {
-        await sleep(1500); 
+        // Puede ser error 503, JSON mal formado, o Filtro de Seguridad
+        await sleep(2000); 
       }
     }
   }
   
-  console.error(`❌ Lote de ${entriesBatch.length} fallido tras 8 intentos.`);
+  if (!abortProcess) {
+    console.error(`\n❌ Lote de ${entriesBatch.length} fallido. Razón final: ${lastErrorMessage.substring(0, 150)}`);
+  }
   return null;
 }
 
@@ -227,11 +265,12 @@ async function processAllBatches(batches, totalEntries) {
   const startTime = Date.now();
 
   const processBatch = async (batchEn, index) => {
+    if (abortProcess) return;
     if (index < 5) await sleep(index * 300); 
 
     const translatedBatch = await translateBatchOptimized(batchEn);
     
-    if (translatedBatch && translatedBatch.length > 0) {
+    if (translatedBatch && translatedBatch.length > 0 && !abortProcess) {
       const dbBufferLocal = []; 
 
       translatedBatch.forEach(transItem => {
@@ -262,7 +301,7 @@ async function processAllBatches(batches, totalEntries) {
       }
     }
 
-    if (processed % 20 < 10) { 
+    if (!abortProcess && processed % 20 < 10) { 
       const elapsed = (Date.now() - startTime) / 1000 / 60;
       const rate = processed / elapsed;
       const eta = (totalEntries - processed) / rate;
@@ -281,7 +320,7 @@ async function processAllBatches(batches, totalEntries) {
 async function main() {
   console.log(`
 ╔═════════════════════════════════════════════════════════════════╗
-║  ⚡ TRADUCTOR GEMINI PURO (Modo 5 Hilos)                        ║
+║  ⚡ TRADUCTOR GEMINI PURO (Anti-Bloqueos + 5 Hilos)             ║
 ║  EN → ${TARGET_LANG.toUpperCase().padEnd(60, ' ')}║
 ╚═════════════════════════════════════════════════════════════════╝
 `);
@@ -309,7 +348,14 @@ async function main() {
     await processAllBatches(batches, pendingEntries.length);
     
     const finalMin = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
-    console.log(`\n✨ COMPLETADO en ${finalMin} minutos`);
+    if (abortProcess) {
+      console.log(`\n⚠️ Proceso detenido por falta de cuotas. Se avanzó durante ${finalMin} minutos.`);
+      // Cerramos con código 0 para que Github Actions lo marque como "Success" y vuelva a ejecutar mañana.
+      process.exit(0); 
+    } else {
+      console.log(`\n✨ COMPLETADO en ${finalMin} minutos`);
+    }
+    
   } catch (error) { 
     console.error(`\n❌ Error Crítico:`, error);
     process.exit(1);
@@ -317,5 +363,3 @@ async function main() {
 }
 
 main();
-
-
