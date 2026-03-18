@@ -68,8 +68,8 @@ function toggleStrongMinimize() {
     }
 }
 
-function toggleMaximize() {
-    const panel = document.getElementById('strongBottomPanel');
+function toggleStrongMaximize() {
+    const panel = elements.strongBottomPanel;
     
     // Si está minimizado, primero restaurar
     panel.classList.remove('minimized');
@@ -77,7 +77,7 @@ function toggleMaximize() {
     if (panel.classList.contains('maximized')) {
         // Restaurar desde maximizado
         panel.classList.remove('maximized');
-        updateMaximizeIcon(false);
+        updateStrongMaximizeIcon(false);
     } else {
         // Calcular altura de cabecera + tabs dinámicamente
         const appHeader = document.querySelector('header');
@@ -91,7 +91,7 @@ function toggleMaximize() {
         panel.style.setProperty('--app-header-height', topOffset + 'px');
         
         panel.classList.add('maximized');
-        updateMaximizeIcon(true);
+        updateStrongMaximizeIcon(true);
     }
 }
 
