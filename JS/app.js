@@ -788,6 +788,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =====================
+    // AUTO-COLAPSAR AL EMPEZAR A LEER
+    // =====================
+    function autoCollapseFilters() {
+        // Colapsa si están abiertos
+        if (currentMode === 'lectura') filterToggleLectura?.collapse();
+        if (currentMode === 'comparacion') filterToggleComp?.collapse();
+        if (currentMode === 'concordancia') filterToggleConc?.collapse();
+        if (currentMode === 'strong') filterToggleStrong?.collapse();
+    }
+
+    // Colapsar al hacer clic o tocar el texto de la Biblia
+    content.addEventListener('mousedown', autoCollapseFilters);
+    content.addEventListener('touchstart', autoCollapseFilters, { passive: true });
+
+    // Colapsar al hacer scroll hacia abajo (usando la rueda del ratón o teclado)
+    window.addEventListener('wheel', autoCollapseFilters, { passive: true });
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+            autoCollapseFilters();
+        }
+    });
+
+    // =====================
     // 16. CARGA INICIAL
     // =====================
     async function loadVersions() {
