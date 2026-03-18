@@ -272,11 +272,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chapterSelect.addEventListener('change', () => {
         setTimeout(() => {
-            if (window.innerWidth <= 600) {
                 const ref = reference?.textContent?.trim();
                 filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
                 filterToggleLectura?.collapse();
-            }
         }, 500);
     });
 
@@ -289,31 +287,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     compChapter.addEventListener('change', () => {
         setTimeout(() => {
-            if (window.innerWidth <= 600) {
                 const ref = reference?.textContent?.trim();
                 filterToggleComp?.updateRef(ref || 'Selecciona versiones');
                 filterToggleComp?.collapse();
-            }
         }, 500);
     });
 
     concSearchBtn.addEventListener('click', () => {
         setTimeout(() => {
-            if (window.innerWidth <= 600) {
                 const query = concQuery.value.trim();
                 filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
                 filterToggleConc?.collapse();
-            }
         }, 300);
     });
 
     strongChapter.addEventListener('change', () => {
         setTimeout(() => {
-            if (window.innerWidth <= 600) {
                 const ref = reference?.textContent?.trim();
                 filterToggleStrong?.updateRef(ref || 'Selecciona un libro');
                 filterToggleStrong?.collapse();
-            }
         }, 500);
     });
 
