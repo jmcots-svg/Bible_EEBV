@@ -17,6 +17,17 @@ export function initCommentary(els, cbs) {
     if (elements.commentaryBottomClose) {
         elements.commentaryBottomClose.addEventListener('click', closeCommentaryPanel);
     }
+
+    // ── Nuevos botones ──
+    const minimizeBtn = document.getElementById('commentaryBottomMinimize');
+    const maximizeBtn = document.getElementById('commentaryBottomMaximize');
+
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', toggleMinimize);
+    }
+    if (maximizeBtn) {
+        maximizeBtn.addEventListener('click', toggleMaximize);
+    }
 }
 
 function parseReference(refText) {
@@ -82,15 +93,21 @@ export async function openCommentaryForReference(refText, versionName) {
 }
 
 function showPanel() {
+    elements.commentaryBottomPanel.classList.remove('minimized');
+    elements.commentaryBottomPanel.classList.remove('maximized');
     elements.commentaryBottomPanel.classList.add('open');
     updateHeader();
+    updateMaximizeIcon(false);
 }
 
 export function closeCommentaryPanel() {
     elements.commentaryBottomPanel.classList.remove('open');
+    elements.commentaryBottomPanel.classList.remove('minimized');
+    elements.commentaryBottomPanel.classList.remove('maximized');
     currentReference = null;
     currentSourceId = null;
     navigationStack = [];
+    updateMaximizeIcon(false);
 }
 
 function updateHeader() {
@@ -99,6 +116,74 @@ function updateHeader() {
     const verseText = currentReference.verse ? `:${currentReference.verse}` : '';
     elements.commentaryBottomRef.textContent = `${currentReference.book} ${currentReference.chapter}${verseText}`;
 }
+
+// =====================================================
+// MINIMIZAR / MAXIMIZAR / RESTAURAR
+// =====================================================
+
+function toggleMinimize() {
+    const panel = elements.commentaryBottomPanel;
+    
+    if (panel.classList.contains('minimized')) {
+        // Restaurar desde minimizado
+        panel.classList.remove('minimized');
+        updateMaximizeIcon(panel.classList.contains('maximized'));
+    } else {
+        // Minimizar
+        panel.classList.remove('maximized');
+        panel.classList.add('minimized');
+        updateMaximizeIcon(false);
+    }
+}
+
+function toggleMaximize() {
+    const panel = elements.commentaryBottomPanel;
+    
+    // Si está minimizado, primero restaurar
+    panel.classList.remove('minimized');
+    
+    if (panel.classList.contains('maximized')) {
+        // Restaurar desde maximizado
+        panel.classList.remove('maximized');
+        updateMaximizeIcon(false);
+    } else {
+        // Maximizar
+        panel.classList.add('maximized');
+        updateMaximizeIcon(true);
+    }
+}
+
+function updateMaximizeIcon(isMaximized) {
+    const btn = document.getElementById('commentaryBottomMaximize');
+    if (!btn) return;
+    
+    if (isMaximized) {
+        // Icono de restaurar: dos flechas diagonales apuntándose
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 14 14">
+                <polyline points="9,1 13,1 13,5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="13" y1="1" x2="8" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="5,13 1,13 1,9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="1" y1="13" x2="6" y2="8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        `;
+        btn.setAttribute('aria-label', 'Restaurar');
+        btn.setAttribute('title', 'Restaurar');
+    } else {
+        // Icono de maximizar: barra alta ‾
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 14 2">
+                <line x1="0" y1="1" x2="14" y2="1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        `;
+        btn.setAttribute('aria-label', 'Maximizar');
+        btn.setAttribute('title', 'Maximizar');
+    }
+}
+
+// =====================================================
+// CARGA DE COMENTARIOS
+// =====================================================
 
 async function loadCommentarySources() {
     const content = elements.commentaryBottomContent;
@@ -178,7 +263,6 @@ function renderSourcesList(sources) {
     });
 }
 
-// ✅ FUNCIÓN PRINCIPAL ACTUALIZADA CON TRADUCCIÓN ON-THE-FLY
 async function loadCommentaryEntries(sourceId, needsTranslation = false) {
     currentSourceId = sourceId;
     const content = elements.commentaryBottomContent;
@@ -237,7 +321,6 @@ async function loadCommentaryEntries(sourceId, needsTranslation = false) {
                         translationMethod = translated.method;
                     } catch (e) {
                         console.warn(`Error traduciendo entrada ${entry.id}:`, e);
-                        // Mantener en inglés si falla
                         data.entries[i].translationFailed = true;
                     }
                 }
@@ -260,8 +343,6 @@ async function loadCommentaryEntries(sourceId, needsTranslation = false) {
     }
 }
 
-// ✅ NUEVA FUNCIÓN: Cargar entradas en inglés y traducirlas
-// ✅ NUEVA FUNCIÓN: Cargar entradas en inglés y traducirlas
 async function loadAndTranslateEntries(sourceId, targetLang) {
     const params = new URLSearchParams({
         bookOrder: currentReference.bookOrder,
@@ -290,8 +371,6 @@ async function loadAndTranslateEntries(sourceId, targetLang) {
             lastMethod = translated.method;
         } catch (e) {
             console.warn(`[Commentary] Error traduciendo entrada ${entry.id}, saltando...`);
-            // ❌ ANTES: translatedEntries.push(entry); // Fallback inglés
-            // ✅ AHORA: No añadimos nada, simplemente la saltamos
         }
     }
     
@@ -302,10 +381,7 @@ async function loadAndTranslateEntries(sourceId, targetLang) {
     };
 }
 
-// ✅ NUEVA FUNCIÓN: Traducir una entrada individual
 async function translateEntry(entry, sourceId, targetLang) {
-    // Necesitamos el divId para identificar la entrada
-    // Si no lo tenemos, construirlo a partir de los datos disponibles
     const divId = entry.divId || `${sourceId}-${entry.verseStart || 0}-${entry.id}`;
     
     const response = await fetch(`${API_URL}/api/translate-commentary`, {
