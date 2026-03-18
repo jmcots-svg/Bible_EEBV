@@ -21,9 +21,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 1500 }, // Aumentado RPD teórico
-  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 50 },
-  { name: 'gemini-2.5-flash', rpm: 5, rpd: 50 }
+  { name: 'gemini-3.1-flash-lite-preview', rpm: 14, rpd: 5000 }, // Aumentado RPD teórico
+  { name: 'gemini-2.5-flash-lite', rpm: 9, rpd: 20 },
+  { name: 'gemini-2.5-flash', rpm: 4, rpd: 20 }
 ];
 
 let abortProcess = false;
