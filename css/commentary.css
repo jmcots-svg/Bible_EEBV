@@ -270,3 +270,85 @@
     border-radius: 12px;
     margin-left: auto;
 }
+
+/* =====================================================
+   CONTROLES DEL PANEL (Minimizar, Maximizar, Cerrar)
+   ===================================================== */
+
+.commentary-bottom-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.commentary-control-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    opacity: 0.45;
+    padding: 6px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.commentary-control-btn:hover {
+    opacity: 0.85;
+    color: var(--accent);
+}
+
+.commentary-control-btn:active {
+    opacity: 1;
+}
+
+/* =====================================================
+   ESTADOS DEL PANEL
+   ===================================================== */
+
+/* Estado minimizado: colapsado abajo, solo se ve el header */
+.commentary-bottom-panel.minimized {
+    max-height: none;
+    transform: translateY(calc(100% - 48px)); /* Solo muestra el header */
+}
+
+.commentary-bottom-panel.minimized .commentary-bottom-content {
+    display: none;
+}
+
+/* Estado maximizado: pantalla completa */
+.commentary-bottom-panel.maximized {
+    max-height: 100vh;
+    height: 100vh;
+    border-radius: 0;
+}
+
+.commentary-bottom-panel.maximized .commentary-bottom-header {
+    border-radius: 0;
+}
+
+.commentary-bottom-panel.maximized .commentary-bottom-content {
+    flex: 1;
+}
+
+/* =====================================================
+   REEMPLAZAR el estilo antiguo de .commentary-bottom-close
+   ===================================================== */
+
+/* Ya no se usa el viejo .commentary-bottom-close con font-size 1.8rem.
+   Ahora todos los botones usan .commentary-control-btn.
+   Eliminamos o sobreescribimos: */
+
+.commentary-bottom-close {
+    background: none;
+    border: none;
+    font-size: unset;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+}
