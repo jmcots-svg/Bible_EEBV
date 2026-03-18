@@ -1,100 +1,142 @@
 /* =====================================================
    THEMES / SKINS
-   Cada skin sobreescribe las variables de acento y
-   el gradiente de fondo del body.
    ===================================================== */
 
-/* ── SKIN 1: Classic (por defecto, azul/violeta) ── */
+/* =====================================================
+   SKIN 1 — Classic (azul pizarra / lavanda / crema)
+   ===================================================== */
 [data-skin="classic"],
 :root {
-    --skin-primary:      #667eea;
-    --skin-secondary:    #764ba2;
-    --skin-accent-light: #8b9ff0;
-    --skin-accent-dark:  #5a4a9a;
-    --skin-bg-gradient:  linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-
-    /* Dot bicolor para el selector */
-    --skin-dot-a: #667eea;
-    --skin-dot-b: #764ba2;
-}
-
-/* ── SKIN 2: Scriptorium (teja/pergamino) ── */
-[data-skin="scriptorium"] {
-    --skin-primary:      #8B5E3C;
-    --skin-secondary:    #C9A96E;
-    --skin-accent-light: #B07E55;
-    --skin-accent-dark:  #6B3F22;
-    --skin-bg-gradient:  linear-gradient(135deg, #8B5E3C 0%, #C9A96E 100%);
-
-    --skin-dot-a: #8B5E3C;
-    --skin-dot-b: #C9A96E;
-}
-
-/* ── SKIN 3: Aurora (rosa/azul grisáceo) ── */
-[data-skin="aurora"] {
-    --skin-primary:      #C2698F;
-    --skin-secondary:    #7B9EB5;
-    --skin-accent-light: #d485a5;
-    --skin-accent-dark:  #a04e72;
-    --skin-bg-gradient:  linear-gradient(135deg, #C2698F 0%, #7B9EB5 100%);
-
-    --skin-dot-a: #C2698F;
-    --skin-dot-b: #7B9EB5;
+    --skin-primary:      #7B8DC4;
+    --skin-secondary:    #9AA3CC;
+    --skin-accent-light: #C4C9E4;
+    --skin-accent-dark:  #5A6A9E;
+    --skin-bg-gradient:  linear-gradient(160deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
+    --accent:            #7B8DC4;
+    --bg-filters:        #F0F2F9;
+    --bg-container:      #FFFFFF;
+    --border:            #D0D5EA;
+    --text-main:         #2A2E45;
+    --text-muted:        #6B7280;
 }
 
 /* =====================================================
-   APLICAR skin al body y al acento global
+   SKIN 2 — Scriptorium (acero / marfil / taupe / mauve)
    ===================================================== */
+[data-skin="scriptorium"] {
+    --skin-primary:      #7B9BAA;
+    --skin-secondary:    #907068;
+    --skin-accent-light: #C4B0A4;
+    --skin-accent-dark:  #5A7A88;
+    --skin-bg-gradient:  linear-gradient(160deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
+    --accent:            #7B9BAA;
+    --bg-filters:        #EDE8DC;
+    --bg-container:      #F7F4EE;
+    --border:            #C4B0A4;
+    --text-main:         #2C2420;
+    --text-muted:        #7A6A60;
+}
 
+/* =====================================================
+   SKIN 3 — Aurora Pink (rosas pastel muy suaves)
+   ===================================================== */
+[data-skin="aurora"] {
+    --skin-primary:      #E898B8;
+    --skin-secondary:    #FDCEDF;
+    --skin-accent-light: #F8D8E8;
+    --skin-accent-dark:  #C4609A;
+    --skin-bg-gradient:  linear-gradient(160deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
+    --accent:            #E898B8;
+    --bg-filters:        #FEF4F8;
+    --bg-container:      #FFFFFF;
+    --border:            #F0C8D8;
+    --text-main:         #3A2030;
+    --text-muted:        #9A7080;
+}
+
+/* =====================================================
+   FONDO BODY — modo claro
+   ===================================================== */
 body {
     background: var(--skin-bg-gradient);
     background-attachment: fixed;
 }
 
-/* Sobreescribe --accent con el color primario del skin */
-:root,
-[data-skin] {
-    --accent: var(--skin-primary);
-}
+/* =====================================================
+   MODO OSCURO POR SKIN
+   ===================================================== */
 
-/* Modo oscuro + skin: el fondo se oscurece pero mantiene el tinte */
+/* Classic oscuro */
+[data-theme="dark"][data-skin="classic"],
+[data-theme="dark"]:not([data-skin]) {
+    --bg-container:  #1E2235;
+    --bg-filters:    #252A42;
+    --border:        #3A4060;
+    --text-main:     #E0E4F4;
+    --text-muted:    #8890B0;
+    --accent:        #9AA3CC;
+}
 [data-theme="dark"][data-skin="classic"] body,
-[data-theme="dark"] body {
-    background: linear-gradient(135deg, #2a2f6e 0%, #3b2060 100%);
+[data-theme="dark"]:not([data-skin]) body {
+    background: linear-gradient(160deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
 }
 
+/* Scriptorium oscuro */
+[data-theme="dark"][data-skin="scriptorium"] {
+    --bg-container:  #1E1A16;
+    --bg-filters:    #26201A;
+    --border:        #4A3C30;
+    --text-main:     #EDE8DC;
+    --text-muted:    #907868;
+    --accent:        #9BBCCC;
+}
 [data-theme="dark"][data-skin="scriptorium"] body {
-    background: linear-gradient(135deg, #3d2210 0%, #5a3e1e 100%);
+    background: linear-gradient(160deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
 }
 
+/* Aurora oscuro */
+[data-theme="dark"][data-skin="aurora"] {
+    --bg-container:  #261820;
+    --bg-filters:    #301E28;
+    --border:        #5A3048;
+    --text-main:     #F8E8F0;
+    --text-muted:    #C090A8;
+    --accent:        #E898B8;
+}
 [data-theme="dark"][data-skin="aurora"] body {
-    background: linear-gradient(135deg, #5a2a3e 0%, #2e4558 100%);
+    background: linear-gradient(160deg, #2E1828 0%, #251828 60%, #1E1824 100%);
 }
 
 /* =====================================================
    SELECTOR DE SKIN (UI en panel ajustes)
    ===================================================== */
-
 .skin-selector {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: flex-start;
+    gap: 16px;
     margin-top: 4px;
 }
 
-.skin-dot {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+.skin-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
     cursor: pointer;
+}
+
+.skin-dot {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
     border: 3px solid transparent;
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
 }
 
-/* Mitad izquierda y mitad derecha del dot */
+/* Mitades bicolor */
 .skin-dot::before,
 .skin-dot::after {
     content: '';
@@ -103,44 +145,47 @@ body {
     width: 50%;
     height: 100%;
 }
-
 .skin-dot::before { left: 0; }
 .skin-dot::after  { right: 0; }
 
 /* Classic */
-.skin-dot[data-skin="classic"]::before { background: #667eea; }
-.skin-dot[data-skin="classic"]::after  { background: #764ba2; }
+.skin-dot[data-skin="classic"]::before      { background: #7B8DC4; }
+.skin-dot[data-skin="classic"]::after       { background: #C4C9E4; }
 
 /* Scriptorium */
-.skin-dot[data-skin="scriptorium"]::before { background: #8B5E3C; }
-.skin-dot[data-skin="scriptorium"]::after  { background: #C9A96E; }
+.skin-dot[data-skin="scriptorium"]::before  { background: #7B9BAA; }
+.skin-dot[data-skin="scriptorium"]::after   { background: #907068; }
 
 /* Aurora */
-.skin-dot[data-skin="aurora"]::before { background: #C2698F; }
-.skin-dot[data-skin="aurora"]::after  { background: #7B9EB5; }
+.skin-dot[data-skin="aurora"]::before       { background: #E898B8; }
+.skin-dot[data-skin="aurora"]::after        { background: #FDCEDF; }
 
 /* Estado activo */
 .skin-dot.active {
     border-color: var(--accent);
-    transform: scale(1.15);
-    box-shadow: 0 0 0 2px var(--bg-container), 0 0 0 4px var(--accent);
+    transform: scale(1.18);
+    box-shadow:
+        0 0 0 2px var(--bg-container),
+        0 0 0 4px var(--accent);
 }
 
 .skin-dot:hover:not(.active) {
     transform: scale(1.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .skin-label {
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
-    margin-top: 4px;
     text-align: center;
-    min-width: 28px;
+    white-space: nowrap;
 }
 
-.skin-option {
-    display: flex;
+/* =====================================================
+   AJUSTE SETTINGS-ITEM para el selector
+   ===================================================== */
+.settings-item.skin-item {
     flex-direction: column;
-    align-items: center;
-    gap: 3px;
+    align-items: flex-start;
+    gap: 8px;
 }
