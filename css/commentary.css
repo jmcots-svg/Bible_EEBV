@@ -304,11 +304,27 @@
     display: none;
 }
 
-/* Estado maximizado: pantalla completa */
+/* Estado maximizado: desde debajo de la cabecera hasta el fondo seguro */
 .commentary-bottom-panel.maximized {
-    max-height: 100vh;
-    height: 100vh;
+    position: fixed;
+    top: var(--app-header-height, 108px); /* ajustable desde JS */
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: none;
     border-radius: 0;
+    transform: translateY(0) !important;
+}
+
+.commentary-bottom-panel.maximized .commentary-bottom-header {
+    border-radius: 0;
+}
+
+.commentary-bottom-panel.maximized .commentary-bottom-content {
+    flex: 1;
+    /* Respeta la barra inferior del iPhone */
+    padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 .commentary-bottom-panel.maximized .commentary-bottom-header {
