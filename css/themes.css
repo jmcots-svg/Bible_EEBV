@@ -1,0 +1,146 @@
+/* =====================================================
+   THEMES / SKINS
+   Cada skin sobreescribe las variables de acento y
+   el gradiente de fondo del body.
+   ===================================================== */
+
+/* ── SKIN 1: Classic (por defecto, azul/violeta) ── */
+[data-skin="classic"],
+:root {
+    --skin-primary:      #667eea;
+    --skin-secondary:    #764ba2;
+    --skin-accent-light: #8b9ff0;
+    --skin-accent-dark:  #5a4a9a;
+    --skin-bg-gradient:  linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    /* Dot bicolor para el selector */
+    --skin-dot-a: #667eea;
+    --skin-dot-b: #764ba2;
+}
+
+/* ── SKIN 2: Scriptorium (teja/pergamino) ── */
+[data-skin="scriptorium"] {
+    --skin-primary:      #8B5E3C;
+    --skin-secondary:    #C9A96E;
+    --skin-accent-light: #B07E55;
+    --skin-accent-dark:  #6B3F22;
+    --skin-bg-gradient:  linear-gradient(135deg, #8B5E3C 0%, #C9A96E 100%);
+
+    --skin-dot-a: #8B5E3C;
+    --skin-dot-b: #C9A96E;
+}
+
+/* ── SKIN 3: Aurora (rosa/azul grisáceo) ── */
+[data-skin="aurora"] {
+    --skin-primary:      #C2698F;
+    --skin-secondary:    #7B9EB5;
+    --skin-accent-light: #d485a5;
+    --skin-accent-dark:  #a04e72;
+    --skin-bg-gradient:  linear-gradient(135deg, #C2698F 0%, #7B9EB5 100%);
+
+    --skin-dot-a: #C2698F;
+    --skin-dot-b: #7B9EB5;
+}
+
+/* =====================================================
+   APLICAR skin al body y al acento global
+   ===================================================== */
+
+body {
+    background: var(--skin-bg-gradient);
+    background-attachment: fixed;
+}
+
+/* Sobreescribe --accent con el color primario del skin */
+:root,
+[data-skin] {
+    --accent: var(--skin-primary);
+}
+
+/* Modo oscuro + skin: el fondo se oscurece pero mantiene el tinte */
+[data-theme="dark"][data-skin="classic"] body,
+[data-theme="dark"] body {
+    background: linear-gradient(135deg, #2a2f6e 0%, #3b2060 100%);
+}
+
+[data-theme="dark"][data-skin="scriptorium"] body {
+    background: linear-gradient(135deg, #3d2210 0%, #5a3e1e 100%);
+}
+
+[data-theme="dark"][data-skin="aurora"] body {
+    background: linear-gradient(135deg, #5a2a3e 0%, #2e4558 100%);
+}
+
+/* =====================================================
+   SELECTOR DE SKIN (UI en panel ajustes)
+   ===================================================== */
+
+.skin-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.skin-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: transform 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+/* Mitad izquierda y mitad derecha del dot */
+.skin-dot::before,
+.skin-dot::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+}
+
+.skin-dot::before { left: 0; }
+.skin-dot::after  { right: 0; }
+
+/* Classic */
+.skin-dot[data-skin="classic"]::before { background: #667eea; }
+.skin-dot[data-skin="classic"]::after  { background: #764ba2; }
+
+/* Scriptorium */
+.skin-dot[data-skin="scriptorium"]::before { background: #8B5E3C; }
+.skin-dot[data-skin="scriptorium"]::after  { background: #C9A96E; }
+
+/* Aurora */
+.skin-dot[data-skin="aurora"]::before { background: #C2698F; }
+.skin-dot[data-skin="aurora"]::after  { background: #7B9EB5; }
+
+/* Estado activo */
+.skin-dot.active {
+    border-color: var(--accent);
+    transform: scale(1.15);
+    box-shadow: 0 0 0 2px var(--bg-container), 0 0 0 4px var(--accent);
+}
+
+.skin-dot:hover:not(.active) {
+    transform: scale(1.08);
+}
+
+.skin-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    text-align: center;
+    min-width: 28px;
+}
+
+.skin-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
