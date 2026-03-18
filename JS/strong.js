@@ -38,7 +38,84 @@ export function initStrong(els, cbs) {
     });
 
     elements.strongBottomClose.addEventListener('click', closeStrongPanel);
+
+    // ── Nuevos botones ──
+    const minimizeBtn = document.getElementById('strongBottomMinimize');
+    const maximizeBtn = document.getElementById('strongBottomMaximize');
+
+    if (minimizeBtn) {
+        minimizeBtn.addEventListener('click', toggleStrongMinimize);
+    }
+    if (maximizeBtn) {
+        maximizeBtn.addEventListener('click', toggleStrongMaximize);
+    }
 }
+
+// =====================================================
+// MINIMIZAR / MAXIMIZAR / RESTAURAR
+// =====================================================
+
+function toggleStrongMinimize() {
+    const panel = elements.strongBottomPanel;
+
+    if (panel.classList.contains('minimized')) {
+        panel.classList.remove('minimized');
+        updateStrongMaximizeIcon(panel.classList.contains('maximized'));
+    } else {
+        panel.classList.remove('maximized');
+        panel.classList.add('minimized');
+        updateStrongMaximizeIcon(false);
+    }
+}
+
+function toggleStrongMaximize() {
+    const panel = elements.strongBottomPanel;
+
+    panel.classList.remove('minimized');
+
+    if (panel.classList.contains('maximized')) {
+        panel.classList.remove('maximized');
+        updateStrongMaximizeIcon(false);
+    } else {
+        panel.classList.add('maximized');
+        updateStrongMaximizeIcon(true);
+    }
+}
+
+function updateStrongMaximizeIcon(isMaximized) {
+    const btn = document.getElementById('strongBottomMaximize');
+    if (!btn) return;
+
+    if (isMaximized) {
+        // Restaurar: flechas apuntando hacia DENTRO
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 14 14">
+                <polyline points="1,5 5,5 5,1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="5" y1="5" x2="1" y2="1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="13,9 9,9 9,13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="9" y1="9" x2="13" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        `;
+        btn.setAttribute('aria-label', 'Restaurar');
+        btn.setAttribute('title', 'Restaurar');
+    } else {
+        // Maximizar: flechas apuntando hacia FUERA
+        btn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 14 14">
+                <polyline points="1,5 1,1 5,1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="1" y1="1" x2="6" y2="6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                <polyline points="13,9 13,13 9,13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="13" y1="13" x2="8" y2="8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+        `;
+        btn.setAttribute('aria-label', 'Maximizar');
+        btn.setAttribute('title', 'Maximizar');
+    }
+}
+
+// =====================================================
+// FUNCIONES EXISTENTES (sin cambios)
+// =====================================================
 
 export function updateStrongLabels(lang) {
     const labels = {
@@ -53,11 +130,9 @@ export function updateStrongLabels(lang) {
         if (label) label.textContent = t(key, lang);
     });
 
-    // ── Actualizar placeholders de selects ──
     updateStrongSelectPlaceholders(lang);
 }
 
-// ── Actualiza las primeras opciones (placeholder) de cada select ──
 function updateStrongSelectPlaceholders(lang) {
     const updateFirstOption = (selectEl, translationKey) => {
         if (selectEl && selectEl.options.length > 0 && selectEl.options[0].value === '') {
@@ -95,7 +170,6 @@ export async function loadStrongVersions() {
 }
 
 function getStrongDefLang() {
-    const lang = getLang(); // ya tienes esta función que lee localStorage 'appLanguage'
     return getLang();
 }
 
@@ -183,7 +257,6 @@ async function onStrongChapterChange() {
             strongWordsCache[chId] = wordsData;
         }
 
-        // Usar la clave 'verse' limpiando el "(opcional)"
         const verseLabel = t('verse', lang).replace(/\s*\(.*?\)\s*/g, '');
 
         wordsData.forEach(v => {
@@ -286,7 +359,11 @@ async function onStrongCodeClick(strongCode, clickedEl) {
         </div>
     `;
 
+    // Abrir en estado normal
+    elements.strongBottomPanel.classList.remove('minimized');
+    elements.strongBottomPanel.classList.remove('maximized');
     elements.strongBottomPanel.classList.add('open');
+    updateStrongMaximizeIcon(false);
 
     elements.strongBottomContent.querySelectorAll('.strong-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -351,7 +428,6 @@ async function loadStrongRefs(strongCode, page) {
 
         html += '</div>';
 
-        // ── Paginación ──
         if (data.totalPages > 1) {
             html += `<div class="search-pagination">`;
             if (data.page > 1) {
@@ -366,7 +442,6 @@ async function loadStrongRefs(strongCode, page) {
 
         panel.innerHTML = html;
 
-        // ── Eventos de navegación ──
         panel.querySelectorAll('.strong-ref-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -374,7 +449,6 @@ async function loadStrongRefs(strongCode, page) {
             });
         });
 
-        // ── Eventos de paginación ──
         panel.querySelectorAll('.pagination-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 panel.innerHTML = `<div class="strong-bottom-loading">${t('loadingShort', lang)}</div>`;
@@ -410,7 +484,6 @@ async function loadStrongDict(strongCode) {
 
         let html = `<div class="strong-dict-entry">`;
 
-        // ── Cabecera ──
         html += `<div class="strong-dict-header">`;
         if (data.lemma) {
             html += `<span class="strong-dict-lemma" dir="${isHebrew ? 'rtl' : 'ltr'}">${escapeHtml(data.lemma)}</span>`;
@@ -423,7 +496,6 @@ async function loadStrongDict(strongCode) {
         }
         html += `</div>`;
 
-        // ── Badges ──
         html += `<div class="strong-dict-badges">`;
         html += `<span class="strong-dict-badge lang">${langLabel}</span>`;
         if (data.morphology) {
@@ -434,7 +506,6 @@ async function loadStrongDict(strongCode) {
         }
         html += `</div>`;
 
-        // ── Secciones del diccionario ──
         const sections = [
             { key: 'kjvDefinition', label: 'KJV', cssClass: 'kjv' },
             { key: 'definition', label: t('definition', lang) },
@@ -453,7 +524,6 @@ async function loadStrongDict(strongCode) {
             }
         });
 
-        // ── Relaciones ──
         if (data.relations && data.relations.length > 0) {
             const relLabels = {
                 see_also: t('relSeeAlso', lang),
@@ -482,7 +552,6 @@ async function loadStrongDict(strongCode) {
         html += `</div>`;
         panel.innerHTML = html;
 
-        // ── Click en relaciones ──
         panel.querySelectorAll('.strong-dict-rel-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const code = btn.dataset.strong;
@@ -506,17 +575,16 @@ async function loadStrongDict(strongCode) {
     }
 }
 
-// ── Recargar diccionario si el panel está abierto ──
 export function reloadCurrentStrongIfOpen() {
     if (
         currentStrongCode &&
         elements.strongBottomPanel.classList.contains('open')
     ) {
         const lang = getLang();
-        
+
         const dictPanel = document.getElementById('strongTabDict');
         const refsPanel = document.getElementById('strongTabRefs');
-        
+
         if (dictPanel) {
             dictPanel.innerHTML = `
                 <div class="strong-bottom-loading">
@@ -537,6 +605,9 @@ export function reloadCurrentStrongIfOpen() {
 
 export function closeStrongPanel() {
     elements.strongBottomPanel.classList.remove('open');
+    elements.strongBottomPanel.classList.remove('minimized');
+    elements.strongBottomPanel.classList.remove('maximized');
     currentStrongCode = null;
     elements.content.querySelectorAll('.strong-code.active').forEach(el => el.classList.remove('active'));
+    updateStrongMaximizeIcon(false);
 }
