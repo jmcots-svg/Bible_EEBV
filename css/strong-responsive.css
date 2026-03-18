@@ -158,14 +158,25 @@
 }
 
 /* Estado maximizado */
+/* Estado maximizado */
 .strong-bottom-panel.maximized {
-    max-height: 100vh !important;
-    height: 100vh;
+    position: fixed;
+    top: var(--app-header-height, 108px);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    max-height: none !important;
     border-radius: 0;
+    transform: translateY(0) !important;
+    padding: 16px 20px;
+    overflow: visible;
 }
 
 .strong-bottom-panel.maximized .strong-bottom-content {
-    max-height: calc(100vh - 70px);
+    max-height: none;
+    flex: 1;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
 }
 
 .strong-bottom-content {
