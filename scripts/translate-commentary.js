@@ -6,34 +6,29 @@ require("dotenv").config();
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const TARGET_LANG = process.env.TARGET_LANG || "ca";
+const SUPABASE_URL         = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // ← Secret key
+const TARGET_LANG          = process.env.TARGET_LANG || "ca";
 
 const ALL_GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "")
   .split(",")
   .map(k => k.trim())
   .filter(Boolean);
 
-// ── Cuántas keys usar simultáneamente (ajustable sin tocar el resto) ──
-const ACTIVE_KEYS_COUNT = 7;
-
-// Tomamos las primeras N keys del array
+const ACTIVE_KEYS_COUNT = 10;
 const GEMINI_KEYS = ALL_GEMINI_KEYS.slice(0, ACTIVE_KEYS_COUNT);
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || GEMINI_KEYS.length === 0) {
   console.error("❌ Error: Faltan variables de entorno");
   process.exit(1);
 }
 
 console.log(`🔑 Keys activas: ${GEMINI_KEYS.length} / ${ALL_GEMINI_KEYS.length} disponibles`);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY); // ← Secret key
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ─── Modelos por prioridad ─────────────────────────────────────────
-// gemini-3.1-flash-lite-preview es el caballo de batalla (500 RPD!)
-// Los otros son fallback de emergencia (solo 20 RPD por key/día)
 const MODELS = [
   { name: "gemini-3.1-flash-lite-preview", rpm: 14, rpd: 500,  priority: 1 },
   { name: "gemini-2.5-flash-lite",         rpm:  9, rpd:  20,  priority: 2 },
@@ -48,27 +43,25 @@ const TARGET_LANG_NAME =
 let abortProcess = false;
 
 // ═══════════════════════════════════════════════════════════════════
-// KEY WORKER — Un worker por key activa
-// Cada worker gestiona su propio rate-limit de forma independiente
+// KEY WORKER
 // ═══════════════════════════════════════════════════════════════════
 class KeyWorker {
   constructor(keyIndex, apiKey) {
-    this.keyIndex  = keyIndex;
-    this.apiKey    = apiKey;
-    this.ai        = new GoogleGenAI({ apiKey });
+    this.keyIndex = keyIndex;
+    this.apiKey   = apiKey;
+    this.ai       = new GoogleGenAI({ apiKey });
 
-    // Estado por modelo
     this.modelState = {};
     for (const m of MODELS) {
       this.modelState[m.name] = {
-        history:           [],   // timestamps del último minuto
-        requestsToday:     0,
-        dayStart:          Date.now(),
-        exhaustedUntil:    0,
-        consecutive429s:   0,
-        rpm:               m.rpm,
-        rpd:               m.rpd,
-        priority:          m.priority,
+        history:         [],
+        requestsToday:   0,
+        dayStart:        Date.now(),
+        exhaustedUntil:  0,
+        consecutive429s: 0,
+        rpm:             m.rpm,
+        rpd:             m.rpd,
+        priority:        m.priority,
       };
     }
 
@@ -76,7 +69,6 @@ class KeyWorker {
     for (const m of MODELS) this.stats[m.name] = 0;
   }
 
-  // ── Refresca el contador diario si ha pasado el día ──────────────
   _refreshDay(state) {
     if (Date.now() - state.dayStart > 86_400_000) {
       state.requestsToday   = 0;
@@ -86,13 +78,10 @@ class KeyWorker {
     }
   }
 
-  // ── Devuelve el modelo disponible con mayor prioridad ─────────────
-  // Retorna { model, waitMs } donde waitMs=0 significa "disponible ya"
   getBestModel() {
-    const now = Date.now();
+    const now    = Date.now();
     let bestWait = Infinity;
 
-    // Ordenar por prioridad (1 = mejor)
     const sorted = MODELS.slice().sort((a, b) =>
       this.modelState[a.name].priority - this.modelState[b.name].priority
     );
@@ -101,17 +90,16 @@ class KeyWorker {
       const state = this.modelState[m.name];
       this._refreshDay(state);
 
-      if (state.requestsToday >= state.rpd) continue;           // Cuota diaria agotada
+      if (state.requestsToday >= state.rpd) continue;
+
       if (state.exhaustedUntil > now) {
         bestWait = Math.min(bestWait, state.exhaustedUntil - now);
         continue;
       }
 
-      // Limpiar historial del minuto
       state.history = state.history.filter(ts => now - ts < 60_000);
 
       if (state.history.length < state.rpm) {
-        // ¡Disponible!
         state.history.push(now);
         state.requestsToday++;
         return { model: m.name, waitMs: 0 };
@@ -121,21 +109,18 @@ class KeyWorker {
       }
     }
 
-    // Todos los modelos ocupados o agotados
     return { model: null, waitMs: bestWait === Infinity ? null : bestWait };
   }
 
-  // ── Marca un modelo como exhausto tras un 429 ─────────────────────
   markExhausted(modelName, isDailyQuota) {
     const state = this.modelState[modelName];
     if (!state) return;
     state.consecutive429s++;
 
     if (isDailyQuota || state.consecutive429s >= 3) {
-      state.requestsToday  = state.rpd;   // Cierra la cuota diaria
+      state.requestsToday  = state.rpd;
       state.exhaustedUntil = Date.now() + 86_400_000;
     } else {
-      // Backoff progresivo: 60s, 120s
       const cooldown = state.consecutive429s * 60_000;
       state.exhaustedUntil = Date.now() + cooldown;
     }
@@ -146,13 +131,11 @@ class KeyWorker {
     if (state) state.consecutive429s = 0;
   }
 
-  // ── Traduce un batch usando esta key ─────────────────────────────
-  // Retorna el array traducido o null si falla
   async translateBatch(entriesBatch, maxAttempts = 6) {
     const payload = entriesBatch.map(e => ({
-      id: e.id,
-      title: e.title || "",
-      content: e.content || "",
+      id:          e.id,
+      title:       e.title       || "",
+      content:     e.content     || "",
       contentHtml: e.contentHtml || "",
     }));
 
@@ -166,14 +149,11 @@ class KeyWorker {
 
       const { model, waitMs } = this.getBestModel();
 
-      if (model === null) {
-        // Esta key está completamente agotada por hoy
-        return null;
-      }
+      if (model === null) return null;
 
       if (waitMs > 0) {
         await sleep(waitMs + 100);
-        continue; // Reintentar tras la espera
+        continue;
       }
 
       try {
@@ -182,8 +162,8 @@ class KeyWorker {
           contents: JSON.stringify(payload),
           config: {
             systemInstruction: systemPrompt,
-            temperature: 0.1,
-            responseMimeType: "application/json",
+            temperature:       0.1,
+            responseMimeType:  "application/json",
           },
         });
 
@@ -198,24 +178,21 @@ class KeyWorker {
         return result;
 
       } catch (err) {
-        const msg = (err.message || "").toLowerCase();
+        const msg  = (err.message || "").toLowerCase();
         const is429 = err.status === 429 || msg.includes("429") || msg.includes("exhausted");
 
         if (is429) {
           const isDaily = msg.includes("quota") || msg.includes("daily");
           this.markExhausted(model, isDaily);
-          // No sumamos attempt: dejamos que el bucle reintente con otro modelo
         } else {
-          // Error no relacionado con cuotas → espera corta y reintento
           await sleep(2_000 * (attempt + 1));
         }
       }
     }
 
-    return null; // Agotados los intentos
+    return null;
   }
 
-  // ── ¿Tiene al menos un modelo disponible hoy? ────────────────────
   get isAliveToday() {
     const now = Date.now();
     return MODELS.some(m => {
@@ -227,21 +204,17 @@ class KeyWorker {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// POOL DE WORKERS
+// WORKER POOL
 // ═══════════════════════════════════════════════════════════════════
 class WorkerPool {
   constructor(keys) {
     this.workers = keys.map((k, i) => new KeyWorker(i, k));
-    // Round-robin pointer
-    this._rr = 0;
   }
 
-  // Devuelve el worker con menor carga (heurística: menor requestsToday en modelo principal)
   getWorker() {
     const alive = this.workers.filter(w => w.isAliveToday);
     if (alive.length === 0) return null;
 
-    // Preferir el worker con menos peticiones hoy en el modelo principal
     const PRIMARY = MODELS[0].name;
     alive.sort((a, b) =>
       a.modelState[PRIMARY].requestsToday - b.modelState[PRIMARY].requestsToday
@@ -308,9 +281,11 @@ async function getTargetIdentifiers(lang) {
     if (data.length < 2000) hasMore = false;
     if (data.length > 0) {
       lastId = data[data.length - 1].id;
-      all = all.concat(data);
+      all    = all.concat(data);
     }
   }
+
+  console.log(`\n📊 Entradas existentes en '${lang}': ${all.length}`);
   return new Set(all.map(e => `${e.sourceId}|${e.divId}`));
 }
 
@@ -328,8 +303,10 @@ async function getPendingEnglishEntries(existingSet) {
     if (error) throw error;
     if (data.length < 1000) hasMore = false;
     if (data.length > 0) {
-      lastId = data[data.length - 1].id;
-      pending = pending.concat(data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`)));
+      lastId  = data[data.length - 1].id;
+      pending = pending.concat(
+        data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`))
+      );
     }
     process.stdout.write(`\r📥 Escaneando pendientes: ${pending.length} encontrados...`);
   }
@@ -339,27 +316,19 @@ async function getPendingEnglishEntries(existingSet) {
 
 // ═══════════════════════════════════════════════════════════════════
 // PROCESADOR PRINCIPAL
-// Concurrencia: ACTIVE_KEYS_COUNT × rpm_principal = hasta ~140 RPM
-// En la práctica usamos pLimit = ACTIVE_KEYS_COUNT × 2 para que
-// siempre haya batches en vuelo mientras algún worker espera.
 // ═══════════════════════════════════════════════════════════════════
 async function processAllBatches(batches, totalEntries, pool) {
-  // Concurrencia efectiva: 2 "slots en vuelo" por key activa
-  // El rate-limit interno de cada KeyWorker evita sobrepasarse
   const CONCURRENCY = ACTIVE_KEYS_COUNT * 2;
   const limit       = pLimit(CONCURRENCY);
 
   let processed = 0;
   let failed    = 0;
-  const startTime = Date.now();
-
-  // Cola de batches fallidos para reintento al final
+  const startTime  = Date.now();
   const retryQueue = [];
 
   const processBatch = async (batchEn) => {
     if (abortProcess) return;
 
-    // Seleccionar worker con menos carga
     const worker = pool.getWorker();
     if (!worker) {
       abortProcess = true;
@@ -371,7 +340,7 @@ async function processAllBatches(batches, totalEntries, pool) {
 
     if (!translated || translated.length === 0) {
       failed++;
-      retryQueue.push(batchEn);  // Guardar para reintento con otra key
+      retryQueue.push(batchEn);
       return;
     }
 
@@ -400,7 +369,10 @@ async function processAllBatches(batches, totalEntries, pool) {
       if (!error) {
         processed += inserts.length;
       } else {
-        console.error("\n❌ Error al insertar:", error.message);
+        console.error(`\n❌ Insert fallido (${inserts.length} entradas): ${error.message}`);
+        console.error(`   Código: ${error.code} | Hint: ${error.hint || "ninguno"}`);
+        failed++;
+        retryQueue.push(batchEn);
       }
     }
 
@@ -420,7 +392,7 @@ async function processAllBatches(batches, totalEntries, pool) {
   // ── Primera pasada ────────────────────────────────────────────────
   await Promise.all(batches.map(b => limit(() => processBatch(b))));
 
-  // ── Reintento de fallidos (si quedan workers vivos) ───────────────
+  // ── Reintento de fallidos ─────────────────────────────────────────
   if (retryQueue.length > 0 && !pool.allExhausted) {
     console.log(`\n♻️  Reintentando ${retryQueue.length} batches fallidos...`);
     abortProcess = false;
@@ -428,7 +400,7 @@ async function processAllBatches(batches, totalEntries, pool) {
     await Promise.all(retryQueue.map(b => retryLimit(() => processBatch(b))));
   }
 
-  console.log(`\n✅ Procesamiento finalizado. Procesados: ${processed} | Fallidos: ${failed}`);
+  console.log(`\n✅ Finalizado. Procesados: ${processed} | Fallidos: ${failed}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -436,9 +408,9 @@ async function processAllBatches(batches, totalEntries, pool) {
 // ═══════════════════════════════════════════════════════════════════
 async function main() {
   try {
-    console.log(`🌐 Idioma destino: ${TARGET_LANG_NAME} (${TARGET_LANG})`);
-    console.log(`⚡ Concurrencia máxima: ${ACTIVE_KEYS_COUNT * 2} slots`);
-    console.log(`📊 Capacidad teórica: ~${ACTIVE_KEYS_COUNT * 14} RPM (${ACTIVE_KEYS_COUNT * 500} RPD)\n`);
+    console.log(`🌐 Idioma destino  : ${TARGET_LANG_NAME} (${TARGET_LANG})`);
+    console.log(`⚡ Concurrencia    : ${ACTIVE_KEYS_COUNT * 2} slots`);
+    console.log(`📊 Capacidad teórica: ~${ACTIVE_KEYS_COUNT * 14} RPM | ${ACTIVE_KEYS_COUNT * 500} RPD\n`);
 
     const existingSet    = await getTargetIdentifiers(TARGET_LANG);
     const pendingEntries = await getPendingEnglishEntries(existingSet);
@@ -447,10 +419,9 @@ async function main() {
       return console.log("✅ Todo está traducido.");
     }
 
-    console.log(`📋 Pendientes: ${pendingEntries.length} entradas`);
-
     const batches = createOptimizedBatches(pendingEntries);
-    console.log(`📦 Batches creados: ${batches.length} (avg ${(pendingEntries.length / batches.length).toFixed(1)} entradas/batch)\n`);
+    console.log(`📋 Pendientes : ${pendingEntries.length} entradas`);
+    console.log(`📦 Batches    : ${batches.length} (avg ${(pendingEntries.length / batches.length).toFixed(1)} entradas/batch)\n`);
 
     const pool = new WorkerPool(GEMINI_KEYS);
     await processAllBatches(batches, pendingEntries.length, pool);
