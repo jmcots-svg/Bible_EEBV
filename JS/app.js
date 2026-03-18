@@ -20,7 +20,7 @@ import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, 
 document.addEventListener('DOMContentLoaded', () => {
 
     // =====================
-    // 1. DECLARACIONES DOM  ← SIEMPRE PRIMERO
+    // 1. DECLARACIONES DOM
     // =====================
     const versionSelect       = document.getElementById('version');
     const bookSelect          = document.getElementById('book');
@@ -166,24 +166,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // IDIOMA
-    // IDIOMA
     const savedLanguage = localStorage.getItem('appLanguage') || 'es';
     if (languageSelect) {
         languageSelect.value = savedLanguage;
-        languageSelect.addEventListener('change', async (e) => { // <-- Añadir async aquí
+        languageSelect.addEventListener('change', async (e) => {
             const newLanguage = e.target.value;
             localStorage.setItem('appLanguage', newLanguage);
-            
-            // 1. Aplicar traducciones de la interfaz
             applyTranslations(newLanguage);
-            
-            // 2. Mostrar mensaje de carga (opcional pero recomendado)
             content.innerHTML = `<p class="loading">${t('changingVersion', newLanguage)}</p>`;
-            
-            // 3. Recargar las versiones filtradas por el nuevo idioma
-            await loadVersions(); 
-            
-            // 4. Recargar vista Strong si estaba abierta
+            await loadVersions();
             reloadCurrentStrongIfOpen();
         });
     }
@@ -255,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =====================
-    // 9. FILTROS PLEGABLES (móvil)
+    // 9. FILTROS PLEGABLES
     // =====================
     const filterToggleLectura = setupCollapsibleFilters(
         'toggleFiltersLectura', 'filtersLectura', 'toggleRefLectura'
@@ -270,14 +261,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'toggleFiltersStrong', 'filtersStrong', 'toggleRefStrong'
     );
 
-    chapterSelect.addEventListener('change', () => {
-        setTimeout(() => {
-                const ref = reference?.textContent?.trim();
-                filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
-                filterToggleLectura?.collapse();
-        }, 500);
-    });
-
+    // ⚠️ SOLO actualizamos el texto de referencia en el botón
+    // El colapso lo gestiona autoCollapseFilters() más abajo
     verseSelect.addEventListener('change', () => {
         setTimeout(() => {
             const ref = reference?.textContent?.trim();
@@ -285,28 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 200);
     });
 
-    compChapter.addEventListener('change', () => {
-        setTimeout(() => {
-                const ref = reference?.textContent?.trim();
-                filterToggleComp?.updateRef(ref || 'Selecciona versiones');
-                filterToggleComp?.collapse();
-        }, 500);
-    });
-
     concSearchBtn.addEventListener('click', () => {
         setTimeout(() => {
-                const query = concQuery.value.trim();
-                filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
-                filterToggleConc?.collapse();
+            const query = concQuery.value.trim();
+            filterToggleConc?.updateRef(query ? '"' + query + '"' : 'Buscar palabra');
         }, 300);
-    });
-
-    strongChapter.addEventListener('change', () => {
-        setTimeout(() => {
-                const ref = reference?.textContent?.trim();
-                filterToggleStrong?.updateRef(ref || 'Selecciona un libro');
-                filterToggleStrong?.collapse();
-        }, 500);
     });
 
     // =====================
@@ -342,61 +310,50 @@ document.addEventListener('DOMContentLoaded', () => {
         bookSelect.disabled = false;
     }
 
-async function onVersionChange() {
-    const lang = localStorage.getItem('appLanguage') || 'es';
-    const version = versionSelect.value;
-    
-    // 1. GUARDAR EL ESTADO ACTUAL ANTES DE RECARGAR
-    const currentBookName = bookSelect.selectedIndex > 0 
-        ? bookSelect.options[bookSelect.selectedIndex].text 
-        : null;
-    const currentChapterNum = chapterSelect.selectedIndex > 0 
-        ? chapterSelect.options[chapterSelect.selectedIndex].dataset.number 
-        : null;
-    const currentVerseNum = verseSelect.value;
-
-    // 2. MOSTRAR MENSAJE DE "CAMBIANDO VERSIÓN..."
-    content.innerHTML = `<p class="loading">${t('changingVersion', lang)}</p>`;
-
-    // 3. CARGAR LOS LIBROS DE LA NUEVA VERSIÓN
-    // ⚠️ Ya NO reseteamos ni deshabilitamos aquí, loadBooks() lo gestiona sola
-    await loadBooks(version);
-
-    // 4. RESTAURAR LAS SELECCIONES SI HABÍA ALGO SELECCIONADO
-    if (currentBookName) {
-        const bookOption = Array.from(bookSelect.options)
-            .find(opt => opt.text === currentBookName);
+    async function onVersionChange() {
+        const lang = localStorage.getItem('appLanguage') || 'es';
+        const version = versionSelect.value;
         
-        if (bookOption) {
-            bookSelect.value = bookOption.value;
-            await onBookChange();
+        const currentBookName = bookSelect.selectedIndex > 0 
+            ? bookSelect.options[bookSelect.selectedIndex].text 
+            : null;
+        const currentChapterNum = chapterSelect.selectedIndex > 0 
+            ? chapterSelect.options[chapterSelect.selectedIndex].dataset.number 
+            : null;
+        const currentVerseNum = verseSelect.value;
+
+        content.innerHTML = `<p class="loading">${t('changingVersion', lang)}</p>`;
+        await loadBooks(version);
+
+        if (currentBookName) {
+            const bookOption = Array.from(bookSelect.options)
+                .find(opt => opt.text === currentBookName);
             
-            if (currentChapterNum) {
-                const chapterOption = Array.from(chapterSelect.options)
-                    .find(opt => opt.dataset.number === String(currentChapterNum));
+            if (bookOption) {
+                bookSelect.value = bookOption.value;
+                await onBookChange();
                 
-                if (chapterOption) {
-                    chapterSelect.value = chapterOption.value;
-                    await onChapterChange();
+                if (currentChapterNum) {
+                    const chapterOption = Array.from(chapterSelect.options)
+                        .find(opt => opt.dataset.number === String(currentChapterNum));
                     
-                    if (currentVerseNum) {
-                        verseSelect.value = currentVerseNum;
-                        await onSearch();
+                    if (chapterOption) {
+                        chapterSelect.value = chapterOption.value;
+                        await onChapterChange();
+                        
+                        if (currentVerseNum) {
+                            verseSelect.value = currentVerseNum;
+                            await onSearch();
+                        }
+                        return;
                     }
-                    return;
                 }
             }
+            content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
+        } else {
+            content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
         }
-        
-        // Si tenía libro pero no se encontró en la nueva versión
-        content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
-
-    } else {
-        // 5. CARGA INICIAL O SIN SELECCIÓN PREVIA
-        // No reseteamos nada, loadBooks() ya dejó el selector listo
-        content.innerHTML = `<p class="placeholder">${t('placeholder', lang)}</p>`;
     }
-}
 
     async function onBookChange() {
         const bookId = bookSelect.value;
@@ -525,6 +482,12 @@ async function onVersionChange() {
         content.querySelectorAll('.verse-number').forEach(span => {
             span.addEventListener('click', toggleVerseSelection);
         });
+
+        // ✅ Actualizamos el texto del botón de filtros al terminar de renderizar
+        setTimeout(() => {
+            const ref = reference?.textContent?.trim();
+            filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+        }, 100);
 
         window.scrollTo({ top: 0, behavior: 'smooth' });
         updateCopyButtonVisibility();
@@ -768,17 +731,30 @@ async function onVersionChange() {
     // =====================
     // 15. EVENTOS
     // =====================
-    versionSelect.addEventListener('change', onVersionChange);
-    bookSelect.addEventListener('change', onBookChange);
-    chapterSelect.addEventListener('change', onChapterChange);
+
+    // ✅ LISTENERS UNIFICADOS - un solo listener por elemento
+    versionSelect.addEventListener('change', () => {
+        clearSelections();
+        concVersion.value = versionSelect.value; // sincronizar concordancia
+        onVersionChange();
+    });
+
+    bookSelect.addEventListener('change', () => {
+        clearSelections();
+        onBookChange();
+    });
+
+    chapterSelect.addEventListener('change', () => {
+        clearSelections();
+        onChapterChange();
+    });
+
     verseSelect.addEventListener('change', onSearch);
 
-    chapterSelect.addEventListener('change', clearSelections);
-    bookSelect.addEventListener('change', clearSelections);
-    versionSelect.addEventListener('change', clearSelections);
-
-    concVersion.addEventListener('change', () => { versionSelect.value = concVersion.value; });
-    versionSelect.addEventListener('change', () => { concVersion.value = versionSelect.value; });
+    // Sincronización concordancia ↔ lectura (solo en una dirección para evitar loop)
+    concVersion.addEventListener('change', () => {
+        versionSelect.value = concVersion.value;
+    });
 
     copyVersesBtn.addEventListener('click', showCopyModal);
     closeCopyModal.addEventListener('click', hideCopyModal);
@@ -791,23 +767,17 @@ async function onVersionChange() {
     // AUTO-COLAPSAR AL EMPEZAR A LEER
     // =====================
     function autoCollapseFilters() {
-        // Colapsa si están abiertos
-        if (currentMode === 'lectura') filterToggleLectura?.collapse();
-        if (currentMode === 'comparacion') filterToggleComp?.collapse();
+        if (currentMode === 'lectura')      filterToggleLectura?.collapse();
+        if (currentMode === 'comparacion')  filterToggleComp?.collapse();
         if (currentMode === 'concordancia') filterToggleConc?.collapse();
-        if (currentMode === 'strong') filterToggleStrong?.collapse();
+        if (currentMode === 'strong')       filterToggleStrong?.collapse();
     }
 
-    // Colapsar al hacer clic o tocar el texto de la Biblia
     content.addEventListener('mousedown', autoCollapseFilters);
     content.addEventListener('touchstart', autoCollapseFilters, { passive: true });
-
-    // Colapsar al hacer scroll hacia abajo (usando la rueda del ratón o teclado)
     window.addEventListener('wheel', autoCollapseFilters, { passive: true });
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
-            autoCollapseFilters();
-        }
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') autoCollapseFilters();
     });
 
     // =====================
@@ -815,44 +785,28 @@ async function onVersionChange() {
     // =====================
     async function loadVersions() {
         try {
-            // 1. Obtenemos el idioma actual de los ajustes
             const currentLang = localStorage.getItem('appLanguage') || 'es';
-            
-            // 2. Traemos todas las versiones del backend (cacheadas y rápidas)
             const allVersions = await fetchJSON(`${API_URL}/api/versions`);
-            
-            // 3. Filtramos por el idioma actual
             let versions = allVersions.filter(v => v.language === currentLang);
-            
-            // Fallback: si por alguna razón no hay versiones para ese idioma, mostramos todas
-            if (versions.length === 0) {
-                versions = allVersions;
-            }
+            if (versions.length === 0) versions = allVersions;
 
-            // 4. Llenamos los desplegables
             [versionSelect, concVersion, compVersionA, compVersionB].forEach((sel) => {
-                const currentVal = sel.value; // Guardamos el valor seleccionado actualmente
+                const currentVal = sel.value;
                 sel.innerHTML = '';
-                
                 versions.forEach((v, j) => {
                     const opt = document.createElement('option');
                     opt.value = v.name;
                     opt.textContent = v.fullName;
-                    
-                    // Selección por defecto (Comparación B selecciona el 2do, el resto el 1ro)
                     if (sel === compVersionB && versions.length > 1 ? j === 1 : j === 0) {
                         opt.selected = true;
                     }
                     sel.appendChild(opt);
                 });
-
-                // Si la versión que estaba seleccionada sigue estando disponible en este idioma, la mantenemos
                 if (currentVal && Array.from(sel.options).some(opt => opt.value === currentVal)) {
                     sel.value = currentVal;
                 }
             });
 
-            // 5. Cargar libros para las versiones seleccionadas
             if (versionSelect.value) loadBooks(versionSelect.value);
             if (compVersionA.value && currentMode === 'comparacion') loadCompBooks();
             
