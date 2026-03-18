@@ -13,7 +13,7 @@ const TARGET_LANG = process.env.TARGET_LANG || "ca";
 const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
-  console.error("❌ Error: Faltan variables de entorno (Supabase o Gemini Keys)");
+  console.error("❌ Error: Faltan variables de entorno");
   process.exit(1);
 }
 
@@ -21,15 +21,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 500 },
-  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 20 },
-  { name: 'gemini-2.5-flash', rpm: 5, rpd: 20 }
+  { name: 'gemini-3.1-flash-lite-preview', rpm: 15, rpd: 1500 }, // Aumentado RPD teórico
+  { name: 'gemini-2.5-flash-lite', rpm: 10, rpd: 50 },
+  { name: 'gemini-2.5-flash', rpm: 5, rpd: 50 }
 ];
 
 let abortProcess = false;
 
 // ═══════════════════════════════════════════════════════════════════
-// SMART RATE LIMITER (Con sistema de 3 Strikes)
+// SMART RATE LIMITER (Resiliencia Extrema)
 // ═══════════════════════════════════════════════════════════════════
 class SmartRateLimiter {
   constructor(keys, models) {
@@ -88,12 +88,17 @@ class SmartRateLimiter {
   markExhausted(key, model, isDailyQuotaMessage) {
     const slot = this.slots.find(s => s.key === key && s.model === model);
     if (slot) {
-      slot.exhaustedUntil = Date.now() + 61000;
       slot.consecutive429s++;
+      // Si es el primer o segundo aviso, esperamos 2 minutos (enfriamiento largo)
+      // Si es el tercero, lo damos por muerto por hoy.
+      const coolingTime = slot.consecutive429s >= 3 ? 86400000 : 120000; 
+      slot.exhaustedUntil = Date.now() + coolingTime;
 
       if (isDailyQuotaMessage || slot.consecutive429s >= 3) {
         slot.requestsToday = slot.rpd;
-        console.log(`\n⚠️ Clave y Modelo (${model}) deshabilitados por hoy (Límite alcanzado).`);
+        console.log(`\n⚠️ ${model} bloqueado. Reintentos agotados o cuota excedida.`);
+      } else {
+        console.log(`\n⏳ ${model} en enfriamiento (Intento ${slot.consecutive429s}/3)...`);
       }
     }
   }
@@ -107,9 +112,6 @@ class SmartRateLimiter {
 const rateLimiter = new SmartRateLimiter(GEMINI_KEYS, MODELS);
 const stats = { 'gemini-3.1-flash-lite-preview': 0, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash': 0 };
 
-// ═══════════════════════════════════════════════════════════════════
-// TRADUCTOR GEMINI (Motor Principal)
-// ═══════════════════════════════════════════════════════════════════
 async function translateBatchOptimized(entriesBatch) {
   if (abortProcess) return null;
 
@@ -121,26 +123,21 @@ async function translateBatchOptimized(entriesBatch) {
   }));
 
   const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
-  const systemPrompt = `Translate this JSON array from English to ${languageName}. Keep "id" unchanged. Translate "title", "content", "contentHtml". Preserve HTML tags. Return ONLY a valid JSON array.`;
+  const systemPrompt = `Translate JSON to ${languageName}. Keep "id". Translate "title", "content", "contentHtml". Return ONLY JSON array.`;
 
   let attempts = 0;
   let lastErrorMessage = "";
 
-  while (attempts < 8) { 
+  while (attempts < 10) { 
     if (abortProcess) return null;
-
     const slot = rateLimiter.getBestSlot();
     
     if (!slot.available) {
       if (slot.waitMs === Infinity) {
-        if (!abortProcess) {
-          console.log("\n\n🛑 TODAS las claves y modelos han agotado su cuota diaria.");
-          console.log("🛑 Abortando el proceso limpiamente...");
-          abortProcess = true;
-        }
+        abortProcess = true;
         return null;
       }
-      await sleep(slot.waitMs + 100); 
+      await sleep(slot.waitMs + 200); 
       continue;
     }
 
@@ -158,45 +155,34 @@ async function translateBatchOptimized(entriesBatch) {
 
       let responseText = response.text || "";
       responseText = responseText.replace(/^\x60{3}(?:json)?\n?/i, '').replace(/\n?\x60{3}$/i, '').trim();
-      
       const translatedArray = JSON.parse(responseText);
       
-      if (!Array.isArray(translatedArray) || translatedArray.length !== entriesBatch.length) {
-        throw new Error("Estructura JSON truncada o incompleta");
-      }
-
       rateLimiter.recordSuccess(slot.key, slot.model);
       stats[slot.model] += entriesBatch.length;
       return translatedArray;
 
     } catch (error) {
       attempts++;
-      lastErrorMessage = error.message?.replace(/\n/g, ' ') || "Error desconocido";
+      lastErrorMessage = error.message || "Error";
       const msg = lastErrorMessage.toLowerCase();
-      
       const isRateLimit = error.status === 429 || msg.includes('429') || msg.includes('exhausted');
-      const isDailyQuota = msg.includes('quota');
-
+      
       if (isRateLimit) {
-        rateLimiter.markExhausted(slot.key, slot.model, isDailyQuota);
+        rateLimiter.markExhausted(slot.key, slot.model, msg.includes('quota'));
       } else {
-        await sleep(2000); 
+        await sleep(3000); 
       }
     }
-  }
-  
-  if (!abortProcess) {
-    console.error(`\n❌ Lote de ${entriesBatch.length} fallido. Razón final: ${lastErrorMessage.substring(0, 150)}`);
   }
   return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BATCHING (Agrupación Inteligente)
+// BATCHING (Maximizar el uso de cada petición)
 // ═══════════════════════════════════════════════════════════════════
 function createOptimizedBatches(entries) {
-  const MAX_CHARS = 12000; 
-  const MAX_ENTRIES = 10;  
+  const MAX_CHARS = 25000; // Aumentado para enviar más texto por petición
+  const MAX_ENTRIES = 15;  // Aumentado de 10 a 15
   const batches = [];
   let currentBatch = [], currentChars = 0;
 
@@ -215,38 +201,23 @@ function createOptimizedBatches(entries) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// EXTRACCIÓN DE DATOS DE SUPABASE (ANTI-TIMEOUTS)
+// QUERIES SUPABASE (Cursor)
 // ═══════════════════════════════════════════════════════════════════
 async function getTargetIdentifiers(lang) {
   let allIdentifiers = [];
   let lastId = null;
   let hasMore = true;
-  const pageSize = 1000; // Bloques grandes porque solo pedimos 3 columnas pequeñas
-
-  process.stdout.write(`\n📥 Mapeando traducciones existentes en "${lang}"... `);
-
   while (hasMore) {
-    let query = supabase
-      .from("CommentaryEntry")
-      .select("id, sourceId, divId") // ¡CLAVE! Sin descargar HTML pesado
-      .eq("language", lang)
-      .order("id", { ascending: true })
-      .limit(pageSize);
-
-    if (lastId !== null) query = query.gt("id", lastId); // Paginación por cursor (Súper rápida)
-
+    let query = supabase.from("CommentaryEntry").select("id, sourceId, divId").eq("language", lang).order("id", { ascending: true }).limit(2000);
+    if (lastId !== null) query = query.gt("id", lastId);
     const { data, error } = await query;
     if (error) throw error;
-    
-    if (data.length < pageSize) hasMore = false;
-    
+    if (data.length < 2000) hasMore = false;
     if (data.length > 0) {
       lastId = data[data.length - 1].id;
       allIdentifiers = allIdentifiers.concat(data);
     }
-    process.stdout.write(`\r📥 Mapeando traducciones existentes en "${lang}"... ✅ ${allIdentifiers.length} cargados.`);
   }
-  console.log("");
   return new Set(allIdentifiers.map(e => `${e.sourceId}|${e.divId}`));
 }
 
@@ -254,43 +225,25 @@ async function getPendingEnglishEntries(existingSet) {
   let pendingEntries = [];
   let lastId = null;
   let hasMore = true;
-  const pageSize = 500;
-  let totalChecked = 0;
-
-  process.stdout.write(`\n📥 Buscando textos en "en" pendientes de traducir... `);
-
   while (hasMore) {
-    let query = supabase
-      .from("CommentaryEntry")
-      .select("id, sourceId, language, bookAbbr, bookOrder, chapter, verseStart, verseEnd, title, content, contentHtml, divId, sectionType, volume")
-      .eq("language", "en")
-      .order("id", { ascending: true })
-      .limit(pageSize);
-
-    if (lastId !== null) query = query.gt("id", lastId); // Paginación por cursor
-
+    let query = supabase.from("CommentaryEntry").select("*").eq("language", "en").order("id", { ascending: true }).limit(1000);
+    if (lastId !== null) query = query.gt("id", lastId);
     const { data, error } = await query;
     if (error) throw error;
-    
-    if (data.length < pageSize) hasMore = false;
-    
+    if (data.length < 1000) hasMore = false;
     if (data.length > 0) {
       lastId = data[data.length - 1].id;
-      totalChecked += data.length;
-      
-      // Filtramos sobre la marcha para liberar RAM: Solo guardamos los que faltan
       const newPending = data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
       pendingEntries = pendingEntries.concat(newPending);
     }
-    
-    process.stdout.write(`\r📥 Buscando textos en "en"... 🔍 Revisados: ${totalChecked} | 📝 Pendientes: ${pendingEntries.length}`);
+    process.stdout.write(`\r📥 Escaneando pendientes: ${pendingEntries.length} encontrados...`);
   }
   console.log("");
   return pendingEntries;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROCESADOR CONCURRENTE
+// PROCESADOR
 // ═══════════════════════════════════════════════════════════════════
 async function processAllBatches(batches, totalEntries) {
   const limit = pLimit(5); 
@@ -299,95 +252,49 @@ async function processAllBatches(batches, totalEntries) {
 
   const processBatch = async (batchEn, index) => {
     if (abortProcess) return;
-    if (index < 5) await sleep(index * 300); 
-
     const translatedBatch = await translateBatchOptimized(batchEn);
-    
     if (translatedBatch && translatedBatch.length > 0 && !abortProcess) {
-      const dbBufferLocal = []; 
-
-      translatedBatch.forEach(transItem => {
+      const inserts = translatedBatch.map(transItem => {
         const orig = batchEn.find(e => e.id === transItem.id);
-        if (orig) {
-          dbBufferLocal.push({
-            sourceId: orig.sourceId, 
-            language: TARGET_LANG, 
-            bookAbbr: orig.bookAbbr,
-            bookOrder: orig.bookOrder, 
-            chapter: orig.chapter, 
-            verseStart: orig.verseStart,
-            verseEnd: orig.verseEnd, 
-            title: transItem.title || null,
-            content: transItem.content || orig.content, 
-            contentHtml: transItem.contentHtml || null,
-            divId: orig.divId, 
-            sectionType: orig.sectionType, 
-            volume: orig.volume
-          });
-          processed++;
-        }
-      });
+        if (!orig) return null;
+        return {
+          sourceId: orig.sourceId, language: TARGET_LANG, bookAbbr: orig.bookAbbr,
+          bookOrder: orig.bookOrder, chapter: orig.chapter, verseStart: orig.verseStart,
+          verseEnd: orig.verseEnd, title: transItem.title || null,
+          content: transItem.content || orig.content, contentHtml: transItem.contentHtml || null,
+          divId: orig.divId, sectionType: orig.sectionType, volume: orig.volume
+        };
+      }).filter(Boolean);
 
-      if (dbBufferLocal.length > 0) {
-        const { error } = await supabase.from("CommentaryEntry").insert(dbBufferLocal);
-        if (error) console.error(`\n❌ Error insertando en DB: ${error.message}`);
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("CommentaryEntry").insert(inserts);
+        if (!error) processed += inserts.length;
       }
     }
 
-    if (!abortProcess && processed % 20 < 10) { 
-      const elapsed = (Date.now() - startTime) / 1000 / 60;
-      const rate = processed / elapsed;
-      const eta = (totalEntries - processed) / rate;
-      process.stdout.write(`\r🚀 Trans: ${processed}/${totalEntries} | Vel: ${rate.toFixed(0)}/min | ETA: ${eta.toFixed(1)}m | 3.1L: ${stats['gemini-3.1-flash-lite-preview']} | 2.5L: ${stats['gemini-2.5-flash-lite']} | 2.5: ${stats['gemini-2.5-flash']}   `);
-    }
+    const elapsed = (Date.now() - startTime) / 1000 / 60;
+    const rate = processed / elapsed;
+    process.stdout.write(`\r🚀 Traducido: ${processed}/${totalEntries} | Vel: ${rate.toFixed(0)}/min | 3.1L: ${stats['gemini-3.1-flash-lite-preview']} | 2.5L: ${stats['gemini-2.5-flash-lite']}   `);
   };
 
   await Promise.all(batches.map((b, idx) => limit(() => processBatch(b, idx))));
-  console.log(""); 
-  return processed;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// MAIN ✨
-// ═══════════════════════════════════════════════════════════════════
 async function main() {
-  console.log(`
-╔═════════════════════════════════════════════════════════════════╗
-║  ⚡ TRADUCTOR GEMINI PURO (Anti-Timeouts + 5 Hilos)             ║
-║  EN → ${TARGET_LANG.toUpperCase().padEnd(60, ' ')}║
-╚═════════════════════════════════════════════════════════════════╝
-`);
-  const startTime = Date.now();
-
   try {
-    // 1. Obtener identificadores del idioma destino (rápido, no descarga textos)
     const existingSet = await getTargetIdentifiers(TARGET_LANG);
-
-    // 2. Obtener textos de origen filtrando sobre la marcha (no satura RAM)
     const pendingEntries = await getPendingEnglishEntries(existingSet);
-
-    if (pendingEntries.length === 0) { 
-      console.log("✅ Todo está traducido y al día.");
-      return; 
-    }
-
-    const batches = createOptimizedBatches(pendingEntries);
-    console.log(`📦 Lotes generados a traducir: ${batches.length}\n`);
+    if (pendingEntries.length === 0) return console.log("✅ Todo traducido.");
     
+    const batches = createOptimizedBatches(pendingEntries);
     await processAllBatches(batches, pendingEntries.length);
     
-    const finalMin = ((Date.now() - startTime) / 1000 / 60).toFixed(2);
-    if (abortProcess) {
-      console.log(`\n⚠️ Proceso detenido por falta de cuotas. Se avanzó durante ${finalMin} minutos.`);
-      process.exit(0); 
-    } else {
-      console.log(`\n✨ COMPLETADO en ${finalMin} minutos`);
-    }
-    
+    if (abortProcess) console.log(`\n⚠️ Cuotas agotadas por hoy. Mañana continuará automáticamente.`);
   } catch (error) { 
-    console.error(`\n❌ Error Crítico:`, error);
+    console.error(`\n❌ Error:`, error);
     process.exit(1);
   }
 }
 
 main();
+
