@@ -139,23 +139,18 @@ function toggleMinimize() {
 function toggleMaximize() {
     const panel = elements.commentaryBottomPanel;
     
-    // Si está minimizado, primero restaurar
     panel.classList.remove('minimized');
     
     if (panel.classList.contains('maximized')) {
-        // Restaurar desde maximizado
         panel.classList.remove('maximized');
         updateMaximizeIcon(false);
     } else {
-        // Calcular altura de cabecera + tabs dinámicamente
+        // Solo medir el <header>, NO los .mode-tabs
         const appHeader = document.querySelector('header');
-        const modeTabs = document.querySelector('.mode-tabs');
         
         let topOffset = 0;
         if (appHeader) topOffset += appHeader.offsetHeight;
-        if (modeTabs) topOffset += modeTabs.offsetHeight;
         
-        // Guardar como variable CSS para usarla en el panel
         panel.style.setProperty('--app-header-height', topOffset + 'px');
         
         panel.classList.add('maximized');
