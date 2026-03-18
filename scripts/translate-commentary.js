@@ -8,293 +8,460 @@ require("dotenv").config();
 // ═══════════════════════════════════════════════════════════════════
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
-const TARGET_LANG = process.env.TARGET_LANG || "ca"; 
+const TARGET_LANG = process.env.TARGET_LANG || "ca";
 
-const GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "").split(",").map(k => k.trim()).filter(Boolean);
+const ALL_GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "")
+  .split(",")
+  .map(k => k.trim())
+  .filter(Boolean);
+
+// ── Cuántas keys usar simultáneamente (ajustable sin tocar el resto) ──
+const ACTIVE_KEYS_COUNT = 7;
+
+// Tomamos las primeras N keys del array
+const GEMINI_KEYS = ALL_GEMINI_KEYS.slice(0, ACTIVE_KEYS_COUNT);
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY || GEMINI_KEYS.length === 0) {
   console.error("❌ Error: Faltan variables de entorno");
   process.exit(1);
 }
 
+console.log(`🔑 Keys activas: ${GEMINI_KEYS.length} / ${ALL_GEMINI_KEYS.length} disponibles`);
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// ─── Modelos por prioridad ─────────────────────────────────────────
+// gemini-3.1-flash-lite-preview es el caballo de batalla (500 RPD!)
+// Los otros son fallback de emergencia (solo 20 RPD por key/día)
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite-preview', rpm: 14, rpd: 5000 }, // Aumentado RPD teórico
-  { name: 'gemini-2.5-flash-lite', rpm: 9, rpd: 20 },
-  { name: 'gemini-2.5-flash', rpm: 4, rpd: 20 }
+  { name: "gemini-3.1-flash-lite-preview", rpm: 14, rpd: 500,  priority: 1 },
+  { name: "gemini-2.5-flash-lite",         rpm:  9, rpd:  20,  priority: 2 },
+  { name: "gemini-2.5-flash",              rpm:  4, rpd:  20,  priority: 3 },
 ];
+
+const TARGET_LANG_NAME =
+  TARGET_LANG === "es" ? "Spanish" :
+  TARGET_LANG === "ca" ? "Catalan" :
+  TARGET_LANG;
 
 let abortProcess = false;
 
 // ═══════════════════════════════════════════════════════════════════
-// SMART RATE LIMITER (Resiliencia Extrema)
+// KEY WORKER — Un worker por key activa
+// Cada worker gestiona su propio rate-limit de forma independiente
 // ═══════════════════════════════════════════════════════════════════
-class SmartRateLimiter {
-  constructor(keys, models) {
-    this.slots = [];
-    keys.forEach(key => {
-      models.forEach(model => {
-        this.slots.push({ 
-          key, 
-          model: model.name, 
-          rpm: model.rpm, 
-          rpd: model.rpd,
-          history: [], 
-          requestsToday: 0,
-          dayStart: Date.now(),
-          exhaustedUntil: 0,
-          consecutive429s: 0
-        });
-      });
-    });
+class KeyWorker {
+  constructor(keyIndex, apiKey) {
+    this.keyIndex  = keyIndex;
+    this.apiKey    = apiKey;
+    this.ai        = new GoogleGenAI({ apiKey });
+
+    // Estado por modelo
+    this.modelState = {};
+    for (const m of MODELS) {
+      this.modelState[m.name] = {
+        history:           [],   // timestamps del último minuto
+        requestsToday:     0,
+        dayStart:          Date.now(),
+        exhaustedUntil:    0,
+        consecutive429s:   0,
+        rpm:               m.rpm,
+        rpd:               m.rpd,
+        priority:          m.priority,
+      };
+    }
+
+    this.stats = {};
+    for (const m of MODELS) this.stats[m.name] = 0;
   }
 
-  getBestSlot() {
+  // ── Refresca el contador diario si ha pasado el día ──────────────
+  _refreshDay(state) {
+    if (Date.now() - state.dayStart > 86_400_000) {
+      state.requestsToday   = 0;
+      state.dayStart        = Date.now();
+      state.consecutive429s = 0;
+      state.exhaustedUntil  = 0;
+    }
+  }
+
+  // ── Devuelve el modelo disponible con mayor prioridad ─────────────
+  // Retorna { model, waitMs } donde waitMs=0 significa "disponible ya"
+  getBestModel() {
     const now = Date.now();
-    let minWaitMs = Infinity;
+    let bestWait = Infinity;
 
-    for (const slot of this.slots) {
-      if (now - slot.dayStart > 86400000) {
-        slot.requestsToday = 0;
-        slot.dayStart = now;
-        slot.consecutive429s = 0;
-      }
+    // Ordenar por prioridad (1 = mejor)
+    const sorted = MODELS.slice().sort((a, b) =>
+      this.modelState[a.name].priority - this.modelState[b.name].priority
+    );
 
-      if (slot.requestsToday >= slot.rpd) continue;
+    for (const m of sorted) {
+      const state = this.modelState[m.name];
+      this._refreshDay(state);
 
-      slot.history = slot.history.filter(ts => now - ts < 60000);
-
-      if (slot.exhaustedUntil > now) {
-        const wait = slot.exhaustedUntil - now;
-        if (wait < minWaitMs) minWaitMs = wait;
+      if (state.requestsToday >= state.rpd) continue;           // Cuota diaria agotada
+      if (state.exhaustedUntil > now) {
+        bestWait = Math.min(bestWait, state.exhaustedUntil - now);
         continue;
       }
 
-      if (slot.history.length < slot.rpm) {
-        slot.history.push(now);
-        slot.requestsToday++;
-        return { available: true, key: slot.key, model: slot.model, waitMs: 0 };
+      // Limpiar historial del minuto
+      state.history = state.history.filter(ts => now - ts < 60_000);
+
+      if (state.history.length < state.rpm) {
+        // ¡Disponible!
+        state.history.push(now);
+        state.requestsToday++;
+        return { model: m.name, waitMs: 0 };
       } else {
-        const wait = 60000 - (now - slot.history[0]);
-        if (wait < minWaitMs) minWaitMs = wait;
+        const wait = 60_000 - (now - state.history[0]);
+        bestWait = Math.min(bestWait, wait);
       }
     }
 
-    return { available: false, waitMs: minWaitMs === Infinity ? 5000 : minWaitMs };
+    // Todos los modelos ocupados o agotados
+    return { model: null, waitMs: bestWait === Infinity ? null : bestWait };
   }
 
-  markExhausted(key, model, isDailyQuotaMessage) {
-    const slot = this.slots.find(s => s.key === key && s.model === model);
-    if (slot) {
-      slot.consecutive429s++;
-      // Si es el primer o segundo aviso, esperamos 2 minutos (enfriamiento largo)
-      // Si es el tercero, lo damos por muerto por hoy.
-      const coolingTime = slot.consecutive429s >= 3 ? 86400000 : 120000; 
-      slot.exhaustedUntil = Date.now() + coolingTime;
+  // ── Marca un modelo como exhausto tras un 429 ─────────────────────
+  markExhausted(modelName, isDailyQuota) {
+    const state = this.modelState[modelName];
+    if (!state) return;
+    state.consecutive429s++;
 
-      if (isDailyQuotaMessage || slot.consecutive429s >= 3) {
-        slot.requestsToday = slot.rpd;
-        console.log(`\n⚠️ ${model} bloqueado. Reintentos agotados o cuota excedida.`);
-      } else {
-        console.log(`\n⏳ ${model} en enfriamiento (Intento ${slot.consecutive429s}/3)...`);
-      }
+    if (isDailyQuota || state.consecutive429s >= 3) {
+      state.requestsToday  = state.rpd;   // Cierra la cuota diaria
+      state.exhaustedUntil = Date.now() + 86_400_000;
+    } else {
+      // Backoff progresivo: 60s, 120s
+      const cooldown = state.consecutive429s * 60_000;
+      state.exhaustedUntil = Date.now() + cooldown;
     }
   }
 
-  recordSuccess(key, model) {
-    const slot = this.slots.find(s => s.key === key && s.model === model);
-    if (slot) slot.consecutive429s = 0;
+  markSuccess(modelName) {
+    const state = this.modelState[modelName];
+    if (state) state.consecutive429s = 0;
   }
-}
 
-const rateLimiter = new SmartRateLimiter(GEMINI_KEYS, MODELS);
-const stats = { 'gemini-3.1-flash-lite-preview': 0, 'gemini-2.5-flash-lite': 0, 'gemini-2.5-flash': 0 };
+  // ── Traduce un batch usando esta key ─────────────────────────────
+  // Retorna el array traducido o null si falla
+  async translateBatch(entriesBatch, maxAttempts = 6) {
+    const payload = entriesBatch.map(e => ({
+      id: e.id,
+      title: e.title || "",
+      content: e.content || "",
+      contentHtml: e.contentHtml || "",
+    }));
 
-async function translateBatchOptimized(entriesBatch) {
-  if (abortProcess) return null;
+    const systemPrompt =
+      `Translate JSON to ${TARGET_LANG_NAME}. ` +
+      `Keep "id". Translate "title", "content", "contentHtml". ` +
+      `Return ONLY a JSON array.`;
 
-  const payload = entriesBatch.map(entry => ({
-    id: entry.id, 
-    title: entry.title || "", 
-    content: entry.content || "", 
-    contentHtml: entry.contentHtml || ""
-  }));
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (abortProcess) return null;
 
-  const languageName = TARGET_LANG === 'es' ? 'Spanish' : TARGET_LANG === 'ca' ? 'Catalan' : TARGET_LANG;
-  const systemPrompt = `Translate JSON to ${languageName}. Keep "id". Translate "title", "content", "contentHtml". Return ONLY JSON array.`;
+      const { model, waitMs } = this.getBestModel();
 
-  let attempts = 0;
-  let lastErrorMessage = "";
-
-  while (attempts < 10) { 
-    if (abortProcess) return null;
-    const slot = rateLimiter.getBestSlot();
-    
-    if (!slot.available) {
-      if (slot.waitMs === Infinity) {
-        abortProcess = true;
+      if (model === null) {
+        // Esta key está completamente agotada por hoy
         return null;
       }
-      await sleep(slot.waitMs + 200); 
-      continue;
-    }
 
-    try {
-      const ai = new GoogleGenAI({ apiKey: slot.key });
-      const response = await ai.models.generateContent({
-        model: slot.model,
-        contents: JSON.stringify(payload),
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.1,
-          responseMimeType: "application/json"
+      if (waitMs > 0) {
+        await sleep(waitMs + 100);
+        continue; // Reintentar tras la espera
+      }
+
+      try {
+        const response = await this.ai.models.generateContent({
+          model,
+          contents: JSON.stringify(payload),
+          config: {
+            systemInstruction: systemPrompt,
+            temperature: 0.1,
+            responseMimeType: "application/json",
+          },
+        });
+
+        let text = (response.text || "")
+          .replace(/^\x60{3}(?:json)?\n?/i, "")
+          .replace(/\n?\x60{3}$/i, "")
+          .trim();
+
+        const result = JSON.parse(text);
+        this.markSuccess(model);
+        this.stats[model] += entriesBatch.length;
+        return result;
+
+      } catch (err) {
+        const msg = (err.message || "").toLowerCase();
+        const is429 = err.status === 429 || msg.includes("429") || msg.includes("exhausted");
+
+        if (is429) {
+          const isDaily = msg.includes("quota") || msg.includes("daily");
+          this.markExhausted(model, isDaily);
+          // No sumamos attempt: dejamos que el bucle reintente con otro modelo
+        } else {
+          // Error no relacionado con cuotas → espera corta y reintento
+          await sleep(2_000 * (attempt + 1));
         }
-      });
-
-      let responseText = response.text || "";
-      responseText = responseText.replace(/^\x60{3}(?:json)?\n?/i, '').replace(/\n?\x60{3}$/i, '').trim();
-      const translatedArray = JSON.parse(responseText);
-      
-      rateLimiter.recordSuccess(slot.key, slot.model);
-      stats[slot.model] += entriesBatch.length;
-      return translatedArray;
-
-    } catch (error) {
-      attempts++;
-      lastErrorMessage = error.message || "Error";
-      const msg = lastErrorMessage.toLowerCase();
-      const isRateLimit = error.status === 429 || msg.includes('429') || msg.includes('exhausted');
-      
-      if (isRateLimit) {
-        rateLimiter.markExhausted(slot.key, slot.model, msg.includes('quota'));
-      } else {
-        await sleep(3000); 
       }
     }
+
+    return null; // Agotados los intentos
   }
-  return null;
+
+  // ── ¿Tiene al menos un modelo disponible hoy? ────────────────────
+  get isAliveToday() {
+    const now = Date.now();
+    return MODELS.some(m => {
+      const s = this.modelState[m.name];
+      this._refreshDay(s);
+      return s.requestsToday < s.rpd;
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// BATCHING (Maximizar el uso de cada petición)
+// POOL DE WORKERS
+// ═══════════════════════════════════════════════════════════════════
+class WorkerPool {
+  constructor(keys) {
+    this.workers = keys.map((k, i) => new KeyWorker(i, k));
+    // Round-robin pointer
+    this._rr = 0;
+  }
+
+  // Devuelve el worker con menor carga (heurística: menor requestsToday en modelo principal)
+  getWorker() {
+    const alive = this.workers.filter(w => w.isAliveToday);
+    if (alive.length === 0) return null;
+
+    // Preferir el worker con menos peticiones hoy en el modelo principal
+    const PRIMARY = MODELS[0].name;
+    alive.sort((a, b) =>
+      a.modelState[PRIMARY].requestsToday - b.modelState[PRIMARY].requestsToday
+    );
+    return alive[0];
+  }
+
+  get totalStats() {
+    const totals = {};
+    for (const m of MODELS) totals[m.name] = 0;
+    for (const w of this.workers) {
+      for (const m of MODELS) totals[m.name] += w.stats[m.name];
+    }
+    return totals;
+  }
+
+  get allExhausted() {
+    return this.workers.every(w => !w.isAliveToday);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BATCHING
 // ═══════════════════════════════════════════════════════════════════
 function createOptimizedBatches(entries) {
-  const MAX_CHARS = 25000; // Aumentado para enviar más texto por petición
-  const MAX_ENTRIES = 15;  // Aumentado de 10 a 15
+  const MAX_CHARS   = 28_000;
+  const MAX_ENTRIES = 15;
   const batches = [];
-  let currentBatch = [], currentChars = 0;
+  let current = [], chars = 0;
 
   for (const entry of entries) {
-    const len = (entry.title?.length || 0) + (entry.content?.length || 0) + (entry.contentHtml?.length || 0);
-    if ((currentChars + len > MAX_CHARS || currentBatch.length >= MAX_ENTRIES) && currentBatch.length > 0) {
-      batches.push(currentBatch);
-      currentBatch = [];
-      currentChars = 0;
+    const len =
+      (entry.title?.length       || 0) +
+      (entry.content?.length     || 0) +
+      (entry.contentHtml?.length || 0);
+
+    if ((chars + len > MAX_CHARS || current.length >= MAX_ENTRIES) && current.length > 0) {
+      batches.push(current);
+      current = [];
+      chars   = 0;
     }
-    currentBatch.push(entry);
-    currentChars += len;
+    current.push(entry);
+    chars += len;
   }
-  if (currentBatch.length > 0) batches.push(currentBatch);
+  if (current.length > 0) batches.push(current);
   return batches;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// QUERIES SUPABASE (Cursor)
+// QUERIES SUPABASE
 // ═══════════════════════════════════════════════════════════════════
 async function getTargetIdentifiers(lang) {
-  let allIdentifiers = [];
-  let lastId = null;
-  let hasMore = true;
+  let all = [], lastId = null, hasMore = true;
   while (hasMore) {
-    let query = supabase.from("CommentaryEntry").select("id, sourceId, divId").eq("language", lang).order("id", { ascending: true }).limit(2000);
-    if (lastId !== null) query = query.gt("id", lastId);
-    const { data, error } = await query;
+    let q = supabase
+      .from("CommentaryEntry")
+      .select("id, sourceId, divId")
+      .eq("language", lang)
+      .order("id", { ascending: true })
+      .limit(2000);
+    if (lastId !== null) q = q.gt("id", lastId);
+    const { data, error } = await q;
     if (error) throw error;
     if (data.length < 2000) hasMore = false;
     if (data.length > 0) {
       lastId = data[data.length - 1].id;
-      allIdentifiers = allIdentifiers.concat(data);
+      all = all.concat(data);
     }
   }
-  return new Set(allIdentifiers.map(e => `${e.sourceId}|${e.divId}`));
+  return new Set(all.map(e => `${e.sourceId}|${e.divId}`));
 }
 
 async function getPendingEnglishEntries(existingSet) {
-  let pendingEntries = [];
-  let lastId = null;
-  let hasMore = true;
+  let pending = [], lastId = null, hasMore = true;
   while (hasMore) {
-    let query = supabase.from("CommentaryEntry").select("*").eq("language", "en").order("id", { ascending: true }).limit(1000);
-    if (lastId !== null) query = query.gt("id", lastId);
-    const { data, error } = await query;
+    let q = supabase
+      .from("CommentaryEntry")
+      .select("*")
+      .eq("language", "en")
+      .order("id", { ascending: true })
+      .limit(1000);
+    if (lastId !== null) q = q.gt("id", lastId);
+    const { data, error } = await q;
     if (error) throw error;
     if (data.length < 1000) hasMore = false;
     if (data.length > 0) {
       lastId = data[data.length - 1].id;
-      const newPending = data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
-      pendingEntries = pendingEntries.concat(newPending);
+      pending = pending.concat(data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`)));
     }
-    process.stdout.write(`\r📥 Escaneando pendientes: ${pendingEntries.length} encontrados...`);
+    process.stdout.write(`\r📥 Escaneando pendientes: ${pending.length} encontrados...`);
   }
   console.log("");
-  return pendingEntries;
+  return pending;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// PROCESADOR
+// PROCESADOR PRINCIPAL
+// Concurrencia: ACTIVE_KEYS_COUNT × rpm_principal = hasta ~140 RPM
+// En la práctica usamos pLimit = ACTIVE_KEYS_COUNT × 2 para que
+// siempre haya batches en vuelo mientras algún worker espera.
 // ═══════════════════════════════════════════════════════════════════
-async function processAllBatches(batches, totalEntries) {
-  const limit = pLimit(5); 
+async function processAllBatches(batches, totalEntries, pool) {
+  // Concurrencia efectiva: 2 "slots en vuelo" por key activa
+  // El rate-limit interno de cada KeyWorker evita sobrepasarse
+  const CONCURRENCY = ACTIVE_KEYS_COUNT * 2;
+  const limit       = pLimit(CONCURRENCY);
+
   let processed = 0;
+  let failed    = 0;
   const startTime = Date.now();
 
-  const processBatch = async (batchEn, index) => {
-    if (abortProcess) return;
-    const translatedBatch = await translateBatchOptimized(batchEn);
-    if (translatedBatch && translatedBatch.length > 0 && !abortProcess) {
-      const inserts = translatedBatch.map(transItem => {
-        const orig = batchEn.find(e => e.id === transItem.id);
-        if (!orig) return null;
-        return {
-          sourceId: orig.sourceId, language: TARGET_LANG, bookAbbr: orig.bookAbbr,
-          bookOrder: orig.bookOrder, chapter: orig.chapter, verseStart: orig.verseStart,
-          verseEnd: orig.verseEnd, title: transItem.title || null,
-          content: transItem.content || orig.content, contentHtml: transItem.contentHtml || null,
-          divId: orig.divId, sectionType: orig.sectionType, volume: orig.volume
-        };
-      }).filter(Boolean);
+  // Cola de batches fallidos para reintento al final
+  const retryQueue = [];
 
-      if (inserts.length > 0) {
-        const { error } = await supabase.from("CommentaryEntry").insert(inserts);
-        if (!error) processed += inserts.length;
+  const processBatch = async (batchEn) => {
+    if (abortProcess) return;
+
+    // Seleccionar worker con menos carga
+    const worker = pool.getWorker();
+    if (!worker) {
+      abortProcess = true;
+      retryQueue.push(batchEn);
+      return;
+    }
+
+    const translated = await worker.translateBatch(batchEn);
+
+    if (!translated || translated.length === 0) {
+      failed++;
+      retryQueue.push(batchEn);  // Guardar para reintento con otra key
+      return;
+    }
+
+    const inserts = translated.map(item => {
+      const orig = batchEn.find(e => e.id === item.id);
+      if (!orig) return null;
+      return {
+        sourceId:    orig.sourceId,
+        language:    TARGET_LANG,
+        bookAbbr:    orig.bookAbbr,
+        bookOrder:   orig.bookOrder,
+        chapter:     orig.chapter,
+        verseStart:  orig.verseStart,
+        verseEnd:    orig.verseEnd,
+        title:       item.title       || null,
+        content:     item.content     || orig.content,
+        contentHtml: item.contentHtml || null,
+        divId:       orig.divId,
+        sectionType: orig.sectionType,
+        volume:      orig.volume,
+      };
+    }).filter(Boolean);
+
+    if (inserts.length > 0) {
+      const { error } = await supabase.from("CommentaryEntry").insert(inserts);
+      if (!error) {
+        processed += inserts.length;
+      } else {
+        console.error("\n❌ Error al insertar:", error.message);
       }
     }
 
+    // ── Progreso ──────────────────────────────────────────────────
     const elapsed = (Date.now() - startTime) / 1000 / 60;
-    const rate = processed / elapsed;
-    process.stdout.write(`\r🚀 Traducido: ${processed}/${totalEntries} | Vel: ${rate.toFixed(0)}/min | 3.1L: ${stats['gemini-3.1-flash-lite-preview']} | 2.5L: ${stats['gemini-2.5-flash-lite']}   `);
+    const rate    = elapsed > 0 ? (processed / elapsed).toFixed(0) : 0;
+    const s       = pool.totalStats;
+    process.stdout.write(
+      `\r🚀 ${processed}/${totalEntries} | ${rate}/min | ` +
+      `Fails:${failed} | ` +
+      `3.1L:${s["gemini-3.1-flash-lite-preview"]} ` +
+      `2.5L:${s["gemini-2.5-flash-lite"]} ` +
+      `2.5F:${s["gemini-2.5-flash"]}   `
+    );
   };
 
-  await Promise.all(batches.map((b, idx) => limit(() => processBatch(b, idx))));
+  // ── Primera pasada ────────────────────────────────────────────────
+  await Promise.all(batches.map(b => limit(() => processBatch(b))));
+
+  // ── Reintento de fallidos (si quedan workers vivos) ───────────────
+  if (retryQueue.length > 0 && !pool.allExhausted) {
+    console.log(`\n♻️  Reintentando ${retryQueue.length} batches fallidos...`);
+    abortProcess = false;
+    const retryLimit = pLimit(ACTIVE_KEYS_COUNT);
+    await Promise.all(retryQueue.map(b => retryLimit(() => processBatch(b))));
+  }
+
+  console.log(`\n✅ Procesamiento finalizado. Procesados: ${processed} | Fallidos: ${failed}`);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════
 async function main() {
   try {
-    const existingSet = await getTargetIdentifiers(TARGET_LANG);
+    console.log(`🌐 Idioma destino: ${TARGET_LANG_NAME} (${TARGET_LANG})`);
+    console.log(`⚡ Concurrencia máxima: ${ACTIVE_KEYS_COUNT * 2} slots`);
+    console.log(`📊 Capacidad teórica: ~${ACTIVE_KEYS_COUNT * 14} RPM (${ACTIVE_KEYS_COUNT * 500} RPD)\n`);
+
+    const existingSet    = await getTargetIdentifiers(TARGET_LANG);
     const pendingEntries = await getPendingEnglishEntries(existingSet);
-    if (pendingEntries.length === 0) return console.log("✅ Todo traducido.");
-    
+
+    if (pendingEntries.length === 0) {
+      return console.log("✅ Todo está traducido.");
+    }
+
+    console.log(`📋 Pendientes: ${pendingEntries.length} entradas`);
+
     const batches = createOptimizedBatches(pendingEntries);
-    await processAllBatches(batches, pendingEntries.length);
-    
-    if (abortProcess) console.log(`\n⚠️ Cuotas agotadas por hoy. Mañana continuará automáticamente.`);
-  } catch (error) { 
-    console.error(`\n❌ Error:`, error);
+    console.log(`📦 Batches creados: ${batches.length} (avg ${(pendingEntries.length / batches.length).toFixed(1)} entradas/batch)\n`);
+
+    const pool = new WorkerPool(GEMINI_KEYS);
+    await processAllBatches(batches, pendingEntries.length, pool);
+
+    if (abortProcess || pool.allExhausted) {
+      console.log("⚠️  Cuotas agotadas. Ejecuta de nuevo mañana.");
+    }
+  } catch (error) {
+    console.error("\n❌ Error fatal:", error);
     process.exit(1);
   }
 }
 
 main();
-
