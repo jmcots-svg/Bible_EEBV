@@ -49,21 +49,6 @@
     font-size: 1rem;
 }
 
-.commentary-bottom-close {
-    background: none;
-    border: none;
-    font-size: 1.8rem;
-    cursor: pointer;
-    color: var(--text-muted); /* Actualizado */
-    padding: 0 8px;
-    line-height: 1;
-    transition: color 0.2s;
-}
-
-.commentary-bottom-close:hover {
-    color: var(--accent); /* Actualizado para coincidir con Strong */
-}
-
 .commentary-bottom-content {
     flex: 1;
     overflow-y: auto;
