@@ -7,7 +7,7 @@ require("dotenv").config();
 // CONFIGURACIÓN
 // ═══════════════════════════════════════════════════════════════════
 const SUPABASE_URL         = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY; // ← Secret key
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const TARGET_LANG          = process.env.TARGET_LANG || "ca";
 
 const ALL_GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "")
@@ -25,7 +25,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || GEMINI_KEYS.length === 0) {
 
 console.log(`🔑 Keys activas: ${GEMINI_KEYS.length} / ${ALL_GEMINI_KEYS.length} disponibles`);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY); // ← Secret key
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ─── Modelos por prioridad ─────────────────────────────────────────
@@ -178,7 +178,7 @@ class KeyWorker {
         return result;
 
       } catch (err) {
-        const msg  = (err.message || "").toLowerCase();
+        const msg   = (err.message || "").toLowerCase();
         const is429 = err.status === 429 || msg.includes("429") || msg.includes("exhausted");
 
         if (is429) {
@@ -194,7 +194,6 @@ class KeyWorker {
   }
 
   get isAliveToday() {
-    const now = Date.now();
     return MODELS.some(m => {
       const s = this.modelState[m.name];
       this._refreshDay(s);
@@ -264,25 +263,30 @@ function createOptimizedBatches(entries) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// QUERIES SUPABASE
+// QUERIES SUPABASE - Paginación corregida con .range()
 // ═══════════════════════════════════════════════════════════════════
 async function getTargetIdentifiers(lang) {
-  let all = [], lastId = null, hasMore = true;
+  let all = [], page = 0, hasMore = true;
+  const PAGE_SIZE = 1000;
+
   while (hasMore) {
-    let q = supabase
+    const { data, error } = await supabase
       .from("CommentaryEntry")
-      .select("id, sourceId, divId")
+      .select("sourceId, divId")
       .eq("language", lang)
-      .order("id", { ascending: true })
-      .limit(2000);
-    if (lastId !== null) q = q.gt("id", lastId);
-    const { data, error } = await q;
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
     if (error) throw error;
-    if (data.length < 2000) hasMore = false;
-    if (data.length > 0) {
-      lastId = data[data.length - 1].id;
-      all    = all.concat(data);
+
+    if (data.length === 0) {
+      hasMore = false;
+    } else {
+      all = all.concat(data);
+      page++;
+      if (data.length < PAGE_SIZE) hasMore = false;
     }
+
+    process.stdout.write(`\r📊 Leyendo entradas '${lang}': ${all.length}...`);
   }
 
   console.log(`\n📊 Entradas existentes en '${lang}': ${all.length}`);
@@ -290,27 +294,32 @@ async function getTargetIdentifiers(lang) {
 }
 
 async function getPendingEnglishEntries(existingSet) {
-  let pending = [], lastId = null, hasMore = true;
+  let all = [], page = 0, hasMore = true;
+  const PAGE_SIZE = 1000;
+
   while (hasMore) {
-    let q = supabase
+    const { data, error } = await supabase
       .from("CommentaryEntry")
       .select("*")
       .eq("language", "en")
-      .order("id", { ascending: true })
-      .limit(1000);
-    if (lastId !== null) q = q.gt("id", lastId);
-    const { data, error } = await q;
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
     if (error) throw error;
-    if (data.length < 1000) hasMore = false;
-    if (data.length > 0) {
-      lastId  = data[data.length - 1].id;
-      pending = pending.concat(
-        data.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`))
-      );
+
+    if (data.length === 0) {
+      hasMore = false;
+    } else {
+      all = all.concat(data);
+      page++;
+      if (data.length < PAGE_SIZE) hasMore = false;
     }
-    process.stdout.write(`\r📥 Escaneando pendientes: ${pending.length} encontrados...`);
+
+    process.stdout.write(`\r📥 Leyendo entradas EN: ${all.length}...`);
   }
-  console.log("");
+
+  // Filtrar con el set ya completo
+  const pending = all.filter(e => !existingSet.has(`${e.sourceId}|${e.divId}`));
+  console.log(`\n📥 Pendientes: ${pending.length} / ${all.length} entradas EN`);
   return pending;
 }
 
@@ -365,18 +374,23 @@ async function processAllBatches(batches, totalEntries, pool) {
     }).filter(Boolean);
 
     if (inserts.length > 0) {
-      const { error } = await supabase.from("CommentaryEntry").insert(inserts);
+      const { error } = await supabase
+        .from("CommentaryEntry")
+        .upsert(inserts, {
+          onConflict:       "sourceId,language,divId", // ← evita duplicados
+          ignoreDuplicates: true,
+        });
+
       if (!error) {
         processed += inserts.length;
       } else {
-        console.error(`\n❌ Insert fallido (${inserts.length} entradas): ${error.message}`);
+        console.error(`\n❌ Upsert fallido (${inserts.length} entradas): ${error.message}`);
         console.error(`   Código: ${error.code} | Hint: ${error.hint || "ninguno"}`);
         failed++;
         retryQueue.push(batchEn);
       }
     }
 
-    // ── Progreso ──────────────────────────────────────────────────
     const elapsed = (Date.now() - startTime) / 1000 / 60;
     const rate    = elapsed > 0 ? (processed / elapsed).toFixed(0) : 0;
     const s       = pool.totalStats;
@@ -420,8 +434,7 @@ async function main() {
     }
 
     const batches = createOptimizedBatches(pendingEntries);
-    console.log(`📋 Pendientes : ${pendingEntries.length} entradas`);
-    console.log(`📦 Batches    : ${batches.length} (avg ${(pendingEntries.length / batches.length).toFixed(1)} entradas/batch)\n`);
+    console.log(`📦 Batches: ${batches.length} (avg ${(pendingEntries.length / batches.length).toFixed(1)} entradas/batch)\n`);
 
     const pool = new WorkerPool(GEMINI_KEYS);
     await processAllBatches(batches, pendingEntries.length, pool);
