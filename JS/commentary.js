@@ -30,29 +30,30 @@ export function initCommentary(els, cbs) {
     }
 
     // ── NUEVO: Hacer el encabezado clicable ──
+    // ── NUEVO: Hacer el encabezado clicable ──
     if (elements.commentaryBottomRef) {
-        // Le damos estilo de cursor para que el usuario sepa que es clicable
+        // Estilos para que el usuario sepa que es clicable
         elements.commentaryBottomRef.style.cursor = 'pointer';
-        elements.commentaryBottomRef.title = 'Cargar en el panel de lectura';
+        elements.commentaryBottomRef.title = 'Abrir en el panel de lectura';
         
-        // Agregamos el evento de clic
-        elements.commentaryBottomRef.addEventListener('click', () => {
-            if (currentReference && callbacks.onLoadReference) {
-                // Construimos el string "Libro Capitulo:Versiculo"
-                const verseText = currentReference.verse ? `:${currentReference.verse}` : '';
-                const refString = `${currentReference.book} ${currentReference.chapter}${verseText}`;
-                
-                // Llamamos a la función de app.js
-                callbacks.onLoadReference(refString);
-            }
-        });
-        
-        // Opcional: un pequeño efecto hover usando JS si no quieres editar el CSS
+        // Efecto visual al pasar el ratón
         elements.commentaryBottomRef.addEventListener('mouseenter', () => {
             elements.commentaryBottomRef.style.textDecoration = 'underline';
         });
         elements.commentaryBottomRef.addEventListener('mouseleave', () => {
             elements.commentaryBottomRef.style.textDecoration = 'none';
+        });
+
+        // Evento de clic CORREGIDO
+        elements.commentaryBottomRef.addEventListener('click', () => {
+            if (currentReference && callbacks.onLoadReference) {
+                // Pasamos los 3 parámetros SEPARADOS para que app.js los entienda
+                callbacks.onLoadReference(
+                    currentReference.book,     // Ej: "Números"
+                    currentReference.chapter,  // Ej: 3
+                    currentReference.verse     // Ej: null
+                );
+            }
         });
     }
 }
