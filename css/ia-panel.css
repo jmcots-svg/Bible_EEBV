@@ -9,8 +9,6 @@
   left: 0;
   right: 0;
   z-index: 500;
-  display: flex;
-  flex-direction: column;
   pointer-events: none;
 }
 
@@ -27,14 +25,7 @@
   justify-content: flex-end;
   gap: 6px;
   padding: 7px 14px;
-  background: var(--bg-filters);
-  border-top: 1px solid var(--border);
-  cursor: pointer;
-  transition: background 0.2s ease;
-  user-select: none;
-  position: relative;
-  z-index: 2;
-}
+  background: var(--bg-filters
 
 .ia-trigger-bar:hover {
   background: var(--card-hover);
