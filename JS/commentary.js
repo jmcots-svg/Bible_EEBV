@@ -2,6 +2,7 @@
 
 import { API_URL } from './config.js';
 import { fetchJSON, escapeHtml } from './utils.js';
+import { linkBibleReferences } from './bible-links.js';
 
 // Estado del módulo
 let currentReference = null;
@@ -476,7 +477,10 @@ function renderCommentaryEntries(data, translationMethod = null) {
                 ${entry.title ? `<h4 class="commentary-entry-title">${escapeHtml(entry.title)}</h4>` : ''}
                 ${verseRange ? `<div class="commentary-verse-range">Versículos ${verseRange}</div>` : ''}
                 <div class="commentary-entry-content">
-                    ${entry.contentHtml || escapeHtml(entry.content)}
+                    ${linkBibleReferences(
+                        entry.contentHtml || escapeHtml(entry.content),
+                        getCommentaryLanguage()
+                    )}
                 </div>
             </article>
         `;
