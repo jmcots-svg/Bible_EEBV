@@ -1,15 +1,27 @@
 /* ================================================
-   IA PANEL - Concordancia
+   IA PANEL — Fixed bottom, expands upward
    ================================================ */
 
-/* ── Wrapper posicionado al fondo del panel ── */
+/* ── Wrapper fijo en la parte inferior ── */
 .ia-panel-wrapper {
-  position: relative;
-  width: 100%;
-  margin-top: auto;   /* empuja al fondo si el padre es flex */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  /* El panel crece hacia arriba gracias a column-reverse */
+  pointer-events: none; /* el wrapper no bloquea clicks cuando está cerrado */
 }
 
-/* ── Barra trigger: siempre visible ── */
+/* Todo lo interno sí recibe clicks */
+.ia-trigger-bar,
+.ia-panel {
+  pointer-events: auto;
+}
+
+/* ── Barra trigger: siempre visible en el fondo ── */
 .ia-trigger-bar {
   display: flex;
   align-items: center;
@@ -21,6 +33,9 @@
   cursor: pointer;
   transition: background 0.2s ease;
   user-select: none;
+  /* Asegura que queda por encima del panel */
+  position: relative;
+  z-index: 2;
 }
 
 .ia-trigger-bar:hover {
@@ -42,7 +57,10 @@
   opacity: 0.85;
 }
 
-/* Botón flecha */
+/* ── Botón flecha ──
+   Por defecto apunta HACIA ARRIBA (para indicar "desplegar hacia arriba")
+   Cuando está abierto apunta HACIA ABAJO (para cerrar)
+── */
 .ia-trigger-arrow {
   background: none;
   border: none;
@@ -52,26 +70,27 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* La flecha apunta HACIA ARRIBA por defecto (para subir el panel) */
-  transform: rotate(180deg);
+  /* SVG polyline apunta arriba por defecto, no rotamos */
+  transform: rotate(0deg);
   transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
               color 0.3s ease;
 }
 
-/* Cuando está abierto: flecha apunta abajo (para cerrar) */
+/* Cuando está abierto: flecha apunta ABAJO */
 .ia-panel-wrapper.ia-open .ia-trigger-arrow {
-  transform: rotate(0deg);
+  transform: rotate(180deg);
   color: #c8a000;
 }
 
-/* ── Panel expandible ── */
+/* ── Panel expandible — crece hacia ARRIBA ── */
 .ia-panel {
   overflow: hidden;
+
+  /* Estado cerrado: altura 0 */
   max-height: 0;
   opacity: 0;
-  pointer-events: none;
 
-  /* COLOR SUPER SAIYAN — banana/dorado */
+  /* COLOR SUPER SAIYAN */
   background: linear-gradient(
     135deg,
     #FFE033 0%,
@@ -83,18 +102,22 @@
   border-top: 3px solid #FFF176;
   position: relative;
 
-  /* Transición épica de apertura */
+  /* Transición épica hacia arriba */
   transition:
     max-height 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity    0.35s ease,
-    border-top-color 0.3s ease;
+    opacity    0.35s ease;
 }
 
-/* Estado abierto */
+/* Estado abierto: ocupa desde el fondo hasta debajo de las tabs */
 .ia-panel-wrapper.ia-open .ia-panel {
-  max-height: 380px;
+  /* 
+    Calcula la altura disponible:
+    100vh - altura header (~50px) - altura tabs (~52px) - altura trigger (~36px)
+    Ajusta estos valores a los de tu app
+  */
+  max-height: calc(100vh - 50px - 52px - 36px);
   opacity: 1;
-  pointer-events: auto;
+  overflow-y: auto;
 }
 
 /* Destello de luz al abrir */
@@ -113,11 +136,10 @@
   );
   pointer-events: none;
   opacity: 0;
-  transition: none;
 }
 
 .ia-panel-wrapper.ia-open .ia-panel::after {
-  animation: ia-sweep 0.7s ease forwards 0.1s;
+  animation: ia-sweep 0.7s ease forwards 0.15s;
 }
 
 @keyframes ia-sweep {
@@ -141,29 +163,17 @@
   opacity: 0;
 }
 
-/* Tamaños y posiciones distintos */
 .ia-particle:nth-child(1) { width: 5px;  height: 5px;  left: 8%;  }
 .ia-particle:nth-child(2) { width: 8px;  height: 8px;  left: 22%; }
 .ia-particle:nth-child(3) { width: 4px;  height: 4px;  left: 48%; }
 .ia-particle:nth-child(4) { width: 7px;  height: 7px;  left: 68%; }
 .ia-particle:nth-child(5) { width: 5px;  height: 5px;  left: 87%; }
 
-/* Animación solo cuando está abierto */
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(1) {
-  animation: ia-float 2.2s ease-in infinite 0.0s;
-}
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(2) {
-  animation: ia-float 2.2s ease-in infinite 0.5s;
-}
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(3) {
-  animation: ia-float 2.2s ease-in infinite 0.2s;
-}
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(4) {
-  animation: ia-float 2.2s ease-in infinite 0.7s;
-}
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(5) {
-  animation: ia-float 2.2s ease-in infinite 0.35s;
-}
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(1) { animation: ia-float 2.2s ease-in infinite 0.0s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(2) { animation: ia-float 2.2s ease-in infinite 0.5s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(3) { animation: ia-float 2.2s ease-in infinite 0.2s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(4) { animation: ia-float 2.2s ease-in infinite 0.7s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(5) { animation: ia-float 2.2s ease-in infinite 0.35s; }
 
 @keyframes ia-float {
   0%   { transform: translateY(0)     scale(1);    opacity: 0.85; }
@@ -177,8 +187,10 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px 8px;
-  position: relative;
+  position: sticky;  /* queda fija arriba al hacer scroll interno */
+  top: 0;
   z-index: 1;
+  background: inherit;  /* hereda el dorado */
 }
 
 .ia-panel-title {
@@ -202,11 +214,10 @@
 }
 
 @keyframes ia-bolt-pulse {
-  from { transform: scale(1);    filter: brightness(1);   }
-  to   { transform: scale(1.28); filter: brightness(1.35);}
+  from { transform: scale(1);    filter: brightness(1);    }
+  to   { transform: scale(1.28); filter: brightness(1.35); }
 }
 
-/* Badge POWER MODE */
 .ia-power-badge {
   font-size: 9px;
   font-weight: 900;
@@ -218,8 +229,6 @@
   border-radius: 20px;
   box-shadow: 0 2px 8px rgba(200,60,0,0.4);
   animation: ia-badge-pulse 1.3s ease-in-out infinite alternate;
-  position: relative;
-  z-index: 1;
 }
 
 @keyframes ia-badge-pulse {
@@ -228,21 +237,21 @@
                      0 0  22px  rgba(255,200,0,0.35); }
 }
 
-/* ── Contenido "en construcción" ── */
+/* ── Contenido ── */
 .ia-panel-body {
-  padding: 4px 18px 22px;
+  padding: 4px 18px 28px;
   position: relative;
   z-index: 1;
 }
 
 .ia-construction {
   text-align: center;
-  padding: 14px 8px;
+  padding: 24px 8px;
 }
 
 .ia-construction-icon {
-  font-size: 34px;
-  margin-bottom: 10px;
+  font-size: 38px;
+  margin-bottom: 12px;
   display: block;
   animation: ia-wobble 1.6s ease-in-out infinite;
 }
@@ -253,14 +262,14 @@
 }
 
 .ia-construction-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   color: #3A2800;
-  margin: 0 0 7px;
+  margin: 0 0 8px;
 }
 
 .ia-construction-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: #5A3C00;
   margin: 0;
   line-height: 1.55;
@@ -268,8 +277,13 @@
 }
 
 /* ================================================
-   MODO NOCHE — Override (NO banana, NO dorado)
+   MODO NOCHE
    ================================================ */
+[data-theme="dark"] .ia-trigger-bar {
+  background: var(--bg-filters);
+  border-top-color: var(--border);
+}
+
 [data-theme="dark"] .ia-panel {
   background: linear-gradient(
     135deg,
@@ -284,7 +298,7 @@
   background: linear-gradient(
     105deg,
     transparent 30%,
-    rgba(100,180,255,0.2) 50%,
+    rgba(100,180,255,0.18) 50%,
     transparent 70%
   );
 }
@@ -312,12 +326,16 @@
 }
 
 [data-theme="dark"] .ia-panel-wrapper.ia-open .ia-trigger-arrow {
-  color: #60A5FA;  /* azul en modo noche */
+  color: #60A5FA;
 }
 
-[data-theme="dark"] .ia-trigger-bar {
-  background: var(--bg-filters);
-  border-top-color: var(--border);
+/* ================================================
+   PADDING en el contenido principal para que
+   la barra fija no tape el contenido de abajo
+   ================================================ */
+.container {
+  /* Altura de la barra trigger (~36px) + margen */
+  padding-bottom: 44px;
 }
 
 /* ================================================
@@ -325,12 +343,7 @@
    ================================================ */
 @media (max-width: 600px) {
   .ia-panel-wrapper.ia-open .ia-panel {
-    max-height: 55vh;
-  }
-
-  .ia-panel-body {
-    overflow-y: auto;
-    max-height: calc(55vh - 70px);
+    max-height: calc(100vh - 48px - 56px - 36px);
   }
 
   .ia-trigger-text {
