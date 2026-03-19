@@ -17,6 +17,7 @@ import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConc
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
 import { loadSavedSkin, initSkinSelector } from './themes.js';
+import { initBibleLinks, parseVerseData } from './bible-links.js';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -957,6 +958,184 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // =====================
+    // 20. NAVEGACIÓN DESDE CITAS EN COMENTARIOS
+    // =====================
+    
+    /**
+     * Navega a una referencia bíblica desde un enlace en el texto del comentario.
+     * Soporta:
+     *   - Versículo simple:  Juan 3:16
+     *   - Solo capítulo:     2 Pedro 2
+     *   - Rango:             Lucas 15:28-32
+     *   - Lista:             1 Co 16:1,2
+     */
+    async function navigateFromBibleLink(book, chapter, verseData) {
+        const version = versionSelect.value;
+    
+        // ── 1. Resolver qué versículos mostrar ──────────────────
+        const verseNumbers = parseVerseData(verseData); 
+        // null → todo el capítulo
+        // [5]  → solo el 5
+        // [28,29,30,31,32] → rango
+        // [1,2] → lista
+    
+        content.innerHTML = '<p class="loading">📖 Cargando referencia...</p>';
+    
+        try {
+            // ── 2. Cargar libros ────────────────────────────────
+            if (!cache.books[version]) {
+                const data = await fetchJSON(`${API_URL}/api/books?version=${version}`);
+                cache.books[version] = data;
+            }
+            renderBooks(cache.books[version]);
+    
+            // ── 3. Buscar el libro ──────────────────────────────
+            // Búsqueda flexible: exacta primero, luego insensible a acentos
+            let book_ = cache.books[version].find(
+                b => b.name.toLowerCase() === book.toLowerCase()
+            );
+            if (!book_) {
+                book_ = cache.books[version].find(
+                    b => removeAccents(b.name).toLowerCase() 
+                      === removeAccents(book).toLowerCase()
+                );
+            }
+            if (!book_) {
+                showError(`No se encontró el libro "${book}"`);
+                return;
+            }
+            bookSelect.value = book_.id;
+    
+            // ── 4. Cargar capítulos ─────────────────────────────
+            if (!cache.chapters[book_.id]) {
+                const chaptersData = await fetchJSON(
+                    `${API_URL}/api/chapters?bookId=${book_.id}`
+                );
+                cache.chapters[book_.id] = chaptersData;
+                localStorage.setItem(
+                    `chapters_${book_.id}`, 
+                    JSON.stringify(chaptersData)
+                );
+            }
+            renderChapters(cache.chapters[book_.id]);
+    
+            // ── 5. Seleccionar capítulo ─────────────────────────
+            const chapterObj = cache.chapters[book_.id].find(
+                ch => String(ch.number) === String(chapter)
+            );
+            if (!chapterObj) {
+                showError(`No se encontró el capítulo ${chapter}`);
+                return;
+            }
+            chapterSelect.value = chapterObj.id;
+    
+            // ── 6. Cargar versículos ────────────────────────────
+            const cacheKey = `${chapterObj.id}-all`;
+            if (!cache.verses[cacheKey]) {
+                const versesData = await fetchJSON(
+                    `${API_URL}/api/verses?chapterId=${chapterObj.id}`
+                );
+                cache.verses[cacheKey] = versesData;
+            }
+    
+            const allVerses = cache.verses[cacheKey];
+            renderVerseSelect(allVerses);
+    
+            // ── 7. Cambiar a modo lectura ───────────────────────
+            currentMode = 'lectura';
+            modeTabs.forEach(t => 
+                t.classList.toggle('active', t.dataset.mode === 'lectura')
+            );
+            panelLectura.style.display      = '';
+            panelConcordancia.style.display = 'none';
+            panelComparacion.style.display  = 'none';
+            panelStrong.style.display       = 'none';
+    
+            // ── 8. Renderizar ───────────────────────────────────
+    
+            if (!verseNumbers) {
+                // Todo el capítulo
+                verseSelect.value = '';
+                renderVerses(allVerses, '');
+    
+            } else if (verseNumbers.length === 1) {
+                // Versículo simple — usa el select normal
+                verseSelect.value = String(verseNumbers[0]);
+                const filtered = allVerses.filter(
+                    v => v.number === verseNumbers[0]
+                );
+                renderVerses(filtered, verseNumbers[0]);
+    
+            } else {
+                // ✅ RANGO o LISTA — no existe en el select, renderizamos directamente
+                verseSelect.value = ''; // dejamos en "todo el capítulo" visualmente
+                const filtered = allVerses.filter(
+                    v => verseNumbers.includes(v.number)
+                );
+                renderVersesRange(filtered, verseNumbers, book_.name, chapterObj.number);
+            }
+    
+        } catch (e) {
+            console.error(e);
+            showError('Error al navegar a la referencia');
+        }
+    }
+    
+    
+    /**
+     * Igual que renderVerses() pero para rangos/listas desde citas.
+     * Muestra los versículos resaltados con una etiqueta indicativa.
+     */
+    function renderVersesRange(verses, verseNumbers, bookName, chapterNum) {
+    
+        // Etiqueta de rango para el reference
+        let rangeLabel;
+        const sorted = [...verseNumbers].sort((a, b) => a - b);
+    
+        // ¿Son consecutivos?
+        const isConsecutive = sorted.every(
+            (v, i) => i === 0 || v === sorted[i - 1] + 1
+        );
+    
+        if (isConsecutive) {
+            rangeLabel = sorted.length === 1
+                ? `${sorted[0]}`
+                : `${sorted[0]}-${sorted[sorted.length - 1]}`;
+        } else {
+            rangeLabel = sorted.join(',');
+        }
+    
+        if (reference) {
+            reference.textContent = `${bookName} ${chapterNum}:${rangeLabel}`;
+            reference.classList.add('visible');
+        }
+    
+        currentVersesData = verses;
+    
+        // Renderiza con resaltado especial en los versículos del rango
+        content.innerHTML = verses.map(v => `
+            <p class="verse verse-highlighted">
+                <span class="verse-number" data-verse-number="${v.number}">${v.number}</span>
+                ${v.text}
+            </p>
+        `).join('');
+    
+        content.querySelectorAll('.verse-number').forEach(span => {
+            span.addEventListener('click', toggleVerseSelection);
+        });
+    
+        // Actualizar botón de filtros
+        setTimeout(() => {
+            const ref = reference?.textContent?.trim();
+            filterToggleLectura?.updateRef(ref || 'Selecciona un libro');
+        }, 100);
+    
+        // Scroll al inicio
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        updateCopyButtonVisibility();
+    }
+
+    // =====================
     // 19. REFERENCE CLICKEABLE → COMENTARIOS
     // =====================
     if (reference) {
@@ -969,5 +1148,12 @@ document.addEventListener('DOMContentLoaded', () => {
             openCommentaryForReference(refText, versionSelect.value);
         });
     }
+
+    // =====================
+    // 20. INICIALIZAR ENLACES DE CITAS BÍBLICAS
+    // =====================
+    initBibleLinks((book, chapter, verseData) => {
+        navigateFromBibleLink(book, chapter, verseData);
+    });
 
 }); // ← fin DOMContentLoaded
