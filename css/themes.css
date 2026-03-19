@@ -2,10 +2,11 @@
    THEMES / SKINS (MODO CLARO)
    ===================================================== */
 
-/* 1. Classic (Azul CORPORATIVO SOBRIO: acero apagado → navy profundo) */
+/* 1. Classic (Azul CORPORATIVO SOBRIO) */
 :root,
 [data-skin="classic"] {
-    --bg-body:       linear-gradient(180deg, #4A627A 0%, #1B365D 100%); /* Azul acero apagado */
+    /* Invertido: navy profundo -> acero apagado */
+    --bg-body:       linear-gradient(180deg, #1B365D 0%, #4A627A 100%); 
     --accent:        #4A627A;
     --bg-filters:    #F4F6F8;
     --bg-container:  #FFFFFF;
@@ -13,15 +14,16 @@
     --text-main:     #1F2937;
     --text-muted:    #6B7280;
     --card-hover:    #F3F4F6;
-    --bg-header:     #1B365D; /* AZUL NAVY SÓLIDO (Muy elegante y sobrio) */
+    --bg-header:     #1B365D; 
     --tab-active-text: #1B365D;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.2);
 }
 
-/* 2. Lavanda (azul pizarra / lavanda suave) */
+/* 2. Lavanda */
 [data-skin="lavanda"] {
-    --bg-body:       linear-gradient(180deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #C4C9E4 0%, #9AA3CC 40%, #7B8DC4 100%);
     --accent:        #7B8DC4;
     --bg-filters:    #F0F2F9;
     --bg-container:  #FFFFFF;
@@ -29,15 +31,16 @@
     --text-main:     #2A2E45;
     --text-muted:    #6B7280;
     --card-hover:    #E8ECF8;
-    --bg-header:     #4A5A9A; /* SÓLIDO */
+    --bg-header:     #4A5A9A; 
     --tab-active-text: #2A2E45;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.2);
 }
 
-/* 3. Scriptorium (Acero / marfil / taupe) */
+/* 3. Scriptorium */
 [data-skin="scriptorium"] {
-    --bg-body:       linear-gradient(180deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #907068 0%, #C4B0A4 40%, #7B9BAA 100%);
     --accent:        #7B9BAA;
     --bg-filters:    #EDE8DC;
     --bg-container:  #F7F4EE;
@@ -45,15 +48,16 @@
     --text-main:     #2C2420;
     --text-muted:    #7A6A60;
     --card-hover:    #E4DDD4;
-    --bg-header:     #4A6A78; /* SÓLIDO */
+    --bg-header:     #4A6A78; 
     --tab-active-text: #2C2420;
     --tab-active:    rgba(255, 255, 255, 0.92);
     --tab-inactive:  rgba(255, 255, 255, 0.18);
 }
 
-/* 4. Blossom (Rosas pastel suaves) */
+/* 4. Blossom */
 [data-skin="blossom"] {
-    --bg-body:       linear-gradient(180deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #FDEEF4 0%, #FDCEDF 40%, #F8D8E8 100%);
     --accent:        #C9849A;
     --bg-filters:    #FEF4F8;
     --bg-container:  #FFFFFF;
@@ -61,15 +65,16 @@
     --text-main:     #3A2030;
     --text-muted:    #9A7080;
     --card-hover:    #FDEAF2;
-    --bg-header:     #A05878; /* SÓLIDO */
+    --bg-header:     #A05878; 
     --tab-active-text: #3A2030;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.25);
 }
 
-/* 5. Ocean (Cyan / aqua pastel) */
+/* 5. Ocean */
 [data-skin="ocean"] {
-    --bg-body:       linear-gradient(180deg, #A8E0F0 0%, #78B8D0 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #78B8D0 0%, #A8E0F0 100%);
     --accent:        #60A8C8;
     --bg-filters:    #E8F6FA;
     --bg-container:  #F2FAFB;
@@ -77,7 +82,7 @@
     --text-main:     #1A4050;
     --text-muted:    #4A7A8A;
     --card-hover:    #D0EDF5;
-    --bg-header:     #2A5068; /* SÓLIDO */
+    --bg-header:     #2A5068; 
     --tab-active-text: #1A4050;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.2);
@@ -85,9 +90,10 @@
     --highlight-text: #7A5A00;
 }
 
-/* 6. Sunset (Atardecer real: melocotón / coral / índigo) */
+/* 6. Sunset */
 [data-skin="sunset"] {
-    --bg-body:       linear-gradient(180deg, #F8C8A8 0%, #E89878 50%, #6858A0 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #6858A0 0%, #E89878 50%, #F8C8A8 100%);
     --accent:        #D07850;
     --bg-filters:    #FDF6F2;
     --bg-container:  #FFFBF8;
@@ -95,7 +101,7 @@
     --text-main:     #3A2820;
     --text-muted:    #7A6050;
     --card-hover:    #FFF0E8;
-    --bg-header:     #4A3878; /* SÓLIDO */
+    --bg-header:     #4A3878; 
     --tab-active-text: #3A2820;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.25);
@@ -103,25 +109,27 @@
     --highlight-text: #4A3878;
 }
 
-/* 7. Forest (Verde musgo pastel con contornos marrón tierra) */
+/* 7. Forest (Verde claro -> Verde oscuro -> Marrón) */
 [data-skin="forest"] {
-    --bg-body:       linear-gradient(180deg, #8B9A8F 0%, #BCC6BE 100%); /* Verde musgo pastel */
-    --accent:        #5A6B5E; /* Musgo oscuro para botones/links */
-    --bg-filters:    #F2F4F2; /* Tono crema-musgo muy sutil */
+    /* NUEVO DEGRADADO: Verde claro (#BCC6BE) -> Verde musgo (#8B9A8F) -> Marrón tierra (#BAA89C) */
+    --bg-body:       linear-gradient(180deg, #BCC6BE 0%, #8B9A8F 50%, #BAA89C 100%);
+    --accent:        #5A6B5E; 
+    --bg-filters:    #F2F4F2; 
     --bg-container:  #FCFCFC;
-    --border:        #BAA89C; /* Marrón terroso/madera suave para contornos */
+    --border:        #BAA89C; 
     --text-main:     #2D3630;
     --text-muted:    #657068;
     --card-hover:    #EBEFEB;
-    --bg-header:     #4B5B4F; /* Verde musgo sobrio y natural SÓLIDO */
+    --bg-header:     #4B5B4F; 
     --tab-active-text: #4B5B4F;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.25);
 }
 
-/* 8. Fire (Rojo brasa → naranja vivo → ámbar dorado) */
+/* 8. Fire */
 [data-skin="fire"] {
-    --bg-body:       linear-gradient(180deg, #C72213 0%, #E24013 40%, #DF7131 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #DF7131 0%, #E24013 60%, #C72213 100%);
     --accent:        #E24013;
     --bg-filters:    #FDF2EC;
     --bg-container:  #FFFAF7;
@@ -129,7 +137,7 @@
     --text-main:     #2A1008;
     --text-muted:    #8A4830;
     --card-hover:    #FDE8D8;
-    --bg-header:     #C72213; /* Rojo brasa sólido */
+    --bg-header:     #C72213; 
     --tab-active-text: #2A1008;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.25);
@@ -142,7 +150,8 @@
 /* 1. Classic Oscuro */
 [data-theme="dark"][data-skin="classic"],
 [data-theme="dark"]:not([data-skin]) {
-    --bg-body:      linear-gradient(180deg, #111827 0%, #0F172A 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #0F172A 0%, #111827 100%);
     --bg-container: #1F2937;
     --bg-filters:   #374151;
     --border:       #4B5563;
@@ -150,7 +159,7 @@
     --text-muted:   #9CA3AF;
     --accent:       #60A5FA;
     --card-hover:   #273344;
-    --bg-header:    #0F172A; /* Slate muy oscuro */
+    --bg-header:    #0F172A; 
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.08);
     --tab-active-text: #F9FAFB;
@@ -158,7 +167,8 @@
 
 /* 2. Lavanda Oscuro */
 [data-theme="dark"][data-skin="lavanda"] {
-    --bg-body:      linear-gradient(180deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #1E1E35 0%, #252A50 40%, #1A2040 100%);
     --bg-container: #1E2235;
     --bg-filters:   #252A42;
     --border:       #3A4060;
@@ -166,7 +176,7 @@
     --text-muted:   #8890B0;
     --accent:       #9AA3CC;
     --card-hover:   #2A3060;
-    --bg-header:    #0E1228; /* SÓLIDO */
+    --bg-header:    #0E1228; 
     --tab-active:   rgba(255, 255, 255, 0.15);
     --tab-inactive: rgba(255, 255, 255, 0.08);
     --tab-active-text: #E0E4F4;
@@ -174,7 +184,8 @@
 
 /* 3. Scriptorium Oscuro */
 [data-theme="dark"][data-skin="scriptorium"] {
-    --bg-body:      linear-gradient(180deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #1E1814 0%, #2A2018 40%, #1A2830 100%);
     --bg-container: #1E1A16;
     --bg-filters:   #26201A;
     --border:       #4A3C30;
@@ -182,7 +193,7 @@
     --text-muted:   #907868;
     --accent:       #9BBCCC;
     --card-hover:   #2E2418;
-    --bg-header:    #0E181E; /* SÓLIDO */
+    --bg-header:    #0E181E; 
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.07);
     --tab-active-text: #EDE8DC;
@@ -190,7 +201,8 @@
 
 /* 4. Blossom Oscuro */
 [data-theme="dark"][data-skin="blossom"] {
-    --bg-body:      linear-gradient(180deg, #2E1828 0%, #251828 60%, #1E1824 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #1E1824 0%, #251828 40%, #2E1828 100%);
     --bg-container: #261820;
     --bg-filters:   #301E28;
     --border:       #5A3048;
@@ -198,7 +210,7 @@
     --text-muted:   #C090A8;
     --accent:       #E898B8;
     --card-hover:   #3A2030;
-    --bg-header:    #1A0E14; /* SÓLIDO */
+    --bg-header:    #1A0E14; 
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.08);
     --tab-active-text: #F8E8F0;
@@ -206,7 +218,8 @@
 
 /* 5. Ocean Oscuro */
 [data-theme="dark"][data-skin="ocean"] {
-    --bg-body:      linear-gradient(180deg, #001824 0%, #002A3A 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #002A3A 0%, #001824 100%);
     --bg-container: #001E2C;
     --bg-filters:   #002638;
     --border:       #005A78;
@@ -214,7 +227,7 @@
     --text-muted:   #60A8C0;
     --accent:       #00BBD8;
     --card-hover:   #003048;
-    --bg-header:    #000E16; /* SÓLIDO */
+    --bg-header:    #000E16; 
     --tab-active:   rgba(255, 255, 255, 0.15);
     --tab-inactive: rgba(255, 255, 255, 0.08);
     --tab-active-text: #D0EDF5;
@@ -222,7 +235,8 @@
 
 /* 6. Sunset Oscuro */
 [data-theme="dark"][data-skin="sunset"] {
-    --bg-body:      linear-gradient(180deg, #2A1810 0%, #281828 50%, #181830 100%);
+    /* Invertido */
+    --bg-body:      linear-gradient(180deg, #181830 0%, #281828 50%, #2A1810 100%);
     --bg-container: #1E1818;
     --bg-filters:   #282020;
     --border:       #4A3830;
@@ -230,23 +244,24 @@
     --text-muted:   #C0A090;
     --accent:       #F0A070;
     --card-hover:   #302020;
-    --bg-header:    #181028; /* SÓLIDO */
+    --bg-header:    #181028; 
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.07);
     --tab-active-text: #F8E8E0;
 }
 
-/* 7. Forest Oscuro */
+/* 7. Forest Oscuro (Verde claro oscuro -> Verde musgo negro -> Marrón oscuro) */
 [data-theme="dark"][data-skin="forest"] {
-    --bg-body:      linear-gradient(180deg, #1F2621 0%, #2A332C 100%);
+    /* NUEVO DEGRADADO ADAPTADO: Verde claro-oscuro (#2A332C) -> Verde profundo (#1F2621) -> Marrón corteza (#6B5B50) */
+    --bg-body:      linear-gradient(180deg, #2A332C 0%, #1F2621 50%, #6B5B50 100%);
     --bg-container: #222C25;
     --bg-filters:   #2A362E;
-    --border:       #6B5B50; /* Contornos marrón corteza oscura */
+    --border:       #6B5B50; 
     --text-main:    #D5DCD6;
     --text-muted:   #8C9990;
-    --accent:       #8BA192; /* Musgo claro */
+    --accent:       #8BA192; 
     --card-hover:   #2F3C33;
-    --bg-header:    #171E19; /* Fondo musgo casi negro SÓLIDO */
+    --bg-header:    #171E19; 
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.08);
     --tab-active-text: #D5DCD6;
@@ -254,7 +269,8 @@
 
 /* 8. Fire Oscuro */
 [data-theme="dark"][data-skin="fire"] {
-    --bg-body:       linear-gradient(180deg, #1A0800 0%, #2A1005 50%, #3A1800 100%);
+    /* Invertido */
+    --bg-body:       linear-gradient(180deg, #3A1800 0%, #2A1005 50%, #1A0800 100%);
     --bg-container:  #1E0C05;
     --bg-filters:    #2A1208;
     --border:        #6A2810;
@@ -262,7 +278,7 @@
     --text-muted:    #C07850;
     --accent:        #F2854B;
     --card-hover:    #321508;
-    --bg-header:     #0E0400; /* Sólido casi negro rojizo */
+    --bg-header:     #0E0400; 
     --tab-active:    rgba(255, 255, 255, 0.12);
     --tab-inactive:  rgba(255, 255, 255, 0.07);
     --tab-active-text: #FDE8D8;
