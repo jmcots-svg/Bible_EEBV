@@ -291,59 +291,6 @@
           </div>
         </div>
       </div>
-      <!-- ======================== -->
-      <!-- PANEL IA - CONCORDANCIA  -->
-      <!-- ======================== -->
-      <div id="iaPanelWrapper" class="ia-panel-wrapper">
-      
-        <!-- Barra trigger (siempre visible) -->
-        <div class="ia-trigger-bar" id="iaTriggerBar">
-          <span class="ia-trigger-text">✨ desplegar para IA</span>
-          <button class="ia-trigger-arrow" id="iaArrowBtn" 
-                  aria-label="Abrir panel IA" title="Panel IA">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
-          </button>
-        </div>
-      
-        <!-- Panel expandible -->
-        <div class="ia-panel" id="iaPanel">
-      
-          <!-- Aura / partículas decorativas -->
-          <div class="ia-aura" aria-hidden="true">
-            <span class="ia-particle"></span>
-            <span class="ia-particle"></span>
-            <span class="ia-particle"></span>
-            <span class="ia-particle"></span>
-            <span class="ia-particle"></span>
-          </div>
-      
-          <!-- Cabecera -->
-          <div class="ia-panel-header">
-            <div class="ia-panel-title">
-              <span class="ia-bolt">⚡</span>
-              <span class="ia-title-text">Asistente IA Bíblico</span>
-              <span class="ia-bolt">⚡</span>
-            </div>
-            <span class="ia-power-badge">POWER MODE</span>
-          </div>
-      
-          <!-- Contenido -->
-          <div class="ia-panel-body">
-            <div class="ia-construction">
-              <div class="ia-construction-icon">🚧</div>
-              <p class="ia-construction-title">En construcción</p>
-              <p class="ia-construction-sub">
-                Próximamente tendrás superpoderes bíblicos con IA
-              </p>
-            </div>
-          </div>
-      
-        </div>
-      </div>
     </div>
 
     <!-- ======================== -->
@@ -480,11 +427,59 @@
       <line x1="13" y1="1" x2="1" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
     </svg>
   </button>
+ </div>
 </div>
+    <div id="commentaryBottomContent" class="commentary-bottom-content"></div> 
+</div>
+  <!-- ======================== -->
+  <!-- PANEL IA                 -->
+  <!-- ======================== -->
+  <div id="iaPanelWrapper" class="ia-panel-wrapper">
+    <div class="ia-trigger-bar" id="iaTriggerBar">
+      <span class="ia-trigger-text">✨ desplegar para IA</span>
+      <button class="ia-trigger-arrow" id="iaArrowBtn" 
+              aria-label="Abrir panel IA" title="Panel IA">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="18 15 12 9 6 15"></polyline>
+        </svg>
+      </button>
     </div>
-    <div id="commentaryBottomContent" class="commentary-bottom-content"></div>
+
+    <div class="ia-panel" id="iaPanel">
+      <div class="ia-aura" aria-hidden="true">
+        <span class="ia-particle"></span>
+        <span class="ia-particle"></span>
+        <span class="ia-particle"></span>
+        <span class="ia-particle"></span>
+        <span class="ia-particle"></span>
+      </div>
+
+      <div class="ia-panel-header">
+        <div class="ia-panel-title">
+          <span class="ia-bolt">⚡</span>
+          <span class="ia-title-text">Asistente IA Bíblico</span>
+          <span class="ia-bolt">⚡</span>
+        </div>
+        <span class="ia-power-badge">POWER MODE</span>
+      </div>
+
+      <div class="ia-panel-body">
+        <div class="ia-construction">
+          <div class="ia-construction-icon">🚧</div>
+          <p class="ia-construction-title">En construcción</p>
+          <p class="ia-construction-sub">
+            Próximamente tendrás superpoderes bíblicos con IA
+          </p>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <script type="module" src="JS/app.js"></script>
+</body>
+</html>
   <script type="module" src="JS/app.js"></script>
 </body>
 </html>
