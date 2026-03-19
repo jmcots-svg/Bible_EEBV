@@ -4,32 +4,31 @@ on:
   workflow_dispatch:
     inputs:
       target_lang:
-        description: 'Idioma destino (código ISO)'
+        description: 'Idioma destino'
         required: true
-        default: 'ca'
+        default: 'es'
         type: choice
-        options:
-          - ca
-          - es
-          - fr
-          - de
-          - pt
-          - it
+        options: [ca, es, fr, de, pt, it]
       commentary_abbr:
-        description: 'Abreviatura del comentario (ej: luther, MHC, JFB). Vacío = todos los pendientes.'
+        description: 'Abreviatura del comentario (ej: luther). Vacío = todos.'
         required: false
         default: ''
         type: string
 
 jobs:
   translate:
-    name: 🔄 Traducir comentarios → ${{ inputs.target_lang }}
+    name: 🔄 Traducir → ${{ inputs.target_lang }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    permissions:
+      contents: write
 
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
@@ -40,30 +39,49 @@ jobs:
       - name: 📦 Instalar dependencias
         run: npm ci
 
-      - name: 🧾 Info de ejecución
+      - name: 🧾 Info
         run: |
-          echo "════════════════════════════════════════"
-          echo "  🌐 Idioma destino  : ${{ inputs.target_lang }}"
-          echo "  📖 Comentario      : ${{ inputs.commentary_abbr || 'TODOS los pendientes' }}"
-          echo "  📁 Fichero fuente  : ${{ inputs.commentary_abbr }}_en.json"
-          echo "  📁 Fichero destino : ${{ inputs.commentary_abbr }}_${{ inputs.target_lang }}.json"
-          echo "════════════════════════════════════════"
+          echo "════════════════════════════════════════════════════"
+          echo "  🌐 Idioma     : ${{ inputs.target_lang }}"
+          echo "  📖 Comentario : ${{ inputs.commentary_abbr || 'TODOS' }}"
+          echo "  📁 tmp en repo: data/commentaries/${{ inputs.target_lang }}/"
+          echo "════════════════════════════════════════════════════"
 
       - name: 🌐 Traducir
+        id: translate
         env:
           SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GEMINI_API_KEYS:      ${{ secrets.GEMINI_API_KEYS }}
-          STORAGE_BASE_URL:     ${{ secrets.STORAGE_BASE_URL }}
           TARGET_LANG:          ${{ inputs.target_lang }}
           TARGET_COMMENTARY:    ${{ inputs.commentary_abbr }}
         run: node scripts/translate-commentaries-storage.js
 
-      - name: ✅ Resumen
+      # ─────────────────────────────────────────────────────────────
+      # Este step se ejecuta SIEMPRE (cancelled, failed, success)
+      # Su misión: si quedó algún tmp en data/, subirlo a Supabase
+      # como versión usable aunque esté incompleto.
+      # ─────────────────────────────────────────────────────────────
+      - name: 🚨 Upload de rescate (si workflow cancelado/fallido)
+        if: always()
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TARGET_LANG:          ${{ inputs.target_lang }}
+        run: node scripts/rescue-upload.js
+
+      - name: ✅ Resumen final
         if: always()
         run: |
-          echo "════════════════════════════════════════"
-          echo "  Ejecución finalizada"
-          echo "  Idioma   : ${{ inputs.target_lang }}"
-          echo "  Fichero  : ${{ inputs.commentary_abbr || 'todos' }}_${{ inputs.target_lang }}.json"
-          echo "════════════════════════════════════════"
+          echo "════════════════════════════════════════════════════"
+          echo "  Job status : ${{ job.status }}"
+          echo "  Idioma     : ${{ inputs.target_lang }}"
+          echo ""
+          echo "  Ficheros tmp en repo:"
+          find data/commentaries/${{ inputs.target_lang }} \
+            -name "*_tmp_*.json" 2>/dev/null \
+            | while read f; do
+                entries=$(python3 -c "import json,sys; d=json.load(open('$f')); print(len(d))" 2>/dev/null || echo "?")
+                echo "    • $f ($entries entradas)"
+              done || echo "    (ninguno)"
+          echo "════════════════════════════════════════════════════"
