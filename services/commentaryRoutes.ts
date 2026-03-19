@@ -148,12 +148,21 @@ export async function handleCommentaryRoutes(
           const CACHE_TTL = 24 * 60 * 60 * 1000; 
           if (!mhcJsonCache || Date.now() - mhcCacheTimestamp > CACHE_TTL) {
             console.log("[Storage] Descargando MHC en español desde Supabase...");
-            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/comentarios/mhc_es.json";
+            
+            // 1. CORREGIDO: "Commentaries" con mayúscula en la URL
+            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/Commentaries/mhc_es.json";
             
             const res = await fetch(storageUrl);
             if (res.ok) {
               mhcJsonCache = await res.json();
               mhcCacheTimestamp = Date.now();
+            } else {
+              // 2. TRAMPA DE SEGURIDAD: Si falla, tiramos error para que no intente traducir
+              console.error("[Storage] Falló la descarga del JSON. HTTP:", res.status);
+              return new Response(
+                JSON.stringify({ error: "No se pudo cargar el comentario desde Storage." }),
+                { status: 500, headers: makeHeaders("no-store") }
+              );
             }
           }
 
