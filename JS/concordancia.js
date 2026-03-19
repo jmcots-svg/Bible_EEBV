@@ -239,31 +239,24 @@ export function initIAPanel() {
   if (!wrapper || !triggerBar) return;
 
   function updatePanelHeight() {
-    // Usa la misma variable que usa commentary: --app-header-height
-    const appHeaderHeight = parseInt(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--app-header-height') || '0'
-    );
-
-    const header   = document.querySelector('header');
-    const modeTabs = document.querySelector('.mode-tabs');
     const triggerH = triggerBar.offsetHeight;
 
-    // Si existe --app-header-height la usamos, si no medimos
-    const headerH  = appHeaderHeight || (header ? header.offsetHeight : 50);
-    const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
+    // Usa las variables CSS que acabamos de definir en initAppHeightVars
+    const topTotal = parseInt(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--app-top-total')
+    ) || 102; // fallback por si aún no se ha calculado
 
-    const available = window.innerHeight - headerH - tabsH - triggerH;
-
-    console.log('IA Panel height calc:', {
-      windowHeight: window.innerHeight,
-      headerH,
-      tabsH,
-      triggerH,
-      available
-    });
+    const available = window.innerHeight - topTotal - triggerH;
 
     wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
+
+    console.log('IA Panel:', { 
+      windowHeight: window.innerHeight, 
+      topTotal, 
+      triggerH, 
+      available 
+    });
   }
 
   updatePanelHeight();
@@ -278,6 +271,17 @@ export function initIAPanel() {
       _openIAPanel(wrapper);
     }
   });
+}
+
+function _openIAPanel(wrapper) {
+  wrapper.classList.add('ia-open');
+  if (navigator.vibrate) navigator.vibrate([25, 15, 50]);
+  try { localStorage.setItem('ia_panel_open', '1'); } catch(e) {}
+}
+
+function _closeIAPanel(wrapper) {
+  wrapper.classList.remove('ia-open');
+  try { localStorage.setItem('ia_panel_open', '0'); } catch(e) {}
 }
 
 function _openIAPanel(wrapper) {
