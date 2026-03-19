@@ -3,20 +3,20 @@
    ===================================================== */
 
 /* =====================================================
-   SKIN 1 — Classic (azul/violeta original)
+   SKIN 1 — Classic (azul/violeta PASTEL)
    ===================================================== */
 :root,
 [data-skin="classic"] {
-    --bg-body:       linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --accent:        #667eea;
+    --bg-body:       linear-gradient(180deg, #A8B8F0 0%, #C8A8E0 100%);
+    --accent:        #8898E8;
     --bg-filters:    #f8f9fa;
     --bg-container:  #ffffff;
     --border:        #dee2e6;
     --text-main:     #2d3748;
     --text-muted:    #495057;
     --card-hover:    #f0f4ff;
-    --bg-header:     linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
-    --tab-active-text: #1e3a5f;
+    --bg-header:     linear-gradient(180deg, #4A5A8A 0%, #6A7AAA 100%);
+    --tab-active-text: #3A4A6A;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.2);
 }
@@ -25,7 +25,7 @@
    SKIN 2 — Celeste (azul pizarra / lavanda)
    ===================================================== */
 [data-skin="celeste"] {
-    --bg-body:       linear-gradient(160deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
+    --bg-body:       linear-gradient(180deg, #7B8DC4 0%, #9AA3CC 60%, #C4C9E4 100%);
     --accent:        #7B8DC4;
     --bg-filters:    #F0F2F9;
     --bg-container:  #FFFFFF;
@@ -33,7 +33,7 @@
     --text-main:     #2A2E45;
     --text-muted:    #6B7280;
     --card-hover:    #E8ECF8;
-    --bg-header:     linear-gradient(135deg, #4A5A9A 0%, #6B7DC4 100%);
+    --bg-header:     linear-gradient(180deg, #4A5A9A 0%, #6B7DC4 100%);
     --tab-active-text: #2A2E45;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.2);
@@ -43,7 +43,7 @@
    SKIN 3 — Scriptorium (acero / marfil / taupe)
    ===================================================== */
 [data-skin="scriptorium"] {
-    --bg-body:       linear-gradient(160deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
+    --bg-body:       linear-gradient(180deg, #7B9BAA 0%, #C4B0A4 60%, #907068 100%);
     --accent:        #7B9BAA;
     --bg-filters:    #EDE8DC;
     --bg-container:  #F7F4EE;
@@ -51,7 +51,7 @@
     --text-main:     #2C2420;
     --text-muted:    #7A6A60;
     --card-hover:    #E4DDD4;
-    --bg-header:     linear-gradient(135deg, #4A6A78 0%, #7B9BAA 100%);
+    --bg-header:     linear-gradient(180deg, #4A6A78 0%, #7B9BAA 100%);
     --tab-active-text: #2C2420;
     --tab-active:    rgba(255,255,255,0.92);
     --tab-inactive:  rgba(255,255,255,0.18);
@@ -61,7 +61,7 @@
    SKIN 4 — Blossom (rosas pastel suaves)
    ===================================================== */
 [data-skin="blossom"] {
-    --bg-body:       linear-gradient(160deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
+    --bg-body:       linear-gradient(180deg, #F8D8E8 0%, #FDCEDF 60%, #FDEEF4 100%);
     --accent:        #C9849A;
     --bg-filters:    #FEF4F8;
     --bg-container:  #FFFFFF;
@@ -69,7 +69,7 @@
     --text-main:     #3A2030;
     --text-muted:    #9A7080;
     --card-hover:    #FDEAF2;
-    --bg-header:     linear-gradient(135deg, #A05878 0%, #C9849A 100%);
+    --bg-header:     linear-gradient(180deg, #A05878 0%, #C9849A 100%);
     --tab-active-text: #3A2030;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.25);
@@ -82,7 +82,7 @@
 /* Classic oscuro */
 [data-theme="dark"][data-skin="classic"],
 [data-theme="dark"]:not([data-skin]) {
-    --bg-body:      linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --bg-body:      linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
     --bg-container: #1e293b;
     --bg-filters:   #334155;
     --border:       #4a5568;
@@ -90,7 +90,7 @@
     --text-muted:   #cbd5e0;
     --accent:       #a5b4fc;
     --card-hover:   #2d3a4f;
-    --bg-header:    linear-gradient(135deg, #020617 0%, #0f172a 100%);
+    --bg-header:    linear-gradient(180deg, #020617 0%, #0f172a 100%);
     --tab-active:   rgba(255,255,255,0.15);
     --tab-inactive: rgba(255,255,255,0.1);
     --tab-active-text: #e2e8f0;
@@ -98,7 +98,7 @@
 
 /* Celeste oscuro */
 [data-theme="dark"][data-skin="celeste"] {
-    --bg-body:      linear-gradient(160deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
+    --bg-body:      linear-gradient(180deg, #1A2040 0%, #252A50 60%, #1E1E35 100%);
     --bg-container: #1E2235;
     --bg-filters:   #252A42;
     --border:       #3A4060;
@@ -106,7 +106,7 @@
     --text-muted:   #8890B0;
     --accent:       #9AA3CC;
     --card-hover:   #2A3060;
-    --bg-header:    linear-gradient(135deg, #0E1228 0%, #1A2040 100%);
+    --bg-header:    linear-gradient(180deg, #0E1228 0%, #1A2040 100%);
     --tab-active:   rgba(255,255,255,0.15);
     --tab-inactive: rgba(255,255,255,0.08);
     --tab-active-text: #E0E4F4;
@@ -114,7 +114,7 @@
 
 /* Scriptorium oscuro */
 [data-theme="dark"][data-skin="scriptorium"] {
-    --bg-body:      linear-gradient(160deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
+    --bg-body:      linear-gradient(180deg, #1A2830 0%, #2A2018 60%, #1E1814 100%);
     --bg-container: #1E1A16;
     --bg-filters:   #26201A;
     --border:       #4A3C30;
@@ -122,7 +122,7 @@
     --text-muted:   #907868;
     --accent:       #9BBCCC;
     --card-hover:   #2E2418;
-    --bg-header:    linear-gradient(135deg, #0E181E 0%, #1A2830 100%);
+    --bg-header:    linear-gradient(180deg, #0E181E 0%, #1A2830 100%);
     --tab-active:   rgba(255,255,255,0.12);
     --tab-inactive: rgba(255,255,255,0.07);
     --tab-active-text: #EDE8DC;
@@ -130,7 +130,7 @@
 
 /* Blossom oscuro */
 [data-theme="dark"][data-skin="blossom"] {
-    --bg-body:      linear-gradient(160deg, #2E1828 0%, #251828 60%, #1E1824 100%);
+    --bg-body:      linear-gradient(180deg, #2E1828 0%, #251828 60%, #1E1824 100%);
     --bg-container: #261820;
     --bg-filters:   #301E28;
     --border:       #5A3048;
@@ -138,26 +138,26 @@
     --text-muted:   #C090A8;
     --accent:       #E898B8;
     --card-hover:   #3A2030;
-    --bg-header:    linear-gradient(135deg, #1A0E14 0%, #2E1828 100%);
+    --bg-header:    linear-gradient(180deg, #1A0E14 0%, #2E1828 100%);
     --tab-active:   rgba(255,255,255,0.12);
     --tab-inactive: rgba(255,255,255,0.08);
     --tab-active-text: #F8E8F0;
 }
 
 /* =====================================================
-   SKIN 5 — Ocean (cyan / navy / amarillo)
+   SKIN 5 — Ocean (cyan / aqua PASTEL)
    ===================================================== */
 [data-skin="ocean"] {
-    --bg-body:       linear-gradient(160deg, #0099B8 0%, #003A52 100%);
-    --accent:        #0099B8;
+    --bg-body:       linear-gradient(180deg, #A8E0F0 0%, #78B8D0 100%);
+    --accent:        #60A8C8;
     --bg-filters:    #E8F6FA;
     --bg-container:  #F2FAFB;
     --border:        #A8D4E8;
-    --text-main:     #002A3A;
+    --text-main:     #1A4050;
     --text-muted:    #4A7A8A;
     --card-hover:    #D0EDF5;
-    --bg-header:     linear-gradient(135deg, #002030 0%, #003A52 100%);
-    --tab-active-text: #002A3A;
+    --bg-header:     linear-gradient(180deg, #2A5068 0%, #3A7090 100%);
+    --tab-active-text: #1A4050;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.2);
     --highlight-bg:  #FFF3C0;
@@ -166,7 +166,7 @@
 
 /* Ocean oscuro */
 [data-theme="dark"][data-skin="ocean"] {
-    --bg-body:      linear-gradient(160deg, #001824 0%, #002A3A 100%);
+    --bg-body:      linear-gradient(180deg, #001824 0%, #002A3A 100%);
     --bg-container: #001E2C;
     --bg-filters:   #002638;
     --border:       #005A78;
@@ -174,46 +174,46 @@
     --text-muted:   #60A8C0;
     --accent:       #00BBD8;
     --card-hover:   #003048;
-    --bg-header:    linear-gradient(135deg, #000E16 0%, #001824 100%);
+    --bg-header:    linear-gradient(180deg, #000E16 0%, #001824 100%);
     --tab-active:   rgba(255,255,255,0.15);
     --tab-inactive: rgba(255,255,255,0.08);
     --tab-active-text: #D0EDF5;
 }
 
 /* =====================================================
-   SKIN 6 — Sunset (coral / melocotón / azul mediterráneo)
+   SKIN 6 — Sunset JUVENIL (rosa chicle / lavanda / menta)
    ===================================================== */
 [data-skin="sunset"] {
-    --bg-body:       linear-gradient(160deg, #F04E2A 0%, #F0B090 40%, #2B7EC4 100%);
-    --accent:        #F04E2A;
-    --bg-filters:    #FDF0EA;
-    --bg-container:  #FEFAF8;
-    --border:        #F0C8B0;
-    --text-main:     #2A1A10;
-    --text-muted:    #8A5A40;
-    --card-hover:    #FAE8DC;
-    --bg-header:     linear-gradient(135deg, #1A3A6A 0%, #2B7EC4 100%);
-    --tab-active-text: #2A1A10;
+    --bg-body:       linear-gradient(180deg, #FFB8D0 0%, #C8B8F0 50%, #A8E8D8 100%);
+    --accent:        #E888A8;
+    --bg-filters:    #FFF4F8;
+    --bg-container:  #FFFAFC;
+    --border:        #F0C8D8;
+    --text-main:     #4A2838;
+    --text-muted:    #8A6078;
+    --card-hover:    #FFE8F0;
+    --bg-header:     linear-gradient(180deg, #7868A8 0%, #9878B8 100%);
+    --tab-active-text: #4A2838;
     --tab-active:    rgba(255,255,255,0.95);
-    --tab-inactive:  rgba(255,255,255,0.22);
-    --highlight-bg:  #D0E8FF;
-    --highlight-text: #1A3A6A;
+    --tab-inactive:  rgba(255,255,255,0.25);
+    --highlight-bg:  #E0F8F0;
+    --highlight-text: #2A6858;
 }
 
 /* Sunset oscuro */
 [data-theme="dark"][data-skin="sunset"] {
-    --bg-body:      linear-gradient(160deg, #2A1808 0%, #1A3A6A 100%);
-    --bg-container: #1E1008;
-    --bg-filters:   #281808;
-    --border:       #5A3020;
-    --text-main:    #FAE8DC;
-    --text-muted:   #C09070;
-    --accent:       #FF7050;
-    --card-hover:   #301808;
-    --bg-header:    linear-gradient(135deg, #0A1828 0%, #1A3A6A 100%);
+    --bg-body:      linear-gradient(180deg, #2A1828 0%, #1A1830 50%, #182828 100%);
+    --bg-container: #201820;
+    --bg-filters:   #281828;
+    --border:       #5A3850;
+    --text-main:    #F8E8F0;
+    --text-muted:   #C090A8;
+    --accent:       #FF90B8;
+    --card-hover:   #302030;
+    --bg-header:    linear-gradient(180deg, #1A1028 0%, #2A1838 100%);
     --tab-active:   rgba(255,255,255,0.12);
     --tab-inactive: rgba(255,255,255,0.07);
-    --tab-active-text: #FAE8DC;
+    --tab-active-text: #F8E8F0;
 }
 
 /* =====================================================
@@ -221,11 +221,11 @@
    ===================================================== */
 .skin-selector {
     display: flex;
-    flex-wrap: wrap;        /* ← clave: permite 2 filas */
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: 12px;
     margin-top: 4px;
-    max-width: 220px;       /* 3 dots por fila */
+    max-width: 220px;
 }
 
 .skin-option {
@@ -258,9 +258,9 @@
 .skin-dot::before { left: 0; }
 .skin-dot::after  { right: 0; }
 
-/* Classic */
-.skin-dot[data-skin="classic"]::before     { background: #667eea; }
-.skin-dot[data-skin="classic"]::after      { background: #764ba2; }
+/* Classic (pastel) */
+.skin-dot[data-skin="classic"]::before     { background: #A8B8F0; }
+.skin-dot[data-skin="classic"]::after      { background: #C8A8E0; }
 
 /* Celeste */
 .skin-dot[data-skin="celeste"]::before     { background: #7B8DC4; }
@@ -274,13 +274,13 @@
 .skin-dot[data-skin="blossom"]::before     { background: #C9849A; }
 .skin-dot[data-skin="blossom"]::after      { background: #FDCEDF; }
 
-/* Ocean */
-.skin-dot[data-skin="ocean"]::before  { background: #0099B8; }
-.skin-dot[data-skin="ocean"]::after   { background: #003A52; }
+/* Ocean (pastel) */
+.skin-dot[data-skin="ocean"]::before  { background: #A8E0F0; }
+.skin-dot[data-skin="ocean"]::after   { background: #78B8D0; }
 
-/* Sunset */
-.skin-dot[data-skin="sunset"]::before { background: #F04E2A; }
-.skin-dot[data-skin="sunset"]::after  { background: #2B7EC4; }
+/* Sunset (juvenil) */
+.skin-dot[data-skin="sunset"]::before { background: #FFB8D0; }
+.skin-dot[data-skin="sunset"]::after  { background: #A8E8D8; }
 
 /* Activo */
 .skin-dot.active {
