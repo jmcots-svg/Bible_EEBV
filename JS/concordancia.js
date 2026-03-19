@@ -231,3 +231,42 @@ export function renderSearchResults(data) {
         });
     });
 }
+
+// ================================================
+// PANEL IA — Toggle
+// ================================================
+export function initIAPanel() {
+  const wrapper    = document.getElementById('iaPanelWrapper');
+  const triggerBar = document.getElementById('iaTriggerBar');
+
+  if (!wrapper || !triggerBar) return;
+
+  triggerBar.addEventListener('click', () => {
+    const isOpen = wrapper.classList.contains('ia-open');
+
+    if (isOpen) {
+      _closeIAPanel(wrapper);
+    } else {
+      _openIAPanel(wrapper);
+    }
+  });
+
+  // Restaurar estado guardado (opcional — comentado por defecto)
+  // if (localStorage.getItem('ia_panel_open') === '1') _openIAPanel(wrapper);
+}
+
+function _openIAPanel(wrapper) {
+  wrapper.classList.add('ia-open');
+
+  // Feedback háptico sutil en móvil
+  if (navigator.vibrate) {
+    navigator.vibrate([25, 15, 50]);
+  }
+
+  try { localStorage.setItem('ia_panel_open', '1'); } catch(e) {}
+}
+
+function _closeIAPanel(wrapper) {
+  wrapper.classList.remove('ia-open');
+  try { localStorage.setItem('ia_panel_open', '0'); } catch(e) {}
+}
