@@ -15,7 +15,29 @@
 
 .ia-trigger-bar,
 .ia-panel {
-  pointer-events: auto;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  top: 100%;  /* 🔴 Empieza fuera de pantalla abajo */
+  
+  background: linear-gradient(
+    135deg,
+    #FFE033 0%,
+    #F5C400 35%,
+    #FFD000 65%,
+    #FFEA00 100%
+  );
+
+  border-top: 3px solid #FFF176;
+  display: flex;
+  flex-direction: column;
+  
+  transition:
+    top 1.8s cubic-bezier(0.06, 0.95, 0.18, 1.0),
+    opacity    0.5s ease;
+
+  opacity: 0;
 }
 
 /* ── Barra trigger ── */
@@ -98,10 +120,9 @@
 
 /* Estado abierto */
 .ia-panel-wrapper.ia-open .ia-panel {
-  max-height: var(--ia-panel-max-height, 75vh);
+  top: var(--ia-panel-top, 97px);  /* headerH + tabsH = 46 + 51 */
   opacity: 1;
   overflow-y: auto;
-  transform: translateY(0);
 }
 
 /* ── Destello de luz ── */
