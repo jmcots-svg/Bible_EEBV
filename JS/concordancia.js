@@ -232,37 +232,49 @@ export function renderSearchResults(data) {
     });
 }
 
-// ================================================
-// PANEL IA — Toggle
-// ================================================
 export function initIAPanel() {
   const wrapper    = document.getElementById('iaPanelWrapper');
   const triggerBar = document.getElementById('iaTriggerBar');
 
   if (!wrapper || !triggerBar) return;
 
+  // ── Calcula la altura máxima disponible ──────────────────────
+  function updatePanelHeight() {
+    // Mide los elementos reales del DOM
+    const header    = document.querySelector('header');
+    const modeTabs  = document.querySelector('.mode-tabs');
+    const triggerH  = triggerBar.offsetHeight;
+
+    const headerH   = header   ? header.offsetHeight   : 50;
+    const tabsH     = modeTabs ? modeTabs.offsetHeight : 52;
+
+    // Panel debe llegar justo hasta debajo de las tabs
+    const available = window.innerHeight - headerH - tabsH - triggerH;
+
+    // Aplica como variable CSS en el wrapper
+    wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
+  }
+
+  // Calcula al inicio y cada vez que cambie el tamaño de ventana
+  updatePanelHeight();
+  window.addEventListener('resize', updatePanelHeight);
+
+  // ── Toggle ───────────────────────────────────────────────────
   triggerBar.addEventListener('click', () => {
     const isOpen = wrapper.classList.contains('ia-open');
 
     if (isOpen) {
       _closeIAPanel(wrapper);
     } else {
+      updatePanelHeight(); // recalcula justo antes de abrir
       _openIAPanel(wrapper);
     }
   });
-
-  // Restaurar estado guardado (opcional — comentado por defecto)
-  // if (localStorage.getItem('ia_panel_open') === '1') _openIAPanel(wrapper);
 }
 
 function _openIAPanel(wrapper) {
   wrapper.classList.add('ia-open');
-
-  // Feedback háptico sutil en móvil
-  if (navigator.vibrate) {
-    navigator.vibrate([25, 15, 50]);
-  }
-
+  if (navigator.vibrate) navigator.vibrate([25, 15, 50]);
   try { localStorage.setItem('ia_panel_open', '1'); } catch(e) {}
 }
 
