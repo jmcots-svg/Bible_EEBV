@@ -1,10 +1,10 @@
 import { Pool } from "npm:@neondatabase/serverless";
 import { translateCommentaryOnTheFly } from "./translator.ts";
 
-// --- MINI CACHÉ PARA STORAGE ---
-let mhcJsonCache: any[] | null = null;
-let mhcCacheTimestamp = 0;
-// -------------------------------
+// --- CACHÉ DINÁMICA PARA STORAGE ---
+// Ahora guarda múltiples archivos usando una clave única (ej. "MHC-es")
+const storageJsonCache: Record<string, { data: any[]; timestamp: number }> = {};
+// -----------------------------------
 
 type MakeHeadersFn = (cacheControl?: string) => Headers;
 
@@ -34,7 +34,7 @@ export async function handleCommentaryRoutes(
 
     if (language === "en") {
       const params: any[] = [bookOrder, chapter];
-      let query = "SELECT DISTINCT cs.id, cs.name, cs.\"fullName\", cs.author, cs.description,"
+      let query = "SELECT DISTINCT cs.id, cs.name, cs.\"fullName\", cs.author, cs.description, cs.\"storageUrls\","
         + " COUNT(ce.id) as entry_count"
         + " FROM \"CommentarySource\" cs"
         + " JOIN \"CommentaryEntry\" ce ON ce.\"sourceId\" = cs.id"
@@ -48,16 +48,21 @@ export async function handleCommentaryRoutes(
         params.push(Number(verse));
       }
 
-      query += " GROUP BY cs.id, cs.name, cs.\"fullName\", cs.author, cs.description"
+      query += " GROUP BY cs.id, cs.name, cs.\"fullName\", cs.author, cs.description, cs.\"storageUrls\""
         + " ORDER BY cs.name ASC";
 
       const { rows } = await pool.query(query, params);
+      
+      // Limpiamos los datos del Storage antes de enviarlos
+      for (const row of rows) {
+        delete row.storageUrls; 
+      }
+
       return new Response(JSON.stringify(rows), {
         headers: makeHeaders("public, max-age=3600"),
       });
     }
 
-    // SI NO ES INGLÉS (Ej: Español):
     const params: any[] = [bookOrder, chapter, language];
 
     let verseCondition = "";
@@ -86,7 +91,7 @@ export async function handleCommentaryRoutes(
       + "  GROUP BY ce.\"sourceId\""
       + ")"
       + " SELECT"
-      + "  cs.id, cs.name, cs.\"fullName\", cs.author, cs.description,"
+      + "  cs.id, cs.name, cs.\"fullName\", cs.author, cs.description, cs.\"storageUrls\","
       + "  COALESCE(ee.en_count, 0) as english_count,"
       + "  COALESCE(te.trans_count, 0) as translated_count,"
       + "  GREATEST(COALESCE(ee.en_count, 0), COALESCE(te.trans_count, 0)) as entry_count,"
@@ -100,16 +105,15 @@ export async function handleCommentaryRoutes(
     const { rows } = await pool.query(query, params);
 
     // =======================================================
-    // FIX PARA STORAGE: Engañamos al frontend diciéndole que 
-    // MHC ya está traducido porque lo leeremos del JSON
+    // MAGIA AUTOMÁTICA PARA STORAGE
+    // Si el autor tiene una URL para este idioma, apagamos la traducción.
     // =======================================================
-    if (language === "es") {
-      for (const row of rows) {
-        if (row.name === "MHC") {
-          row.needsTranslation = false;
-          row.translated_count = row.english_count;
-        }
+    for (const row of rows) {
+      if (row.storageUrls && row.storageUrls[language]) {
+        row.needsTranslation = false;
+        row.translated_count = Math.max(row.english_count || 1, 1); 
       }
+      delete row.storageUrls; // Borramos la URL para no enviarla al frontend (seguridad)
     }
 
     return new Response(JSON.stringify(rows), {
@@ -135,86 +139,92 @@ export async function handleCommentaryRoutes(
     }
 
     // =========================================================
-    // NUEVA LÓGICA: LEER DESDE SUPABASE STORAGE (MHC Español)
+    // MAGIA AUTOMÁTICA DE LECTURA DESDE STORAGE
     // =========================================================
-    if (language === "es" && sourceId) {
+    if (sourceId) {
       const { rows: sourceCheck } = await pool.query(
-        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \$1`,
+        `SELECT name, "fullName", author, "storageUrls" FROM "CommentarySource" WHERE id = \$1`,
         [Number(sourceId)]
       );
 
-      if (sourceCheck.length > 0 && sourceCheck[0].name === "MHC") {
-        try {
-          const CACHE_TTL = 24 * 60 * 60 * 1000; 
-          if (!mhcJsonCache || Date.now() - mhcCacheTimestamp > CACHE_TTL) {
-            console.log("[Storage] Descargando MHC en español desde Supabase...");
+      if (sourceCheck.length > 0) {
+        const source = sourceCheck[0];
+        const externalUrl = source.storageUrls ? source.storageUrls[language] : null;
+
+        // Si tiene URL externa para este idioma, lo lee del Storage
+        if (externalUrl) {
+          try {
+            const cacheKey = `${source.name}-${language}`;
+            const CACHE_TTL = 24 * 60 * 60 * 1000; 
             
-            // 1. CORREGIDO: "Commentaries" con mayúscula en la URL
-            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/Commentaries/mhc_es.json";
-            
-            const res = await fetch(storageUrl);
-            if (res.ok) {
-              mhcJsonCache = await res.json();
-              mhcCacheTimestamp = Date.now();
-            } else {
-              // 2. TRAMPA DE SEGURIDAD: Si falla, tiramos error para que no intente traducir
-              console.error("[Storage] Falló la descarga del JSON. HTTP:", res.status);
+            let jsonData = storageJsonCache[cacheKey]?.data;
+
+            if (!jsonData || Date.now() - storageJsonCache[cacheKey].timestamp > CACHE_TTL) {
+              console.log(`[Storage] Descargando ${cacheKey} desde Supabase...`);
+              
+              const res = await fetch(externalUrl);
+              if (res.ok) {
+                jsonData = await res.json();
+                storageJsonCache[cacheKey] = { data: jsonData, timestamp: Date.now() };
+              } else {
+                console.error("[Storage] HTTP Error:", res.status);
+                throw new Error("Fallo en fetch");
+              }
+            }
+
+            if (jsonData) {
+              let filtered = jsonData.filter((c: any) => 
+                c.bookOrder === bookOrder && c.chapter === chapter
+              );
+
+              if (verse) {
+                const vNum = Number(verse);
+                filtered = filtered.filter((c: any) => 
+                  c.verseStart !== null && 
+                  c.verseStart <= vNum && 
+                  (c.verseEnd === null || c.verseEnd >= vNum)
+                );
+              }
+
+              const entries = filtered.map((c: any, index: number) => ({
+                id: `storage-${cacheKey}-${index}`, 
+                englishId: null,
+                title: c.title,
+                content: c.content,
+                contentHtml: null,
+                verseStart: c.verseStart,
+                verseEnd: c.verseEnd,
+                sectionType: null,
+                divId: null,
+                source_name: source.name,
+                source_full_name: source.fullName,
+                author: source.author,
+                needsTranslation: false,
+              }));
+
               return new Response(
-                JSON.stringify({ error: "No se pudo cargar el comentario desde Storage." }),
-                { status: 500, headers: makeHeaders("no-store") }
+                JSON.stringify({
+                  bookOrder,
+                  chapter,
+                  verse: verse ? Number(verse) : null,
+                  language,
+                  total: entries.length,
+                  entries,
+                }),
+                { headers: makeHeaders("public, max-age=86400") }
               );
             }
+          } catch (error) {
+            console.error(`[Storage] Error leyendo JSON de ${source.name}:`, error);
+            // Si falla el Storage, el código simplemente sigue y busca en la base de datos local
           }
-
-          if (mhcJsonCache) {
-            let filtered = mhcJsonCache.filter((c: any) => 
-              c.bookOrder === bookOrder && c.chapter === chapter
-            );
-
-            if (verse) {
-              const vNum = Number(verse);
-              filtered = filtered.filter((c: any) => 
-                c.verseStart !== null && 
-                c.verseStart <= vNum && 
-                (c.verseEnd === null || c.verseEnd >= vNum)
-              );
-            }
-
-            const entries = filtered.map((c: any, index: number) => ({
-              id: `mhc-es-storage-${index}`, 
-              englishId: null,
-              title: c.title,
-              content: c.content,
-              contentHtml: null,
-              verseStart: c.verseStart,
-              verseEnd: c.verseEnd,
-              sectionType: null,
-              divId: null,
-              source_name: sourceCheck[0].name,
-              source_full_name: sourceCheck[0].fullName,
-              author: sourceCheck[0].author,
-              needsTranslation: false,
-            }));
-
-            return new Response(
-              JSON.stringify({
-                bookOrder,
-                chapter,
-                verse: verse ? Number(verse) : null,
-                language,
-                total: entries.length,
-                entries,
-              }),
-              { headers: makeHeaders("public, max-age=86400") }
-            );
-          }
-        } catch (error) {
-          console.error("[Storage] Error leyendo JSON de MHC:", error);
         }
       }
     }
+    // =========================================================
+    // FIN LÓGICA STORAGE -> COMIENZA LÓGICA BASE DE DATOS
+    // =========================================================
 
-    // CONTINÚA CON INGLÉS O SI NO ES STORAGE
     if (language === "en") {
       const params: any[] = [bookOrder, chapter];
       let paramIndex = 3;
