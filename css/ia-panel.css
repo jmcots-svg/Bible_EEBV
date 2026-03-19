@@ -80,8 +80,11 @@
 /* ── Panel expandible — crece hacia ARRIBA ── */
 .ia-panel {
   overflow: hidden;
-  max-height: 0;
+  height: 0;
   opacity: 0;
+
+  display: flex;
+  flex-direction: column;
 
   background: linear-gradient(
     135deg,
@@ -254,6 +257,11 @@
   padding: 4px 18px 28px;
   position: relative;
   z-index: 1;
+
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Contenido "en construcción" — el último en aparecer */
