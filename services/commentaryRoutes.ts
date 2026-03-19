@@ -115,6 +115,88 @@ export async function handleCommentaryRoutes(
       );
     }
 
+    // =========================================================
+    // NUEVA LÓGICA: LEER DESDE SUPABASE STORAGE (MHC Español)
+    // =========================================================
+    if (language === "es" && sourceId) {
+      // 1. Verificamos rápido si el sourceId corresponde a 'MHC'
+      const { rows: sourceCheck } = await pool.query(
+        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \$1`,
+        [Number(sourceId)]
+      );
+
+      if (sourceCheck.length > 0 && sourceCheck[0].name === "MHC") {
+        try {
+          // 2. Usar caché en RAM (válido por 24 horas) para no descargar el JSON en cada petición
+          const CACHE_TTL = 24 * 60 * 60 * 1000; 
+          if (!mhcJsonCache || Date.now() - mhcCacheTimestamp > CACHE_TTL) {
+            console.log("[Storage] Descargando MHC en español desde Supabase...");
+            // REEMPLAZA ESTA URL CON TU URL PÚBLICA REAL DE SUPABASE
+            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/comentarios/mhc_es.json";
+            
+            const res = await fetch(storageUrl);
+            if (res.ok) {
+              mhcJsonCache = await res.json();
+              mhcCacheTimestamp = Date.now();
+            }
+          }
+
+          if (mhcJsonCache) {
+            // 3. Filtrar el JSON inmenso por libro y capítulo
+            let filtered = mhcJsonCache.filter((c: any) => 
+              c.bookOrder === bookOrder && c.chapter === chapter
+            );
+
+            // Filtrar por versículo si lo piden
+            if (verse) {
+              const vNum = Number(verse);
+              filtered = filtered.filter((c: any) => 
+                c.verseStart !== null && 
+                c.verseStart <= vNum && 
+                (c.verseEnd === null || c.verseEnd >= vNum)
+              );
+            }
+
+            // 4. Mapear al formato exacto que tu frontend espera (igual que la base de datos)
+            const entries = filtered.map((c: any, index: number) => ({
+              id: `mhc-es-storage-${index}`, 
+              englishId: null,
+              title: c.title,
+              content: c.content,
+              contentHtml: null,
+              verseStart: c.verseStart,
+              verseEnd: c.verseEnd,
+              sectionType: null,
+              divId: null,
+              source_name: sourceCheck[0].name,
+              source_full_name: sourceCheck[0].fullName,
+              author: sourceCheck[0].author,
+              needsTranslation: false, // Ya está en español
+            }));
+
+            // 5. Enviar respuesta exitosa!
+            return new Response(
+              JSON.stringify({
+                bookOrder,
+                chapter,
+                verse: verse ? Number(verse) : null,
+                language,
+                total: entries.length,
+                entries,
+              }),
+              { headers: makeHeaders("public, max-age=86400") }
+            );
+          }
+        } catch (error) {
+          console.error("[Storage] Error leyendo JSON de MHC:", error);
+          // Si falla, el código seguirá hacia abajo y usará tu lógica nativa de traducción
+        }
+      }
+    }
+    // =========================================================
+    // FIN LÓGICA STORAGE
+    // =========================================================
+
     if (language === "en") {
       const params: any[] = [bookOrder, chapter];
       let paramIndex = 3;
