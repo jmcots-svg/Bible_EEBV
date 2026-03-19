@@ -249,17 +249,10 @@ export function initIAPanel() {
     const headerH  = header   ? header.offsetHeight  : 50;
     const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
     
-    // 🔴 CAMBIO: NO restamos triggerH porque está DENTRO del panel
-    const available = window.innerHeight - headerH - tabsH;
-
-    wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
+    const topPosition = headerH + tabsH;
+    wrapper.style.setProperty('--ia-panel-top', `${topPosition}px`);
     
-    console.log('IA Panel calc:', { 
-      windowHeight: window.innerHeight, 
-      headerH, 
-      tabsH, 
-      available 
-    });
+    console.log('IA Panel top:', topPosition);
   }
 
   updatePanelHeight();
