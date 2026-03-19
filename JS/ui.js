@@ -122,3 +122,25 @@ export function setupCollapsibleFilters(toggleBtnId, collapsibleId, refLabelId) 
         }
     };
 }
+
+/**
+ * Mide header + tabs y guarda las alturas como variables CSS globales.
+ * Se llama una vez al inicio y en cada resize.
+ */
+export function initAppHeightVars() {
+    function measure() {
+        const header   = document.querySelector('header');
+        const modeTabs = document.querySelector('.mode-tabs');
+
+        const headerH  = header   ? header.offsetHeight   : 0;
+        const tabsH    = modeTabs ? modeTabs.offsetHeight  : 0;
+        const totalTop = headerH + tabsH;
+
+        document.documentElement.style.setProperty('--app-header-height',  `${headerH}px`);
+        document.documentElement.style.setProperty('--app-tabs-height',    `${tabsH}px`);
+        document.documentElement.style.setProperty('--app-top-total',      `${totalTop}px`);
+    }
+
+    measure();
+    window.addEventListener('resize', measure);
+}
