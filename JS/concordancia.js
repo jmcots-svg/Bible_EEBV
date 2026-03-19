@@ -246,14 +246,20 @@ export function initIAPanel() {
   function updatePanelHeight() {
     const header   = document.querySelector('header');
     const modeTabs = document.querySelector('.mode-tabs');
-    const triggerH = triggerBar.offsetHeight;
     const headerH  = header   ? header.offsetHeight  : 50;
     const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
     
-    // Cálculo: desde abajo hasta debajo de las tabs
-    const available = window.innerHeight - headerH - tabsH - triggerH;
+    // 🔴 CAMBIO: NO restamos triggerH porque está DENTRO del panel
+    const available = window.innerHeight - headerH - tabsH;
 
     wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
+    
+    console.log('IA Panel calc:', { 
+      windowHeight: window.innerHeight, 
+      headerH, 
+      tabsH, 
+      available 
+    });
   }
 
   updatePanelHeight();
