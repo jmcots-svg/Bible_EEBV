@@ -103,18 +103,18 @@
     --highlight-text: #4A3878;
 }
 
-/* 7. Forest (Verde bosque elegante) */
+/* 7. Forest (Verde musgo pastel con contornos marrón tierra) */
 [data-skin="forest"] {
-    --bg-body:       linear-gradient(180deg, #4CA171 0%, #1B4332 100%);
-    --accent:        #2D6A4F;
-    --bg-filters:    #F2F7F4;
-    --bg-container:  #FFFFFF;
-    --border:        #D8E2DC;
-    --text-main:     #1B2A22;
-    --text-muted:    #526A5E;
-    --card-hover:    #E9F0EC;
-    --bg-header:     #1B4332; /* SÓLIDO Verde Pino Oscuro */
-    --tab-active-text: #1B4332;
+    --bg-body:       linear-gradient(180deg, #8B9A8F 0%, #BCC6BE 100%); /* Verde musgo pastel */
+    --accent:        #5A6B5E; /* Musgo oscuro para botones/links */
+    --bg-filters:    #F2F4F2; /* Tono crema-musgo muy sutil */
+    --bg-container:  #FCFCFC;
+    --border:        #BAA89C; /* Marrón terroso/madera suave para contornos */
+    --text-main:     #2D3630;
+    --text-muted:    #657068;
+    --card-hover:    #EBEFEB;
+    --bg-header:     #4B5B4F; /* Verde musgo sobrio y natural SÓLIDO */
+    --tab-active-text: #4B5B4F;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.25);
 }
@@ -222,18 +222,18 @@
 
 /* 7. Forest Oscuro */
 [data-theme="dark"][data-skin="forest"] {
-    --bg-body:      linear-gradient(180deg, #081C15 0%, #040D0A 100%);
-    --bg-container: #102119;
-    --bg-filters:   #172E23;
-    --border:       #2D4A3E;
-    --text-main:    #D8E2DC;
-    --text-muted:   #8FA89B;
-    --accent:       #52B788;
-    --card-hover:   #1C372A;
-    --bg-header:    #081C15; /* SÓLIDO */
+    --bg-body:      linear-gradient(180deg, #1F2621 0%, #2A332C 100%);
+    --bg-container: #222C25;
+    --bg-filters:   #2A362E;
+    --border:       #6B5B50; /* Contornos marrón corteza oscura */
+    --text-main:    #D5DCD6;
+    --text-muted:   #8C9990;
+    --accent:       #8BA192; /* Musgo claro */
+    --card-hover:   #2F3C33;
+    --bg-header:    #171E19; /* Fondo musgo casi negro SÓLIDO */
     --tab-active:   rgba(255, 255, 255, 0.12);
     --tab-inactive: rgba(255, 255, 255, 0.08);
-    --tab-active-text: #D8E2DC;
+    --tab-active-text: #D5DCD6;
 }
 
 /* =====================================================
@@ -297,8 +297,8 @@
 .skin-dot[data-skin="sunset"]::before      { background: #F8C8A8; }
 .skin-dot[data-skin="sunset"]::after       { background: #6858A0; }
 
-.skin-dot[data-skin="forest"]::before      { background: #4CA171; }
-.skin-dot[data-skin="forest"]::after       { background: #1B4332; }
+.skin-dot[data-skin="forest"]::before      { background: #8B9A8F; }
+.skin-dot[data-skin="forest"]::after       { background: #BAA89C; }
 
 /* Estados activos y hover */
 .skin-dot.active {
