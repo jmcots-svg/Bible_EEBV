@@ -141,10 +141,14 @@ model CommentarySource {
   description    String?
   publishedYear  String?
   isPublicDomain Boolean  @default(true)
+  
+  storageUrls    Json?    // 👈 NUEVO: Aquí guardaremos las URLs (ej: {"es": "https/...", "en": "..."})
+  
   createdAt      DateTime @default(now())
   
   entries        CommentaryEntry[]
 }
+
 
 model CommentaryEntry {
   id           Int      @id @default(autoincrement())
