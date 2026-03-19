@@ -162,7 +162,6 @@ model CommentaryEntry {
   
   title        String?
   content      String
-  contentHtml  String?
   
   divId        String?
   sectionType  String?
