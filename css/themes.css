@@ -2,19 +2,19 @@
    THEMES / SKINS (MODO CLARO)
    ===================================================== */
 
-/* 1. Classic (Azul CORPORATIVO: tech → navy, SIN VIOLETA) */
+/* 1. Classic (Azul CORPORATIVO SOBRIO: acero apagado → navy profundo) */
 :root,
 [data-skin="classic"] {
-    --bg-body:       linear-gradient(180deg, #3B82F6 0%, #1E40AF 100%);
-    --accent:        #3B82F6;
-    --bg-filters:    #EFF6FF;
+    --bg-body:       linear-gradient(180deg, #4A627A 0%, #1B365D 100%); /* Azul acero apagado */
+    --accent:        #4A627A;
+    --bg-filters:    #F4F6F8;
     --bg-container:  #FFFFFF;
-    --border:        #DBEAFE;
-    --text-main:     #1E293B;
-    --text-muted:    #64748B;
-    --card-hover:    #F0F9FF;
-    --bg-header:     #1E40AF; /* AZUL NAVY SÓLIDO (serio y corporativo) */
-    --tab-active-text: #1E40AF;
+    --border:        #D1D5DB;
+    --text-main:     #1F2937;
+    --text-muted:    #6B7280;
+    --card-hover:    #F3F4F6;
+    --bg-header:     #1B365D; /* AZUL NAVY SÓLIDO (Muy elegante y sobrio) */
+    --tab-active-text: #1B365D;
     --tab-active:    rgba(255, 255, 255, 0.95);
     --tab-inactive:  rgba(255, 255, 255, 0.2);
 }
@@ -126,18 +126,18 @@
 /* 1. Classic Oscuro */
 [data-theme="dark"][data-skin="classic"],
 [data-theme="dark"]:not([data-skin]) {
-    --bg-body:      linear-gradient(180deg, #0F172A 0%, #1E3A8A 100%);
-    --bg-container: #1E293B;
-    --bg-filters:   #334155;
-    --border:       #475569;
-    --text-main:    #F1F5F9;
-    --text-muted:   #CBD5E1;
+    --bg-body:      linear-gradient(180deg, #111827 0%, #0F172A 100%);
+    --bg-container: #1F2937;
+    --bg-filters:   #374151;
+    --border:       #4B5563;
+    --text-main:    #F9FAFB;
+    --text-muted:   #9CA3AF;
     --accent:       #60A5FA;
-    --card-hover:   #1E2A44;
-    --bg-header:    #1E3A8A; /* SÓLIDO navy oscuro */
-    --tab-active:   rgba(255, 255, 255, 0.15);
-    --tab-inactive: rgba(255, 255, 255, 0.1);
-    --tab-active-text: #F1F5F9;
+    --card-hover:   #273344;
+    --bg-header:    #0F172A; /* Slate muy oscuro */
+    --tab-active:   rgba(255, 255, 255, 0.12);
+    --tab-inactive: rgba(255, 255, 255, 0.08);
+    --tab-active-text: #F9FAFB;
 }
 
 /* 2. Lavanda Oscuro */
@@ -279,8 +279,8 @@
 .skin-dot::after  { right: 0; }
 
 /* Colores de los selectores circulares */
-.skin-dot[data-skin="classic"]::before     { background: #3B82F6; }
-.skin-dot[data-skin="classic"]::after      { background: #1E40AF; }
+.skin-dot[data-skin="classic"]::before     { background: #4A627A; }
+.skin-dot[data-skin="classic"]::after      { background: #1B365D; }
 
 .skin-dot[data-skin="lavanda"]::before     { background: #7B8DC4; }
 .skin-dot[data-skin="lavanda"]::after      { background: #9AA3CC; }
