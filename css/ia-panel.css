@@ -104,9 +104,8 @@
   transform: translateY(30px);
 }
 
-/* Estado abierto — mismo patrón que commentary maximized */
+/* Estado abierto */
 .ia-panel-wrapper.ia-open .ia-panel {
-  /* Desde debajo del header+tabs hasta el trigger */
   max-height: var(--ia-panel-max-height, 75vh);
   opacity: 1;
   overflow-y: auto;
