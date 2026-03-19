@@ -238,35 +238,43 @@ export function initIAPanel() {
 
   if (!wrapper || !triggerBar) return;
 
-  // ── Calcula la altura máxima disponible ──────────────────────
   function updatePanelHeight() {
-    // Mide los elementos reales del DOM
-    const header    = document.querySelector('header');
-    const modeTabs  = document.querySelector('.mode-tabs');
-    const triggerH  = triggerBar.offsetHeight;
+    // Usa la misma variable que usa commentary: --app-header-height
+    const appHeaderHeight = parseInt(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--app-header-height') || '0'
+    );
 
-    const headerH   = header   ? header.offsetHeight   : 50;
-    const tabsH     = modeTabs ? modeTabs.offsetHeight : 52;
+    const header   = document.querySelector('header');
+    const modeTabs = document.querySelector('.mode-tabs');
+    const triggerH = triggerBar.offsetHeight;
 
-    // Panel debe llegar justo hasta debajo de las tabs
+    // Si existe --app-header-height la usamos, si no medimos
+    const headerH  = appHeaderHeight || (header ? header.offsetHeight : 50);
+    const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
+
     const available = window.innerHeight - headerH - tabsH - triggerH;
 
-    // Aplica como variable CSS en el wrapper
+    console.log('IA Panel height calc:', {
+      windowHeight: window.innerHeight,
+      headerH,
+      tabsH,
+      triggerH,
+      available
+    });
+
     wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
   }
 
-  // Calcula al inicio y cada vez que cambie el tamaño de ventana
   updatePanelHeight();
   window.addEventListener('resize', updatePanelHeight);
 
-  // ── Toggle ───────────────────────────────────────────────────
   triggerBar.addEventListener('click', () => {
     const isOpen = wrapper.classList.contains('ia-open');
-
     if (isOpen) {
       _closeIAPanel(wrapper);
     } else {
-      updatePanelHeight(); // recalcula justo antes de abrir
+      updatePanelHeight();
       _openIAPanel(wrapper);
     }
   });
