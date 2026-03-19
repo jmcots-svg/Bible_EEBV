@@ -133,20 +133,19 @@ to StrongEntry @relation("toStrong", fields: [toStrong, toDefLang], references: 
 // ============================================
 
 model CommentarySource {
-  id             Int      @id @default(autoincrement())
-  name           String   @unique
-  fullName       String
-  author         String
-  volumes        Int      @default(1)
-  description    String?
-  publishedYear  String?
-  isPublicDomain Boolean  @default(true)
+  id               Int      @id @default(autoincrement())
+  name             String   @unique
+  fullName         String
+  author           String
+  volumes          Int      @default(1)
+  description      String?
+  publishedYear    String?
+  isPublicDomain   Boolean  @default(true)
   
-  storageUrls    Json?    // 👈 NUEVO: Aquí guardaremos las URLs (ej: {"es": "https/...", "en": "..."})
+  // Lista de idiomas disponibles en Storage
+  availableLangs   String[] @default(["en"]) 
   
-  createdAt      DateTime @default(now())
-  
-  entries        CommentaryEntry[]
+  createdAt        DateTime @default(now())
 }
 
 
