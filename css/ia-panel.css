@@ -104,9 +104,10 @@
   transform: translateY(30px);
 }
 
-/* Estado abierto — usa variable calculada por JS */
+/* Estado abierto — mismo patrón que commentary maximized */
 .ia-panel-wrapper.ia-open .ia-panel {
-  max-height: 80vh;
+  /* Desde debajo del header+tabs hasta el trigger */
+  max-height: var(--ia-panel-max-height, 75vh);
   opacity: 1;
   overflow-y: auto;
   transform: translateY(0);
