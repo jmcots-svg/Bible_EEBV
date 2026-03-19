@@ -106,7 +106,7 @@
 
 /* Estado abierto — usa variable calculada por JS */
 .ia-panel-wrapper.ia-open .ia-panel {
-  max-height: var(--ia-panel-max-height, 70vh); /* fallback 70vh */
+  max-height: 80vh;
   opacity: 1;
   overflow-y: auto;
   transform: translateY(0);
