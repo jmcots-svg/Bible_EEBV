@@ -365,3 +365,34 @@ export function initBibleLinks(onRefClick) {
         }
     });
 }
+
+// Al final de bible-links.js, añade:
+
+/**
+ * Parsea el campo data-verse que puede contener:
+ *  "5"        → [5]
+ *  "5-8"      → [5,6,7,8]
+ *  "5,7,9"    → [5,7,9]
+ */
+export function parseVerseData(verseData) {
+    if (!verseData) return null;
+
+    // Rango: "5-8"
+    const rangeMatch = verseData.match(/^(\d+)-(\d+)$/);
+    if (rangeMatch) {
+        const start = parseInt(rangeMatch[1]);
+        const end   = parseInt(rangeMatch[2]);
+        const result = [];
+        for (let i = start; i <= end; i++) result.push(i);
+        return result;
+    }
+
+    // Lista: "5,7,9"
+    if (verseData.includes(',')) {
+        return verseData.split(',').map(v => parseInt(v.trim())).filter(Boolean);
+    }
+
+    // Simple: "5"
+    const single = parseInt(verseData);
+    return isNaN(single) ? null : [single];
+}
