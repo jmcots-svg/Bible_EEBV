@@ -127,7 +127,6 @@ to StrongEntry @relation("toStrong", fields: [toStrong, toDefLang], references: 
 @@index([relationType])
 }
 
-
 // ============================================
 // COMENTARIOS BÍBLICOS
 // ============================================
@@ -142,41 +141,9 @@ model CommentarySource {
   publishedYear    String?
   isPublicDomain   Boolean  @default(true)
   
-  // Lista de idiomas disponibles en Storage
   availableLangs   String[] @default(["en"]) 
   
   createdAt        DateTime @default(now())
-}
-
-
-model CommentaryEntry {
-  id           Int      @id @default(autoincrement())
-  
-  sourceId     Int
-  source       CommentarySource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  
-  language     String   @default("es")   // 👈 Idioma del comentario
-  
-  bookAbbr     String
-  bookOrder    Int
-  chapter      Int
-  verseStart   Int?
-  verseEnd     Int?
-  
-  title        String?
-  content      String
-  
-  divId        String?
-  sectionType  String?
-  volume       Int      @default(1)
-  
-  createdAt    DateTime @default(now())
-  
-  @@unique([sourceId, language, divId])
-  @@index([sourceId, bookOrder, chapter])
-  @@index([sourceId, language, bookAbbr, chapter])
-  @@index([bookOrder, chapter, verseStart])
-  @@index([language])
 }
 
 model BookAbbreviation {
