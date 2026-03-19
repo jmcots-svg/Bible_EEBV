@@ -11,8 +11,7 @@
   z-index: 500;
   display: flex;
   flex-direction: column;
-  /* El panel crece hacia arriba gracias a column-reverse */
-  pointer-events: none; /* el wrapper no bloquea clicks cuando está cerrado */
+  pointer-events: none;
 }
 
 /* Todo lo interno sí recibe clicks */
@@ -33,7 +32,6 @@
   cursor: pointer;
   transition: background 0.2s ease;
   user-select: none;
-  /* Asegura que queda por encima del panel */
   position: relative;
   z-index: 2;
 }
@@ -57,10 +55,7 @@
   opacity: 0.85;
 }
 
-/* ── Botón flecha ──
-   Por defecto apunta HACIA ARRIBA (para indicar "desplegar hacia arriba")
-   Cuando está abierto apunta HACIA ABAJO (para cerrar)
-── */
+/* ── Botón flecha ── */
 .ia-trigger-arrow {
   background: none;
   border: none;
@@ -70,10 +65,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* SVG polyline apunta arriba por defecto, no rotamos */
   transform: rotate(0deg);
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-              color 0.3s ease;
+  /* Flecha gira lentamente con rebote */
+  transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+              color     0.6s ease;
 }
 
 /* Cuando está abierto: flecha apunta ABAJO */
@@ -85,12 +80,9 @@
 /* ── Panel expandible — crece hacia ARRIBA ── */
 .ia-panel {
   overflow: hidden;
-
-  /* Estado cerrado: altura 0 */
   max-height: 0;
   opacity: 0;
 
-  /* COLOR SUPER SAIYAN */
   background: linear-gradient(
     135deg,
     #FFE033 0%,
@@ -102,49 +94,50 @@
   border-top: 3px solid #FFF176;
   position: relative;
 
-  /* Transición épica hacia arriba */
+  /* ANIMACIÓN ESPECTÁCULO */
   transition:
-    max-height 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity    0.35s ease;
+    max-height 1.8s cubic-bezier(0.06, 0.95, 0.18, 1.0),
+    opacity    0.5s ease,
+    transform  1.8s cubic-bezier(0.06, 0.95, 0.18, 1.0);
+
+  /* Empieza ligeramente desplazado abajo */
+  transform: translateY(30px);
 }
 
-/* Estado abierto: ocupa desde el fondo hasta debajo de las tabs */
+/* Estado abierto */
 .ia-panel-wrapper.ia-open .ia-panel {
-  /* 
-    Calcula la altura disponible:
-    100vh - altura header (~50px) - altura tabs (~52px) - altura trigger (~36px)
-    Ajusta estos valores a los de tu app
-  */
   max-height: calc(100vh - 50px - 52px - 36px);
   opacity: 1;
   overflow-y: auto;
+  transform: translateY(0);
 }
 
-/* Destello de luz al abrir */
+/* ── Destello de luz — lento y dramático ── */
 .ia-panel::after {
   content: '';
   position: absolute;
   top: 0;
   left: -120%;
-  width: 60%;
+  width: 80%;
   height: 100%;
   background: linear-gradient(
     105deg,
-    transparent 30%,
-    rgba(255,255,255,0.55) 50%,
-    transparent 70%
+    transparent 20%,
+    rgba(255,255,255,0.65) 50%,
+    transparent 80%
   );
   pointer-events: none;
   opacity: 0;
 }
 
 .ia-panel-wrapper.ia-open .ia-panel::after {
-  animation: ia-sweep 0.7s ease forwards 0.15s;
+  animation: ia-sweep 1.2s ease forwards 0.6s;
 }
 
 @keyframes ia-sweep {
-  0%   { left: -120%; opacity: 1; }
-  100% { left: 160%;  opacity: 0; }
+  0%   { left: -120%; opacity: 0; }
+  15%  { opacity: 1;              }
+  100% { left: 180%;  opacity: 0; }
 }
 
 /* ── Partículas flotantes ── */
@@ -163,22 +156,23 @@
   opacity: 0;
 }
 
-.ia-particle:nth-child(1) { width: 5px;  height: 5px;  left: 8%;  }
-.ia-particle:nth-child(2) { width: 8px;  height: 8px;  left: 22%; }
-.ia-particle:nth-child(3) { width: 4px;  height: 4px;  left: 48%; }
-.ia-particle:nth-child(4) { width: 7px;  height: 7px;  left: 68%; }
-.ia-particle:nth-child(5) { width: 5px;  height: 5px;  left: 87%; }
+.ia-particle:nth-child(1) { width: 5px; height: 5px; left: 8%;  }
+.ia-particle:nth-child(2) { width: 8px; height: 8px; left: 22%; }
+.ia-particle:nth-child(3) { width: 4px; height: 4px; left: 48%; }
+.ia-particle:nth-child(4) { width: 7px; height: 7px; left: 68%; }
+.ia-particle:nth-child(5) { width: 5px; height: 5px; left: 87%; }
 
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(1) { animation: ia-float 2.2s ease-in infinite 0.0s;  }
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(2) { animation: ia-float 2.2s ease-in infinite 0.5s;  }
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(3) { animation: ia-float 2.2s ease-in infinite 0.2s;  }
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(4) { animation: ia-float 2.2s ease-in infinite 0.7s;  }
-.ia-panel-wrapper.ia-open .ia-particle:nth-child(5) { animation: ia-float 2.2s ease-in infinite 0.35s; }
+/* Partículas más lentas y escalonadas */
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(1) { animation: ia-float 2.8s ease-in infinite 0.4s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(2) { animation: ia-float 3.0s ease-in infinite 0.9s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(3) { animation: ia-float 2.6s ease-in infinite 0.6s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(4) { animation: ia-float 3.2s ease-in infinite 1.1s;  }
+.ia-panel-wrapper.ia-open .ia-particle:nth-child(5) { animation: ia-float 2.9s ease-in infinite 0.7s;  }
 
 @keyframes ia-float {
-  0%   { transform: translateY(0)     scale(1);    opacity: 0.85; }
-  75%  { transform: translateY(-55px) scale(0.55); opacity: 0.25; }
-  100% { transform: translateY(-72px) scale(0);    opacity: 0;    }
+  0%   { transform: translateY(0)      scale(1);   opacity: 0.9;  }
+  60%  { transform: translateY(-70px)  scale(0.6); opacity: 0.35; }
+  100% { transform: translateY(-100px) scale(0);   opacity: 0;    }
 }
 
 /* ── Cabecera del panel ── */
@@ -187,16 +181,26 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px 8px;
-  position: sticky;  /* queda fija arriba al hacer scroll interno */
+  position: sticky;
   top: 0;
   z-index: 1;
-  background: inherit;  /* hereda el dorado */
+  background: inherit;
 }
 
+/* Título — aparece con retraso escalonado */
 .ia-panel-title {
   display: flex;
   align-items: center;
   gap: 9px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity  0.5s ease 0.8s,
+              transform 0.5s ease 0.8s;
+}
+
+.ia-panel-wrapper.ia-open .ia-panel-title {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .ia-title-text {
@@ -207,17 +211,19 @@
   text-shadow: 0 1px 0 rgba(255,255,255,0.45);
 }
 
+/* Bolts ⚡ — pulso más lento y dramático */
 .ia-bolt {
   font-size: 17px;
   display: inline-block;
-  animation: ia-bolt-pulse 1s ease-in-out infinite alternate;
+  animation: ia-bolt-pulse 1.5s ease-in-out infinite alternate;
 }
 
 @keyframes ia-bolt-pulse {
-  from { transform: scale(1);    filter: brightness(1);    }
-  to   { transform: scale(1.28); filter: brightness(1.35); }
+  from { transform: scale(1);    filter: brightness(1);   }
+  to   { transform: scale(1.35); filter: brightness(1.5); }
 }
 
+/* Badge POWER MODE — aparece el último */
 .ia-power-badge {
   font-size: 9px;
   font-weight: 900;
@@ -229,6 +235,12 @@
   border-radius: 20px;
   box-shadow: 0 2px 8px rgba(200,60,0,0.4);
   animation: ia-badge-pulse 1.3s ease-in-out infinite alternate;
+  opacity: 0;
+  transition: opacity 0.4s ease 1.2s;
+}
+
+.ia-panel-wrapper.ia-open .ia-power-badge {
+  opacity: 1;
 }
 
 @keyframes ia-badge-pulse {
@@ -244,9 +256,19 @@
   z-index: 1;
 }
 
+/* Contenido "en construcción" — el último en aparecer */
 .ia-construction {
   text-align: center;
   padding: 24px 8px;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity  0.6s ease 1.0s,
+              transform 0.6s ease 1.0s;
+}
+
+.ia-panel-wrapper.ia-open .ia-construction {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .ia-construction-icon {
@@ -274,6 +296,14 @@
   margin: 0;
   line-height: 1.55;
   opacity: 0.82;
+}
+
+/* ── Reset instantáneo al cerrar ── */
+.ia-panel-wrapper:not(.ia-open) .ia-panel-title,
+.ia-panel-wrapper:not(.ia-open) .ia-construction,
+.ia-panel-wrapper:not(.ia-open) .ia-power-badge {
+  opacity: 0;
+  transition: none;
 }
 
 /* ================================================
@@ -330,11 +360,9 @@
 }
 
 /* ================================================
-   PADDING en el contenido principal para que
-   la barra fija no tape el contenido de abajo
+   PADDING contenido principal
    ================================================ */
 .container {
-  /* Altura de la barra trigger (~36px) + margen */
   padding-bottom: 44px;
 }
 
