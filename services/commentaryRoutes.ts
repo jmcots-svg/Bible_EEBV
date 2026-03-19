@@ -38,13 +38,13 @@ export async function handleCommentaryRoutes(
         + " COUNT(ce.id) as entry_count"
         + " FROM \"CommentarySource\" cs"
         + " JOIN \"CommentaryEntry\" ce ON ce.\"sourceId\" = cs.id"
-        + " WHERE ce.\"bookOrder\" = \\$1"
-        + " AND ce.chapter = \\$2"
+        + " WHERE ce.\"bookOrder\" = \$1"
+        + " AND ce.chapter = \$2"
         + " AND ce.language = 'en'";
 
       if (verse) {
         query += " AND (ce.\"verseStart\" IS NULL"
-          + " OR (ce.\"verseStart\" <= \\$3 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \\$3)))";
+          + " OR (ce.\"verseStart\" <= \$3 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \$3)))";
         params.push(Number(verse));
       }
 
@@ -63,15 +63,15 @@ export async function handleCommentaryRoutes(
     let verseCondition = "";
     if (verse) {
       verseCondition = " AND (ce.\"verseStart\" IS NULL"
-        + " OR (ce.\"verseStart\" <= \\$4 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \\$4)))";
+        + " OR (ce.\"verseStart\" <= \$4 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \$4)))";
       params.push(Number(verse));
     }
 
     const query = "WITH english_entries AS ("
       + "  SELECT ce.\"sourceId\", COUNT(*) as en_count"
       + "  FROM \"CommentaryEntry\" ce"
-      + "  WHERE ce.\"bookOrder\" = \\$1"
-      + "  AND ce.chapter = \\$2"
+      + "  WHERE ce.\"bookOrder\" = \$1"
+      + "  AND ce.chapter = \$2"
       + "  AND ce.language = 'en'"
       + verseCondition
       + "  GROUP BY ce.\"sourceId\""
@@ -79,9 +79,9 @@ export async function handleCommentaryRoutes(
       + "translated_entries AS ("
       + "  SELECT ce.\"sourceId\", COUNT(*) as trans_count"
       + "  FROM \"CommentaryEntry\" ce"
-      + "  WHERE ce.\"bookOrder\" = \\$1"
-      + "  AND ce.chapter = \\$2"
-      + "  AND ce.language = \\$3"
+      + "  WHERE ce.\"bookOrder\" = \$1"
+      + "  AND ce.chapter = \$2"
+      + "  AND ce.language = \$3"
       + verseCondition
       + "  GROUP BY ce.\"sourceId\""
       + ")"
@@ -106,8 +106,8 @@ export async function handleCommentaryRoutes(
     if (language === "es") {
       for (const row of rows) {
         if (row.name === "MHC") {
-          row.needsTranslation = false; // ¡Apaga el ícono del mundo!
-          row.translated_count = row.english_count; // Finge que tenemos todos los registros
+          row.needsTranslation = false;
+          row.translated_count = row.english_count;
         }
       }
     }
@@ -139,7 +139,7 @@ export async function handleCommentaryRoutes(
     // =========================================================
     if (language === "es" && sourceId) {
       const { rows: sourceCheck } = await pool.query(
-        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \\$1`,
+        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \$1`,
         [Number(sourceId)]
       );
 
@@ -205,7 +205,7 @@ export async function handleCommentaryRoutes(
       }
     }
 
-    // CONTINÚA CON INGLÉS SI NO ES STORAGE
+    // CONTINÚA CON INGLÉS O SI NO ES STORAGE
     if (language === "en") {
       const params: any[] = [bookOrder, chapter];
       let paramIndex = 3;
@@ -216,8 +216,8 @@ export async function handleCommentaryRoutes(
         + " false as \"needsTranslation\""
         + " FROM \"CommentaryEntry\" ce"
         + " JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id"
-        + " WHERE ce.\"bookOrder\" = \\$1"
-        + " AND ce.chapter = \\$2"
+        + " WHERE ce.\"bookOrder\" = \$1"
+        + " AND ce.chapter = \$2"
         + " AND ce.language = 'en'";
 
       if (sourceId) {
@@ -271,10 +271,10 @@ export async function handleCommentaryRoutes(
       + "   ON ce_lang.\"sourceId\" = ce_en.\"sourceId\""
       + "   AND ce_lang.\"bookOrder\" = ce_en.\"bookOrder\""
       + "   AND ce_lang.chapter = ce_en.chapter"
-      + "   AND ce_lang.language = \\$3"
+      + "   AND ce_lang.language = \$3"
       + "   AND COALESCE(ce_lang.\"divId\", '') = COALESCE(ce_en.\"divId\", '')"
-      + " WHERE ce_en.\"bookOrder\" = \\$1"
-      + " AND ce_en.chapter = \\$2"
+      + " WHERE ce_en.\"bookOrder\" = \$1"
+      + " AND ce_en.chapter = \$2"
       + " AND ce_en.language = 'en'";
 
     if (sourceId) {
@@ -340,7 +340,7 @@ export async function handleCommentaryRoutes(
       }
 
       const { rows: existing } = await pool.query(
-        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \\$1 AND \"divId\" = \\$2 AND language = \\$3 LIMIT 1",
+        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \$1 AND \"divId\" = \$2 AND language = \$3 LIMIT 1",
         [sourceId, divId, targetLang]
       );
 
@@ -352,7 +352,7 @@ export async function handleCommentaryRoutes(
       }
 
       const { rows: englishRows } = await pool.query(
-        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \\$1 AND \"divId\" = \\$2 AND language = 'en' LIMIT 1",
+        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \$1 AND \"divId\" = \$2 AND language = 'en' LIMIT 1",
         [sourceId, divId]
       );
 
@@ -375,7 +375,7 @@ export async function handleCommentaryRoutes(
 
       const entry = result.entry;
       const { rows: inserted } = await pool.query(
-        "INSERT INTO \"CommentaryEntry\" (\"sourceId\", language, \"bookAbbr\", \"bookOrder\", chapter, \"verseStart\", \"verseEnd\", title, content, \"divId\", \"sectionType\", volume) VALUES (\\$1, \\$2, \\$3, \\$4, \\$5, \\$6, \\$7, \\$8, \\$9, \\$10, \\$11, \\$12) RETURNING *",
+        "INSERT INTO \"CommentaryEntry\" (\"sourceId\", language, \"bookAbbr\", \"bookOrder\", chapter, \"verseStart\", \"verseEnd\", title, content, \"divId\", \"sectionType\", volume) VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12) RETURNING *",
         [
           entry.sourceId,
           entry.language,
