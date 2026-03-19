@@ -132,7 +132,7 @@ export async function handleCommentaryRoutes(
           if (!mhcJsonCache || Date.now() - mhcCacheTimestamp > CACHE_TTL) {
             console.log("[Storage] Descargando MHC en español desde Supabase...");
             // REEMPLAZA ESTA URL CON TU URL PÚBLICA REAL DE SUPABASE
-            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/comentarios/mhc_es.json";
+            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/sign/Commentaries/mhc_es.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81YmQzYjUzMy0yNDllLTQ5MDctYWYzNS0yYzQ5MDYwODNjMzQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJDb21tZW50YXJpZXMvbWhjX2VzLmpzb24iLCJpYXQiOjE3NzM5MjIyMzAsImV4cCI6NDkyNzUyMjIzMH0.-WpEPVKkjZGYvdKzT4z7JR7ZKMWuSJwky4W0rWKnHY4";
             
             const res = await fetch(storageUrl);
             if (res.ok) {
