@@ -13,7 +13,7 @@ import {
 import { cache, strongWordsCache } from './cache.js';
 import { initTheme, initFontSize, initSettingsPanel, setupCollapsibleFilters } from './ui.js';
 import { initComparacion, loadCompBooks, renderComparison, getCurrentCompData, updateComparacionLabels } from './comparacion.js';
-import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels } from './concordancia.js';
+import { initConcordancia, getCurrentSearchData, renderSearchResults, updateConcordanciaLabels, initIAPanel } from './concordancia.js';
 import { initCommentary, openCommentaryForReference, closeCommentaryPanel } from './commentary.js';
 import { initStrong, loadStrongVersions, renderStrongChapter, closeStrongPanel, updateStrongLabels, reloadCurrentStrongIfOpen } from './strong.js';
 import { loadSavedSkin, initSkinSelector } from './themes.js';
@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         showError,
         navigateToVerse
     });
+    initIAPanel();
 
     // =====================
     // 7. MODO NOCHE E IDIOMA
