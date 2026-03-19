@@ -201,7 +201,7 @@ export async function handleCommentaryRoutes(
       const params: any[] = [bookOrder, chapter];
       let paramIndex = 3;
 
-      let query = "SELECT ce.id, ce.title, ce.content, ce.\"contentHtml\","
+      let query = "SELECT ce.id, ce.title, ce.content,"
         + " ce.\"verseStart\", ce.\"verseEnd\", ce.\"sectionType\", ce.\"divId\","
         + " cs.name as source_name, cs.\"fullName\" as source_full_name, cs.author,"
         + " false as \"needsTranslation\""
@@ -248,7 +248,6 @@ export async function handleCommentaryRoutes(
       + " ce_lang.id as \"translatedId\","
       + " COALESCE(ce_lang.title, ce_en.title) as title,"
       + " COALESCE(ce_lang.content, ce_en.content) as content,"
-      + " COALESCE(ce_lang.\"contentHtml\", ce_en.\"contentHtml\") as \"contentHtml\","
       + " ce_en.\"verseStart\","
       + " ce_en.\"verseEnd\","
       + " ce_en.\"sectionType\","
@@ -292,7 +291,7 @@ export async function handleCommentaryRoutes(
       englishId: row.englishId,
       title: row.title,
       content: row.content,
-      contentHtml: row.contentHtml,
+      contentHtml: null,
       verseStart: row.verseStart,
       verseEnd: row.verseEnd,
       sectionType: row.sectionType,
@@ -364,7 +363,7 @@ export async function handleCommentaryRoutes(
 
       const entry = result.entry;
       const { rows: inserted } = await pool.query(
-        "INSERT INTO \"CommentaryEntry\" (\"sourceId\", language, \"bookAbbr\", \"bookOrder\", chapter, \"verseStart\", \"verseEnd\", title, content, \"contentHtml\", \"divId\", \"sectionType\", volume) VALUES (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, \$12, \$13) RETURNING *",
+        "INSERT INTO \"CommentaryEntry\" (\"sourceId\", language, \"bookAbbr\", \"bookOrder\", chapter, \"verseStart\", \"verseEnd\", title, content, \"divId\", \"sectionType\", volume) VALUES (\\$1, \\$2, \\$3, \\$4, \\$5, \\$6, \\$7, \\$8, \\$9, \\$10, \\$11, \\$12) RETURNING *",
         [
           entry.sourceId,
           entry.language,
@@ -375,7 +374,6 @@ export async function handleCommentaryRoutes(
           entry.verseEnd,
           entry.title,
           entry.content,
-          entry.contentHtml,
           entry.divId,
           entry.sectionType,
           entry.volume,
