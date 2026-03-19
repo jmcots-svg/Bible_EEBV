@@ -1,40 +1,69 @@
-name: Translate Commentaries
+name: 🌐 Translate Commentaries (Storage)
 
 on:
   workflow_dispatch:
     inputs:
       target_lang:
-        description: 'Idioma destino para traducir'
+        description: 'Idioma destino (código ISO)'
         required: true
-        default: 'es'
+        default: 'ca'
         type: choice
         options:
-          - ca  # Catalán
-          - es  # Español
+          - ca
+          - es
+          - fr
+          - de
+          - pt
+          - it
+      commentary_abbr:
+        description: 'Abreviatura del comentario (ej: luther, MHC, JFB). Vacío = todos los pendientes.'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   translate:
+    name: 🔄 Traducir comentarios → ${{ inputs.target_lang }}
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 350
+
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
+          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install --no-package-lock
+      - name: 📦 Instalar dependencias
+        run: npm ci
 
-      - name: Run commentary translation
+      - name: 🧾 Info de ejecución
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  🌐 Idioma destino  : ${{ inputs.target_lang }}"
+          echo "  📖 Comentario      : ${{ inputs.commentary_abbr || 'TODOS los pendientes' }}"
+          echo "  📁 Fichero fuente  : ${{ inputs.commentary_abbr }}_en.json"
+          echo "  📁 Fichero destino : ${{ inputs.commentary_abbr }}_${{ inputs.target_lang }}.json"
+          echo "════════════════════════════════════════"
+
+      - name: 🌐 Traducir
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}  # ← Añadido
-          GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-          TARGET_LANG: ${{ github.event.inputs.target_lang }}
-        timeout-minutes: 360
-        run: npm run translate:commentary
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEYS:      ${{ secrets.GEMINI_API_KEYS }}
+          STORAGE_BASE_URL:     ${{ secrets.STORAGE_BASE_URL }}
+          TARGET_LANG:          ${{ inputs.target_lang }}
+          TARGET_COMMENTARY:    ${{ inputs.commentary_abbr }}
+        run: node scripts/translate-commentaries-storage.js
+
+      - name: ✅ Resumen
+        if: always()
+        run: |
+          echo "════════════════════════════════════════"
+          echo "  Ejecución finalizada"
+          echo "  Idioma   : ${{ inputs.target_lang }}"
+          echo "  Fichero  : ${{ inputs.commentary_abbr || 'todos' }}_${{ inputs.target_lang }}.json"
+          echo "════════════════════════════════════════"
