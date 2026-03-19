@@ -2,36 +2,42 @@
    IA PANEL — Fixed bottom, expands upward
    ================================================ */
 
-/* ── Wrapper fijo en la parte inferior ── */
 .ia-panel-wrapper {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
   z-index: 500;
+  display: flex;
+  flex-direction: column;
   pointer-events: none;
 }
 
-/* Todo lo interno sí recibe clicks */
 .ia-trigger-bar,
 .ia-panel {
   pointer-events: auto;
 }
 
-/* ── Barra trigger: siempre visible en el fondo ── */
+/* ── Barra trigger ── */
 .ia-trigger-bar {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
   padding: 7px 14px;
-  background: var(--bg-filters
+  background: var(--bg-filters);
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  user-select: none;
+  position: relative;
+  z-index: 2;
+}
 
 .ia-trigger-bar:hover {
   background: var(--card-hover);
 }
 
-/* Texto sutil */
 .ia-trigger-text {
   font-size: 10px;
   font-style: italic;
@@ -46,7 +52,6 @@
   opacity: 0.85;
 }
 
-/* ── Botón flecha ── */
 .ia-trigger-arrow {
   background: none;
   border: none;
@@ -57,25 +62,20 @@
   align-items: center;
   justify-content: center;
   transform: rotate(0deg);
-  /* Flecha gira lentamente con rebote */
   transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1),
               color     0.6s ease;
 }
 
-/* Cuando está abierto: flecha apunta ABAJO */
 .ia-panel-wrapper.ia-open .ia-trigger-arrow {
   transform: rotate(180deg);
   color: #c8a000;
 }
 
-/* ── Panel expandible — crece hacia ARRIBA ── */
+/* ── Panel expandible ── */
 .ia-panel {
   overflow: hidden;
-  height: 0;
+  max-height: 0;
   opacity: 0;
-
-  display: flex;
-  flex-direction: column;
 
   background: linear-gradient(
     135deg,
@@ -88,13 +88,11 @@
   border-top: 3px solid #FFF176;
   position: relative;
 
-  /* ANIMACIÓN ESPECTÁCULO */
   transition:
     max-height 1.8s cubic-bezier(0.06, 0.95, 0.18, 1.0),
     opacity    0.5s ease,
     transform  1.8s cubic-bezier(0.06, 0.95, 0.18, 1.0);
 
-  /* Empieza ligeramente desplazado abajo */
   transform: translateY(30px);
 }
 
@@ -106,7 +104,7 @@
   transform: translateY(0);
 }
 
-/* ── Destello de luz — lento y dramático ── */
+/* ── Destello de luz ── */
 .ia-panel::after {
   content: '';
   position: absolute;
@@ -134,7 +132,7 @@
   100% { left: 180%;  opacity: 0; }
 }
 
-/* ── Partículas flotantes ── */
+/* ── Partículas ── */
 .ia-aura {
   position: absolute;
   inset: 0;
@@ -156,7 +154,6 @@
 .ia-particle:nth-child(4) { width: 7px; height: 7px; left: 68%; }
 .ia-particle:nth-child(5) { width: 5px; height: 5px; left: 87%; }
 
-/* Partículas más lentas y escalonadas */
 .ia-panel-wrapper.ia-open .ia-particle:nth-child(1) { animation: ia-float 2.8s ease-in infinite 0.4s;  }
 .ia-panel-wrapper.ia-open .ia-particle:nth-child(2) { animation: ia-float 3.0s ease-in infinite 0.9s;  }
 .ia-panel-wrapper.ia-open .ia-particle:nth-child(3) { animation: ia-float 2.6s ease-in infinite 0.6s;  }
@@ -169,7 +166,7 @@
   100% { transform: translateY(-100px) scale(0);   opacity: 0;    }
 }
 
-/* ── Cabecera del panel ── */
+/* ── Cabecera ── */
 .ia-panel-header {
   display: flex;
   align-items: center;
@@ -181,7 +178,6 @@
   background: inherit;
 }
 
-/* Título — aparece con retraso escalonado */
 .ia-panel-title {
   display: flex;
   align-items: center;
@@ -205,7 +201,6 @@
   text-shadow: 0 1px 0 rgba(255,255,255,0.45);
 }
 
-/* Bolts ⚡ — pulso más lento y dramático */
 .ia-bolt {
   font-size: 17px;
   display: inline-block;
@@ -217,7 +212,6 @@
   to   { transform: scale(1.35); filter: brightness(1.5); }
 }
 
-/* Badge POWER MODE — aparece el último */
 .ia-power-badge {
   font-size: 9px;
   font-weight: 900;
@@ -248,14 +242,8 @@
   padding: 4px 18px 28px;
   position: relative;
   z-index: 1;
-
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
-/* Contenido "en construcción" — el último en aparecer */
 .ia-construction {
   text-align: center;
   padding: 24px 8px;
@@ -297,7 +285,7 @@
   opacity: 0.82;
 }
 
-/* ── Reset instantáneo al cerrar ── */
+/* ── Reset al cerrar ── */
 .ia-panel-wrapper:not(.ia-open) .ia-panel-title,
 .ia-panel-wrapper:not(.ia-open) .ia-construction,
 .ia-panel-wrapper:not(.ia-open) .ia-power-badge {
@@ -359,14 +347,14 @@
 }
 
 /* ================================================
-   PADDING contenido principal
+   PADDING
    ================================================ */
 .container {
   padding-bottom: 44px;
 }
 
 /* ================================================
-   RESPONSIVE MÓVIL
+   RESPONSIVE
    ================================================ */
 @media (max-width: 600px) {
   .ia-panel-wrapper.ia-open .ia-panel {
