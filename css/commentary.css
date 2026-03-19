@@ -256,6 +256,21 @@
     margin-left: auto;
 }
 
+/* Versículos de un rango/cita resaltados */
+.verse-highlighted {
+    background-color: var(--verse-highlight-bg, rgba(107, 155, 210, 0.12));
+    border-left: 3px solid var(--verse-highlight-border, #6b9bd2);
+    padding-left: 0.6rem;
+    border-radius: 0 4px 4px 0;
+    transition: background-color 0.3s;
+}
+
+/* Dark mode */
+[data-theme="dark"] .verse-highlighted {
+    --verse-highlight-bg: rgba(107, 155, 210, 0.18);
+    --verse-highlight-border: #7aaee0;
+}
+
 /* =====================================================
    CONTROLES DEL PANEL (Minimizar, Maximizar, Cerrar)
    ===================================================== */
