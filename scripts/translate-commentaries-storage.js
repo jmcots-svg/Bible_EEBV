@@ -310,10 +310,13 @@ class RoundRobinPool {
     if (!s) return;
     s.consecutive429s++;
     const m = MODELS.find(x => x.name === modelName);
-    if (isDailyQuota || s.consecutive429s >= 3) {
+    
+    // Solo bloqueamos 24h si el mensaje explícitamente dice "quota" o "daily"
+    if (isDailyQuota) {
       s.requestsToday  = m?.rpd ?? 999;
       s.exhaustedUntil = Date.now() + 86_400_000;
     } else {
+      // Castigo progresivo en minutos: 1min, 2min, 3min...
       s.exhaustedUntil = Date.now() + s.consecutive429s * 60_000;
     }
   }
@@ -422,6 +425,10 @@ class RoundRobinPool {
           // No contar como attempt, buscar otra key
           attempt--;
           if (attempt < 0) attempt = 0;
+          
+          // ⚠️ CORRECCIÓN: Pausa aleatoria para evitar quemar todas las keys en 1 segundo
+          await sleep(2000 + Math.random() * 2000); 
+          
         } else if (is503) {
           const wait = 15_000 * (attempt + 1);
           console.error(
@@ -535,7 +542,7 @@ async function translateCommentaryFile(abbr, sourceEntries, pool, state, isGitEn
   const startTime    = Date.now();
 
   // Concurrencia = número de keys (una petición simultánea por key)
-  const CONCURRENCY = Math.min(GEMINI_KEYS.length, 20);
+  const CONCURRENCY = 5;
   const limit       = pLimit(CONCURRENCY);
 
   const processBatch = async (batch) => {
