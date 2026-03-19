@@ -15,7 +15,7 @@ const ALL_GEMINI_KEYS = (process.env.GEMINI_API_KEYS || "")
   .map(k => k.trim())
   .filter(Boolean);
 
-const ACTIVE_KEYS_COUNT = 10;
+const ACTIVE_KEYS_COUNT = 5;
 const GEMINI_KEYS = ALL_GEMINI_KEYS.slice(0, ACTIVE_KEYS_COUNT);
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || GEMINI_KEYS.length === 0) {
