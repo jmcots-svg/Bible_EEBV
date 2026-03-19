@@ -9,7 +9,7 @@ require("dotenv").config();
 // ═══════════════════════════════════════════════════════════════════
 const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const TARGET_LANG          = process.env.TARGET_LANG || "ca";
+const TARGET_LANG          = process.env.TARGET_LANG || "es";
 const SOURCE_LANG          = "en";
 const BUCKET_NAME          = "Commentaries";
 
@@ -42,8 +42,13 @@ const MODELS = [
 ];
 
 const TARGET_LANG_NAME =
-  TARGET_LANG === "es" ? "Spanish" :
-  TARGET_LANG === "ca" ? "Catalan"  :
+  TARGET_LANG === "es" ? "Spanish"    :
+  TARGET_LANG === "ca" ? "Catalan"    :
+  TARGET_LANG === "fr" ? "French"     :
+  TARGET_LANG === "de" ? "German"     :
+  TARGET_LANG === "pt" ? "Portuguese" :
+  TARGET_LANG === "it" ? "Italian"    :
+  TARGET_LANG === "nl" ? "Dutch"      :  // ← añadir aquí
   TARGET_LANG;
 
 let abortProcess = false;
