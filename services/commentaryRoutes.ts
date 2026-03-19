@@ -1,6 +1,13 @@
 import { Pool } from "npm:@neondatabase/serverless";
 import { translateCommentaryOnTheFly } from "./translator.ts";
 
+// --- MINI CACHÉ PARA STORAGE ---
+let mhcJsonCache: any[] | null = null;
+let mhcCacheTimestamp = 0;
+// -------------------------------
+
+type MakeHeadersFn = (cacheControl?: string) => Headers;
+
 type MakeHeadersFn = (cacheControl?: string) => Headers;
 
 export async function handleCommentaryRoutes(
