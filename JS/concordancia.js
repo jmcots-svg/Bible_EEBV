@@ -238,34 +238,13 @@ export function renderSearchResults(data) {
 // ================================================
 
 export function initIAPanel() {
-  const wrapper    = document.getElementById('iaPanelWrapper');
+  const wrapper = document.getElementById('iaPanelWrapper');
   const triggerBar = document.getElementById('iaTriggerBar');
 
   if (!wrapper || !triggerBar) return;
 
-  function updatePanelHeight() {
-    const header   = document.querySelector('header');
-    const modeTabs = document.querySelector('.mode-tabs');
-    const headerH  = header   ? header.offsetHeight  : 50;
-    const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
-    
-    const topPosition = headerH + tabsH;
-    wrapper.style.setProperty('--ia-panel-top', `${topPosition}px`);
-    
-    console.log('IA Panel top:', topPosition);
-  }
-
-  updatePanelHeight();
-  window.addEventListener('resize', updatePanelHeight);
-
   triggerBar.addEventListener('click', () => {
-    if (wrapper.classList.contains('ia-open')) {
-      wrapper.classList.remove('ia-open');
-    } else {
-      updatePanelHeight();
-      wrapper.classList.add('ia-open');
-      if (navigator.vibrate) navigator.vibrate([25, 15, 50]);
-    }
+    wrapper.classList.toggle('ia-open');
   });
 }
 
