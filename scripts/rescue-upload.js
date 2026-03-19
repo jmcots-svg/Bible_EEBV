@@ -1,12 +1,10 @@
 // scripts/rescue-upload.js
-// Se ejecuta SIEMPRE al final del workflow.
-// Busca ficheros *_tmp_{lang}.json en data/commentaries/{lang}/
-// y los sube a Supabase como {abbr}_{lang}.json (versión usable).
-// Si el script principal ya los borró (traducción completa), no hace nada.
+// Versión sin dependencias externas — usa https nativo de Node.js
+// Se ejecuta SIEMPRE al final del workflow (if: always())
 
-const { createClient } = require("@supabase/supabase-js");
-const fs   = require("fs");
-const path = require("path");
+const fs    = require("fs");
+const path  = require("path");
+const https = require("https");
 
 const SUPABASE_URL         = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -15,45 +13,68 @@ const BUCKET_NAME          = "Commentaries";
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error("❌ Faltan variables de entorno");
-  process.exit(1);
+  process.exit(0); // exit 0 para no romper el workflow
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const DATA_DIR = path.join(process.cwd(), "data", "commentaries", TARGET_LANG);
 
-// ── Buscar todos los tmp del idioma ──────────────────────────────
+// ── Upload directo a Supabase Storage via REST API ───────────────
+function uploadToStorage(filename, jsonContent) {
+  return new Promise((resolve) => {
+    // Supabase Storage REST endpoint
+    const urlPath = `/storage/v1/object/${BUCKET_NAME}/${filename}`;
+    const host    = SUPABASE_URL.replace("https://", "").replace("http://", "");
+    const body    = Buffer.from(JSON.stringify(jsonContent, null, 2), "utf8");
+
+    const options = {
+      hostname: host,
+      path:     urlPath,
+      method:   "POST",         // POST con upsert header = crear o sobreescribir
+      headers: {
+        "Authorization":  `Bearer ${SUPABASE_SERVICE_KEY}`,
+        "Content-Type":   "application/json",
+        "Content-Length": body.length,
+        "x-upsert":       "true",   // sobreescribe si existe
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve({ ok: true });
+        } else {
+          resolve({ ok: false, status: res.statusCode, body: data });
+        }
+      });
+    });
+
+    req.on("error", (e) => resolve({ ok: false, error: e.message }));
+    req.write(body);
+    req.end();
+  });
+}
+
+// ── Buscar tmp files ─────────────────────────────────────────────
 function findTmpFiles() {
-  if (!fs.existsSync(DATA_DIR)) return [];
+  if (!fs.existsSync(DATA_DIR)) {
+    console.log(`   📁 No existe el directorio: ${DATA_DIR}`);
+    return [];
+  }
 
   return fs.readdirSync(DATA_DIR)
     .filter(name => name.match(new RegExp(`_tmp_${TARGET_LANG}\\.json$`)))
     .map(name => ({
       tmpName:   name,
       tmpPath:   path.join(DATA_DIR, name),
-      // luther_tmp_ca.json → luther_ca.json
       finalName: name.replace(`_tmp_${TARGET_LANG}`, `_${TARGET_LANG}`),
     }));
 }
 
-async function uploadToStorage(filename, payload) {
-  const blob = new Blob(
-    [JSON.stringify(payload, null, 2)],
-    { type: "application/json" }
-  );
-  const { error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(filename, blob, { contentType: "application/json", upsert: true });
-
-  if (error) {
-    console.error(`  ❌ Upload fallido (${filename}): ${error.message}`);
-    return false;
-  }
-  return true;
-}
-
 async function main() {
   console.log(`\n🚨 Rescue upload — idioma: ${TARGET_LANG}`);
-  console.log(`   Buscando tmp en: ${DATA_DIR}\n`);
+  console.log(`   Directorio: ${DATA_DIR}\n`);
 
   const tmpFiles = findTmpFiles();
 
@@ -62,7 +83,7 @@ async function main() {
     return;
   }
 
-  console.log(`   📋 Ficheros tmp encontrados: ${tmpFiles.length}`);
+  console.log(`   📋 Ficheros tmp encontrados: ${tmpFiles.length}\n`);
 
   for (const { tmpName, tmpPath, finalName } of tmpFiles) {
     let data;
@@ -75,18 +96,24 @@ async function main() {
 
     const entries = Array.isArray(data) ? data.length : "?";
     process.stdout.write(
-      `   🚀 ${tmpName} (${entries} entradas) → ${finalName} en Supabase...`
+      `   🚀 ${tmpName} → ${finalName} (${entries} entradas)...`
     );
 
-    const ok = await uploadToStorage(finalName, data);
-    console.log(ok ? " ✅" : " ❌");
+    const result = await uploadToStorage(finalName, data);
+
+    if (result.ok) {
+      console.log(" ✅");
+    } else {
+      console.log(` ❌ (${result.status || result.error})`);
+      if (result.body) console.log(`      ${result.body}`);
+    }
   }
 
   console.log("\n   🏁 Rescue upload completado.");
 }
 
 main().catch(err => {
-  console.error("❌ Error en rescue-upload:", err);
-  // No hacer process.exit(1) para no marcar el step como fallido
-  // si el script principal ya terminó bien
+  // Nunca lanzar exit(1) — este script no debe romper el workflow
+  console.error("❌ Error en rescue-upload:", err.message);
+  process.exit(0);
 });
