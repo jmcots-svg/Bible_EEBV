@@ -3,22 +3,39 @@
    ===================================================== */
 
 /* =====================================================
-   SKIN 1 — Classic (azul/violeta PASTEL)
+   SKIN 1 — Classic (azul / lila sobrio y moderno)
    ===================================================== */
 :root,
 [data-skin="classic"] {
-    --bg-body:       linear-gradient(180deg, #A8B8F0 0%, #C8A8E0 100%);
-    --accent:        #8898E8;
-    --bg-filters:    #f8f9fa;
-    --bg-container:  #ffffff;
-    --border:        #dee2e6;
-    --text-main:     #2d3748;
-    --text-muted:    #495057;
-    --card-hover:    #f0f4ff;
-    --bg-header:     linear-gradient(180deg, #4A5A8A 0%, #6A7AAA 100%);
-    --tab-active-text: #3A4A6A;
+    --bg-body:       linear-gradient(180deg, #6B7AA8 0%, #8878A8 100%);
+    --accent:        #5A6A98;
+    --bg-filters:    #F5F6F9;
+    --bg-container:  #FFFFFF;
+    --border:        #D8DAE8;
+    --text-main:     #2A2D3E;
+    --text-muted:    #5A5D70;
+    --card-hover:    #ECEEF5;
+    --bg-header:     linear-gradient(180deg, #3A4468 0%, #4A5478 100%);
+    --tab-active-text: #2A2D3E;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.2);
+}
+
+/* Classic oscuro */
+[data-theme="dark"][data-skin="classic"],
+[data-theme="dark"]:not([data-skin]) {
+    --bg-body:      linear-gradient(180deg, #181A28 0%, #1E2030 100%);
+    --bg-container: #1E2030;
+    --bg-filters:   #282A3A;
+    --border:       #3A3D50;
+    --text-main:    #E8E9F0;
+    --text-muted:   #A0A3B8;
+    --accent:       #8A90C0;
+    --card-hover:   #282A3A;
+    --bg-header:    linear-gradient(180deg, #0E1018 0%, #181A28 100%);
+    --tab-active:   rgba(255,255,255,0.15);
+    --tab-inactive: rgba(255,255,255,0.1);
+    --tab-active-text: #E8E9F0;
 }
 
 /* =====================================================
@@ -258,9 +275,9 @@
 .skin-dot::before { left: 0; }
 .skin-dot::after  { right: 0; }
 
-/* Classic (pastel) */
-.skin-dot[data-skin="classic"]::before     { background: #A8B8F0; }
-.skin-dot[data-skin="classic"]::after      { background: #C8A8E0; }
+/* Classic (sobrio) */
+.skin-dot[data-skin="classic"]::before     { background: #6B7AA8; }
+.skin-dot[data-skin="classic"]::after      { background: #8878A8; }
 
 /* Celeste */
 .skin-dot[data-skin="celeste"]::before     { background: #7B8DC4; }
