@@ -3,20 +3,21 @@
    ===================================================== */
 
 /* =====================================================
-   SKIN 1 — Classic (azul / lila sobrio y moderno)
+   SKIN 1 — Classic (Azul tecnológico y Violeta limpios)
    ===================================================== */
 :root,
 [data-skin="classic"] {
-    --bg-body:       linear-gradient(180deg, #6B7AA8 0%, #8878A8 100%);
-    --accent:        #5A6A98;
-    --bg-filters:    #F5F6F9;
+    /* Fondo: Azul tech brillante hacia Violeta puro, sin tonos grises */
+    --bg-body:       linear-gradient(180deg, #4870FF 0%, #9B51E0 100%);
+    --accent:        #4870FF;
+    --bg-filters:    #F4F6FB;
     --bg-container:  #FFFFFF;
-    --border:        #D8DAE8;
-    --text-main:     #2A2D3E;
-    --text-muted:    #5A5D70;
-    --card-hover:    #ECEEF5;
-    --bg-header:     linear-gradient(180deg, #3A4468 0%, #4A5478 100%);
-    --tab-active-text: #2A2D3E;
+    --border:        #DDE2F0;
+    --text-main:     #1E2335;
+    --text-muted:    #5A627B;
+    --card-hover:    #EEF2FC;
+    --bg-header:     linear-gradient(180deg, #243B8B 0%, #582B8A 100%);
+    --tab-active-text: #243B8B;
     --tab-active:    rgba(255,255,255,0.95);
     --tab-inactive:  rgba(255,255,255,0.2);
 }
@@ -24,19 +25,20 @@
 /* Classic oscuro */
 [data-theme="dark"][data-skin="classic"],
 [data-theme="dark"]:not([data-skin]) {
-    --bg-body:      linear-gradient(180deg, #181A28 0%, #1E2030 100%);
-    --bg-container: #1E2030;
-    --bg-filters:   #282A3A;
-    --border:       #3A3D50;
-    --text-main:    #E8E9F0;
-    --text-muted:   #A0A3B8;
-    --accent:       #8A90C0;
-    --card-hover:   #282A3A;
-    --bg-header:    linear-gradient(180deg, #0E1018 0%, #181A28 100%);
+    --bg-body:      linear-gradient(180deg, #0F172A 0%, #2E1065 100%);
+    --bg-container: #1E293B;
+    --bg-filters:   #2A344A;
+    --border:       #3E4A68;
+    --text-main:    #F8FAFC;
+    --text-muted:   #94A3B8;
+    --accent:       #6B8AFF;
+    --card-hover:   #24304A;
+    --bg-header:    linear-gradient(180deg, #070B14 0%, #170833 100%);
     --tab-active:   rgba(255,255,255,0.15);
     --tab-inactive: rgba(255,255,255,0.1);
-    --tab-active-text: #E8E9F0;
+    --tab-active-text: #F8FAFC;
 }
+
 
 /* =====================================================
    SKIN 2 — Celeste (azul pizarra / lavanda)
@@ -93,25 +95,87 @@
 }
 
 /* =====================================================
+   SKIN 5 — Ocean (cyan / aqua PASTEL)
+   ===================================================== */
+[data-skin="ocean"] {
+    --bg-body:       linear-gradient(180deg, #A8E0F0 0%, #78B8D0 100%);
+    --accent:        #60A8C8;
+    --bg-filters:    #E8F6FA;
+    --bg-container:  #F2FAFB;
+    --border:        #A8D4E8;
+    --text-main:     #1A4050;
+    --text-muted:    #4A7A8A;
+    --card-hover:    #D0EDF5;
+    --bg-header:     linear-gradient(180deg, #2A5068 0%, #3A7090 100%);
+    --tab-active-text: #1A4050;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.2);
+    --highlight-bg:  #FFF3C0;
+    --highlight-text: #7A5A00;
+}
+
+/* Ocean oscuro */
+[data-theme="dark"][data-skin="ocean"] {
+    --bg-body:      linear-gradient(180deg, #001824 0%, #002A3A 100%);
+    --bg-container: #001E2C;
+    --bg-filters:   #002638;
+    --border:       #005A78;
+    --text-main:    #D0EDF5;
+    --text-muted:   #60A8C0;
+    --accent:       #00BBD8;
+    --card-hover:   #003048;
+    --bg-header:    linear-gradient(180deg, #000E16 0%, #001824 100%);
+    --tab-active:   rgba(255,255,255,0.15);
+    --tab-inactive: rgba(255,255,255,0.08);
+    --tab-active-text: #D0EDF5;
+}
+
+
+/* =====================================================
+   SKIN 6 — Sunset (atardecer real: melocotón / coral / índigo)
+   ===================================================== */
+
+[data-skin="sunset"] {
+    --bg-body:       linear-gradient(180deg, #F8C8A8 0%, #E89878 50%, #6858A0 100%);
+    --accent:        #D07850;
+    --bg-filters:    #FDF6F2;
+    --bg-container:  #FFFBF8;
+    --border:        #E8D0C0;
+    --text-main:     #3A2820;
+    --text-muted:    #7A6050;
+    --card-hover:    #FFF0E8;
+    --bg-header:     linear-gradient(180deg, #4A3878 0%, #6858A0 100%);
+    --tab-active-text: #3A2820;
+    --tab-active:    rgba(255,255,255,0.95);
+    --tab-inactive:  rgba(255,255,255,0.25);
+    --highlight-bg:  #F0E8FF;
+    --highlight-text: #4A3878;
+}
+
+/* Sunset oscuro */
+[data-theme="dark"][data-skin="sunset"] {
+    --bg-body:      linear-gradient(180deg, #2A1810 0%, #281828 50%, #181830 100%);
+    --bg-container: #1E1818;
+    --bg-filters:   #282020;
+    --border:       #4A3830;
+    --text-main:    #F8E8E0;
+    --text-muted:   #C0A090;
+    --accent:       #F0A070;
+    --card-hover:   #302020;
+    --bg-header:    linear-gradient(180deg, #181028 0%, #281838 100%);
+    --tab-active:   rgba(255,255,255,0.12);
+    --tab-inactive: rgba(255,255,255,0.07);
+    --tab-active-text: #F8E8E0;
+}
+
+/* Selector dot */
+.skin-dot[data-skin="sunset"]::before { background: #F8C8A8; }
+.skin-dot[data-skin="sunset"]::after  { background: #6858A0; }
+
+/* =====================================================
    MODO OSCURO POR SKIN
    ===================================================== */
 
-/* Classic oscuro */
-[data-theme="dark"][data-skin="classic"],
-[data-theme="dark"]:not([data-skin]) {
-    --bg-body:      linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-    --bg-container: #1e293b;
-    --bg-filters:   #334155;
-    --border:       #4a5568;
-    --text-main:    #f1f5f9;
-    --text-muted:   #cbd5e0;
-    --accent:       #a5b4fc;
-    --card-hover:   #2d3a4f;
-    --bg-header:    linear-gradient(180deg, #020617 0%, #0f172a 100%);
-    --tab-active:   rgba(255,255,255,0.15);
-    --tab-inactive: rgba(255,255,255,0.1);
-    --tab-active-text: #e2e8f0;
-}
 
 /* Celeste oscuro */
 [data-theme="dark"][data-skin="celeste"] {
@@ -161,77 +225,6 @@
     --tab-active-text: #F8E8F0;
 }
 
-/* =====================================================
-   SKIN 5 — Ocean (cyan / aqua PASTEL)
-   ===================================================== */
-[data-skin="ocean"] {
-    --bg-body:       linear-gradient(180deg, #A8E0F0 0%, #78B8D0 100%);
-    --accent:        #60A8C8;
-    --bg-filters:    #E8F6FA;
-    --bg-container:  #F2FAFB;
-    --border:        #A8D4E8;
-    --text-main:     #1A4050;
-    --text-muted:    #4A7A8A;
-    --card-hover:    #D0EDF5;
-    --bg-header:     linear-gradient(180deg, #2A5068 0%, #3A7090 100%);
-    --tab-active-text: #1A4050;
-    --tab-active:    rgba(255,255,255,0.95);
-    --tab-inactive:  rgba(255,255,255,0.2);
-    --highlight-bg:  #FFF3C0;
-    --highlight-text: #7A5A00;
-}
-
-/* Ocean oscuro */
-[data-theme="dark"][data-skin="ocean"] {
-    --bg-body:      linear-gradient(180deg, #001824 0%, #002A3A 100%);
-    --bg-container: #001E2C;
-    --bg-filters:   #002638;
-    --border:       #005A78;
-    --text-main:    #D0EDF5;
-    --text-muted:   #60A8C0;
-    --accent:       #00BBD8;
-    --card-hover:   #003048;
-    --bg-header:    linear-gradient(180deg, #000E16 0%, #001824 100%);
-    --tab-active:   rgba(255,255,255,0.15);
-    --tab-inactive: rgba(255,255,255,0.08);
-    --tab-active-text: #D0EDF5;
-}
-
-/* =====================================================
-   SKIN 6 — Sunset JUVENIL (rosa chicle / lavanda / menta)
-   ===================================================== */
-[data-skin="sunset"] {
-    --bg-body:       linear-gradient(180deg, #FFB8D0 0%, #C8B8F0 50%, #A8E8D8 100%);
-    --accent:        #E888A8;
-    --bg-filters:    #FFF4F8;
-    --bg-container:  #FFFAFC;
-    --border:        #F0C8D8;
-    --text-main:     #4A2838;
-    --text-muted:    #8A6078;
-    --card-hover:    #FFE8F0;
-    --bg-header:     linear-gradient(180deg, #7868A8 0%, #9878B8 100%);
-    --tab-active-text: #4A2838;
-    --tab-active:    rgba(255,255,255,0.95);
-    --tab-inactive:  rgba(255,255,255,0.25);
-    --highlight-bg:  #E0F8F0;
-    --highlight-text: #2A6858;
-}
-
-/* Sunset oscuro */
-[data-theme="dark"][data-skin="sunset"] {
-    --bg-body:      linear-gradient(180deg, #2A1828 0%, #1A1830 50%, #182828 100%);
-    --bg-container: #201820;
-    --bg-filters:   #281828;
-    --border:       #5A3850;
-    --text-main:    #F8E8F0;
-    --text-muted:   #C090A8;
-    --accent:       #FF90B8;
-    --card-hover:   #302030;
-    --bg-header:    linear-gradient(180deg, #1A1028 0%, #2A1838 100%);
-    --tab-active:   rgba(255,255,255,0.12);
-    --tab-inactive: rgba(255,255,255,0.07);
-    --tab-active-text: #F8E8F0;
-}
 
 /* =====================================================
    SELECTOR DE SKIN (UI en panel ajustes)
@@ -275,9 +268,9 @@
 .skin-dot::before { left: 0; }
 .skin-dot::after  { right: 0; }
 
-/* Classic (sobrio) */
-.skin-dot[data-skin="classic"]::before     { background: #6B7AA8; }
-.skin-dot[data-skin="classic"]::after      { background: #8878A8; }
+/* Classic (Azul tech y Violeta) */
+.skin-dot[data-skin="classic"]::before     { background: #4870FF; }
+.skin-dot[data-skin="classic"]::after      { background: #9B51E0; }
 
 /* Celeste */
 .skin-dot[data-skin="celeste"]::before     { background: #7B8DC4; }
