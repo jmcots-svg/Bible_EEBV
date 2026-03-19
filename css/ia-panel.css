@@ -104,9 +104,9 @@
   transform: translateY(30px);
 }
 
-/* Estado abierto */
+/* Estado abierto — usa variable calculada por JS */
 .ia-panel-wrapper.ia-open .ia-panel {
-  max-height: calc(100vh - 50px - 52px - 36px);
+  max-height: var(--ia-panel-max-height, 70vh); /* fallback 70vh */
   opacity: 1;
   overflow-y: auto;
   transform: translateY(0);
