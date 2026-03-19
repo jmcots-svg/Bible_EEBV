@@ -226,6 +226,7 @@ class RoundRobinPool {
     }));
 
     this._cursor = 0;
+    this.isSleeping = false; // <--- NUEVO
   }
 
   _initModelState() {
@@ -368,7 +369,13 @@ class RoundRobinPool {
       const key = this.getNextKey();
 
       if (!key) {
-        console.error(`\n⏳ Todas las keys en cooldown, esperando 60s...`);
+        // Solo imprime el error si no estaba ya durmiendo
+        if (!this.isSleeping) {
+          this.isSleeping = true;
+          console.error(`\n⏳ Límite de Google alcanzado. Recuperando cuota durante 60s...`);
+          // A los 60s liberamos el candado para que pueda volver a avisar en el futuro
+          setTimeout(() => { this.isSleeping = false; }, 60_000);
+        }
         await sleep(60_000);
         attempt--; // no contar este intento
         continue;
@@ -542,7 +549,7 @@ async function translateCommentaryFile(abbr, sourceEntries, pool, state, isGitEn
   const startTime    = Date.now();
 
   // Concurrencia = número de keys (una petición simultánea por key)
-  const CONCURRENCY = 5;
+  const CONCURRENCY = 2
   const limit       = pLimit(CONCURRENCY);
 
   const processBatch = async (batch) => {
