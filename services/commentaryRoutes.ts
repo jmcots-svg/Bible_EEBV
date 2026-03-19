@@ -8,8 +8,6 @@ let mhcCacheTimestamp = 0;
 
 type MakeHeadersFn = (cacheControl?: string) => Headers;
 
-type MakeHeadersFn = (cacheControl?: string) => Headers;
-
 export async function handleCommentaryRoutes(
   path: string,
   req: Request,
@@ -18,6 +16,9 @@ export async function handleCommentaryRoutes(
   makeHeaders: MakeHeadersFn
 ): Promise<Response | null> {
 
+  // =====================================================
+  // 1. RUTA: /api/commentary/sources
+  // =====================================================
   if (path === "/api/commentary/sources") {
     const bookOrder = Number(url.searchParams.get("bookOrder"));
     const chapter = Number(url.searchParams.get("chapter"));
@@ -37,13 +38,13 @@ export async function handleCommentaryRoutes(
         + " COUNT(ce.id) as entry_count"
         + " FROM \"CommentarySource\" cs"
         + " JOIN \"CommentaryEntry\" ce ON ce.\"sourceId\" = cs.id"
-        + " WHERE ce.\"bookOrder\" = \$1"
-        + " AND ce.chapter = \$2"
+        + " WHERE ce.\"bookOrder\" = \\$1"
+        + " AND ce.chapter = \\$2"
         + " AND ce.language = 'en'";
 
       if (verse) {
         query += " AND (ce.\"verseStart\" IS NULL"
-          + " OR (ce.\"verseStart\" <= \$3 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \$3)))";
+          + " OR (ce.\"verseStart\" <= \\$3 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \\$3)))";
         params.push(Number(verse));
       }
 
@@ -51,10 +52,52 @@ export async function handleCommentaryRoutes(
         + " ORDER BY cs.name ASC";
 
       const { rows } = await pool.query(query, params);
-      //return new Response(JSON.stringify(rows), {
-      //  headers: makeHeaders("public, max-age=3600"),
-      //});
-      //}
+      return new Response(JSON.stringify(rows), {
+        headers: makeHeaders("public, max-age=3600"),
+      });
+    }
+
+    // SI NO ES INGLÉS (Ej: Español):
+    const params: any[] = [bookOrder, chapter, language];
+
+    let verseCondition = "";
+    if (verse) {
+      verseCondition = " AND (ce.\"verseStart\" IS NULL"
+        + " OR (ce.\"verseStart\" <= \\$4 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \\$4)))";
+      params.push(Number(verse));
+    }
+
+    const query = "WITH english_entries AS ("
+      + "  SELECT ce.\"sourceId\", COUNT(*) as en_count"
+      + "  FROM \"CommentaryEntry\" ce"
+      + "  WHERE ce.\"bookOrder\" = \\$1"
+      + "  AND ce.chapter = \\$2"
+      + "  AND ce.language = 'en'"
+      + verseCondition
+      + "  GROUP BY ce.\"sourceId\""
+      + "),"
+      + "translated_entries AS ("
+      + "  SELECT ce.\"sourceId\", COUNT(*) as trans_count"
+      + "  FROM \"CommentaryEntry\" ce"
+      + "  WHERE ce.\"bookOrder\" = \\$1"
+      + "  AND ce.chapter = \\$2"
+      + "  AND ce.language = \\$3"
+      + verseCondition
+      + "  GROUP BY ce.\"sourceId\""
+      + ")"
+      + " SELECT"
+      + "  cs.id, cs.name, cs.\"fullName\", cs.author, cs.description,"
+      + "  COALESCE(ee.en_count, 0) as english_count,"
+      + "  COALESCE(te.trans_count, 0) as translated_count,"
+      + "  GREATEST(COALESCE(ee.en_count, 0), COALESCE(te.trans_count, 0)) as entry_count,"
+      + "  CASE WHEN COALESCE(te.trans_count, 0) < COALESCE(ee.en_count, 0) THEN true ELSE false END as \"needsTranslation\""
+      + " FROM \"CommentarySource\" cs"
+      + " LEFT JOIN english_entries ee ON ee.\"sourceId\" = cs.id"
+      + " LEFT JOIN translated_entries te ON te.\"sourceId\" = cs.id"
+      + " WHERE COALESCE(ee.en_count, 0) > 0 OR COALESCE(te.trans_count, 0) > 0"
+      + " ORDER BY cs.name ASC";
+
+    const { rows } = await pool.query(query, params);
 
     // =======================================================
     // FIX PARA STORAGE: Engañamos al frontend diciéndole que 
@@ -72,52 +115,11 @@ export async function handleCommentaryRoutes(
     return new Response(JSON.stringify(rows), {
       headers: makeHeaders("public, max-age=3600"),
     });
-
-    const params: any[] = [bookOrder, chapter, language];
-
-    let verseCondition = "";
-    if (verse) {
-      verseCondition = " AND (ce.\"verseStart\" IS NULL"
-        + " OR (ce.\"verseStart\" <= \$4 AND (ce.\"verseEnd\" IS NULL OR ce.\"verseEnd\" >= \$4)))";
-      params.push(Number(verse));
-    }
-
-    const query = "WITH english_entries AS ("
-      + "  SELECT ce.\"sourceId\", COUNT(*) as en_count"
-      + "  FROM \"CommentaryEntry\" ce"
-      + "  WHERE ce.\"bookOrder\" = \$1"
-      + "  AND ce.chapter = \$2"
-      + "  AND ce.language = 'en'"
-      + verseCondition
-      + "  GROUP BY ce.\"sourceId\""
-      + "),"
-      + "translated_entries AS ("
-      + "  SELECT ce.\"sourceId\", COUNT(*) as trans_count"
-      + "  FROM \"CommentaryEntry\" ce"
-      + "  WHERE ce.\"bookOrder\" = \$1"
-      + "  AND ce.chapter = \$2"
-      + "  AND ce.language = \$3"
-      + verseCondition
-      + "  GROUP BY ce.\"sourceId\""
-      + ")"
-      + " SELECT"
-      + "  cs.id, cs.name, cs.\"fullName\", cs.author, cs.description,"
-      + "  COALESCE(ee.en_count, 0) as english_count,"
-      + "  COALESCE(te.trans_count, 0) as translated_count,"
-      + "  GREATEST(COALESCE(ee.en_count, 0), COALESCE(te.trans_count, 0)) as entry_count,"
-      + "  CASE WHEN COALESCE(te.trans_count, 0) < COALESCE(ee.en_count, 0) THEN true ELSE false END as \"needsTranslation\""
-      + " FROM \"CommentarySource\" cs"
-      + " LEFT JOIN english_entries ee ON ee.\"sourceId\" = cs.id"
-      + " LEFT JOIN translated_entries te ON te.\"sourceId\" = cs.id"
-      + " WHERE COALESCE(ee.en_count, 0) > 0 OR COALESCE(te.trans_count, 0) > 0"
-      + " ORDER BY cs.name ASC";
-
-    const { rows } = await pool.query(query, params);
-    return new Response(JSON.stringify(rows), {
-      headers: makeHeaders("public, max-age=3600"),
-    });
   }
 
+  // =====================================================
+  // 2. RUTA: /api/commentary
+  // =====================================================
   if (path === "/api/commentary") {
     const bookOrder = Number(url.searchParams.get("bookOrder"));
     const chapter = Number(url.searchParams.get("chapter"));
@@ -136,20 +138,17 @@ export async function handleCommentaryRoutes(
     // NUEVA LÓGICA: LEER DESDE SUPABASE STORAGE (MHC Español)
     // =========================================================
     if (language === "es" && sourceId) {
-      // 1. Verificamos rápido si el sourceId corresponde a 'MHC'
       const { rows: sourceCheck } = await pool.query(
-        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \$1`,
+        `SELECT name, "fullName", author FROM "CommentarySource" WHERE id = \\$1`,
         [Number(sourceId)]
       );
 
       if (sourceCheck.length > 0 && sourceCheck[0].name === "MHC") {
         try {
-          // 2. Usar caché en RAM (válido por 24 horas) para no descargar el JSON en cada petición
           const CACHE_TTL = 24 * 60 * 60 * 1000; 
           if (!mhcJsonCache || Date.now() - mhcCacheTimestamp > CACHE_TTL) {
             console.log("[Storage] Descargando MHC en español desde Supabase...");
-            // REEMPLAZA ESTA URL CON TU URL PÚBLICA REAL DE SUPABASE
-            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/sign/Commentaries/mhc_es.json?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV81YmQzYjUzMy0yNDllLTQ5MDctYWYzNS0yYzQ5MDYwODNjMzQiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJDb21tZW50YXJpZXMvbWhjX2VzLmpzb24iLCJpYXQiOjE3NzM5MjIyMzAsImV4cCI6NDkyNzUyMjIzMH0.-WpEPVKkjZGYvdKzT4z7JR7ZKMWuSJwky4W0rWKnHY4";
+            const storageUrl = "https://wielhfhthdzlvyujovqw.supabase.co/storage/v1/object/public/comentarios/mhc_es.json";
             
             const res = await fetch(storageUrl);
             if (res.ok) {
@@ -159,12 +158,10 @@ export async function handleCommentaryRoutes(
           }
 
           if (mhcJsonCache) {
-            // 3. Filtrar el JSON inmenso por libro y capítulo
             let filtered = mhcJsonCache.filter((c: any) => 
               c.bookOrder === bookOrder && c.chapter === chapter
             );
 
-            // Filtrar por versículo si lo piden
             if (verse) {
               const vNum = Number(verse);
               filtered = filtered.filter((c: any) => 
@@ -174,7 +171,6 @@ export async function handleCommentaryRoutes(
               );
             }
 
-            // 4. Mapear al formato exacto que tu frontend espera (igual que la base de datos)
             const entries = filtered.map((c: any, index: number) => ({
               id: `mhc-es-storage-${index}`, 
               englishId: null,
@@ -188,10 +184,9 @@ export async function handleCommentaryRoutes(
               source_name: sourceCheck[0].name,
               source_full_name: sourceCheck[0].fullName,
               author: sourceCheck[0].author,
-              needsTranslation: false, // Ya está en español
+              needsTranslation: false,
             }));
 
-            // 5. Enviar respuesta exitosa!
             return new Response(
               JSON.stringify({
                 bookOrder,
@@ -206,14 +201,11 @@ export async function handleCommentaryRoutes(
           }
         } catch (error) {
           console.error("[Storage] Error leyendo JSON de MHC:", error);
-          // Si falla, el código seguirá hacia abajo y usará tu lógica nativa de traducción
         }
       }
     }
-    // =========================================================
-    // FIN LÓGICA STORAGE
-    // =========================================================
 
+    // CONTINÚA CON INGLÉS SI NO ES STORAGE
     if (language === "en") {
       const params: any[] = [bookOrder, chapter];
       let paramIndex = 3;
@@ -224,8 +216,8 @@ export async function handleCommentaryRoutes(
         + " false as \"needsTranslation\""
         + " FROM \"CommentaryEntry\" ce"
         + " JOIN \"CommentarySource\" cs ON ce.\"sourceId\" = cs.id"
-        + " WHERE ce.\"bookOrder\" = \$1"
-        + " AND ce.chapter = \$2"
+        + " WHERE ce.\"bookOrder\" = \\$1"
+        + " AND ce.chapter = \\$2"
         + " AND ce.language = 'en'";
 
       if (sourceId) {
@@ -279,10 +271,10 @@ export async function handleCommentaryRoutes(
       + "   ON ce_lang.\"sourceId\" = ce_en.\"sourceId\""
       + "   AND ce_lang.\"bookOrder\" = ce_en.\"bookOrder\""
       + "   AND ce_lang.chapter = ce_en.chapter"
-      + "   AND ce_lang.language = \$3"
+      + "   AND ce_lang.language = \\$3"
       + "   AND COALESCE(ce_lang.\"divId\", '') = COALESCE(ce_en.\"divId\", '')"
-      + " WHERE ce_en.\"bookOrder\" = \$1"
-      + " AND ce_en.chapter = \$2"
+      + " WHERE ce_en.\"bookOrder\" = \\$1"
+      + " AND ce_en.chapter = \\$2"
       + " AND ce_en.language = 'en'";
 
     if (sourceId) {
@@ -332,6 +324,9 @@ export async function handleCommentaryRoutes(
     );
   }
 
+  // =====================================================
+  // 3. RUTA: /api/translate-commentary
+  // =====================================================
   if (path === "/api/translate-commentary" && req.method === "POST") {
     try {
       const body = await req.json();
@@ -345,7 +340,7 @@ export async function handleCommentaryRoutes(
       }
 
       const { rows: existing } = await pool.query(
-        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \$1 AND \"divId\" = \$2 AND language = \$3 LIMIT 1",
+        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \\$1 AND \"divId\" = \\$2 AND language = \\$3 LIMIT 1",
         [sourceId, divId, targetLang]
       );
 
@@ -357,7 +352,7 @@ export async function handleCommentaryRoutes(
       }
 
       const { rows: englishRows } = await pool.query(
-        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \$1 AND \"divId\" = \$2 AND language = 'en' LIMIT 1",
+        "SELECT * FROM \"CommentaryEntry\" WHERE \"sourceId\" = \\$1 AND \"divId\" = \\$2 AND language = 'en' LIMIT 1",
         [sourceId, divId]
       );
 
