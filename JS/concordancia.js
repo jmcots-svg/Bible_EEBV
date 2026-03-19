@@ -247,19 +247,13 @@ export function initIAPanel() {
     const header   = document.querySelector('header');
     const modeTabs = document.querySelector('.mode-tabs');
     const triggerH = triggerBar.offsetHeight;
-    const headerH  = header   ? header.offsetHeight  : 0;
-    const tabsH    = modeTabs ? modeTabs.offsetHeight : 0;
+    const headerH  = header   ? header.offsetHeight  : 50;
+    const tabsH    = modeTabs ? modeTabs.offsetHeight : 52;
+    
+    // Cálculo: desde abajo hasta debajo de las tabs
     const available = window.innerHeight - headerH - tabsH - triggerH;
 
     wrapper.style.setProperty('--ia-panel-max-height', `${available}px`);
-
-    console.log('IA Panel:', { 
-      windowHeight: window.innerHeight, 
-      headerH, 
-      tabsH, 
-      triggerH, 
-      available 
-    });
   }
 
   updatePanelHeight();
@@ -268,12 +262,10 @@ export function initIAPanel() {
   triggerBar.addEventListener('click', () => {
     if (wrapper.classList.contains('ia-open')) {
       wrapper.classList.remove('ia-open');
-      try { localStorage.setItem('ia_panel_open', '0'); } catch(e) {}
     } else {
       updatePanelHeight();
       wrapper.classList.add('ia-open');
       if (navigator.vibrate) navigator.vibrate([25, 15, 50]);
-      try { localStorage.setItem('ia_panel_open', '1'); } catch(e) {}
     }
   });
 }
