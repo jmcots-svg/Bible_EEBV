@@ -119,6 +119,22 @@
     --tab-inactive:  rgba(255, 255, 255, 0.25);
 }
 
+/* 8. Fire (Rojo brasa → naranja vivo → ámbar dorado) */
+[data-skin="fire"] {
+    --bg-body:       linear-gradient(180deg, #C72213 0%, #E24013 40%, #DF7131 100%);
+    --accent:        #E24013;
+    --bg-filters:    #FDF2EC;
+    --bg-container:  #FFFAF7;
+    --border:        #F2C4A8;
+    --text-main:     #2A1008;
+    --text-muted:    #8A4830;
+    --card-hover:    #FDE8D8;
+    --bg-header:     #C72213; /* Rojo brasa sólido */
+    --tab-active-text: #2A1008;
+    --tab-active:    rgba(255, 255, 255, 0.95);
+    --tab-inactive:  rgba(255, 255, 255, 0.25);
+}
+
 /* =====================================================
    MODO OSCURO POR SKIN
    ===================================================== */
@@ -236,6 +252,22 @@
     --tab-active-text: #D5DCD6;
 }
 
+/* 8. Fire Oscuro */
+[data-theme="dark"][data-skin="fire"] {
+    --bg-body:       linear-gradient(180deg, #1A0800 0%, #2A1005 50%, #3A1800 100%);
+    --bg-container:  #1E0C05;
+    --bg-filters:    #2A1208;
+    --border:        #6A2810;
+    --text-main:     #FDE8D8;
+    --text-muted:    #C07850;
+    --accent:        #F2854B;
+    --card-hover:    #321508;
+    --bg-header:     #0E0400; /* Sólido casi negro rojizo */
+    --tab-active:    rgba(255, 255, 255, 0.12);
+    --tab-inactive:  rgba(255, 255, 255, 0.07);
+    --tab-active-text: #FDE8D8;
+}
+
 /* =====================================================
    SELECTOR DE SKIN (UI en panel ajustes)
    ===================================================== */
@@ -299,6 +331,9 @@
 
 .skin-dot[data-skin="forest"]::before      { background: #8B9A8F; }
 .skin-dot[data-skin="forest"]::after       { background: #BAA89C; }
+
+.skin-dot[data-skin="fire"]::before { background: #C72213; }
+.skin-dot[data-skin="fire"]::after  { background: #F5B56A; }
 
 /* Estados activos y hover */
 .skin-dot.active {
