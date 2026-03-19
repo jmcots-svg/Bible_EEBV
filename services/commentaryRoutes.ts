@@ -51,10 +51,27 @@ export async function handleCommentaryRoutes(
         + " ORDER BY cs.name ASC";
 
       const { rows } = await pool.query(query, params);
-      return new Response(JSON.stringify(rows), {
-        headers: makeHeaders("public, max-age=3600"),
-      });
+      //return new Response(JSON.stringify(rows), {
+      //  headers: makeHeaders("public, max-age=3600"),
+      //});
+      //}
+
+    // =======================================================
+    // FIX PARA STORAGE: Engañamos al frontend diciéndole que 
+    // MHC ya está traducido porque lo leeremos del JSON
+    // =======================================================
+    if (language === "es") {
+      for (const row of rows) {
+        if (row.name === "MHC") {
+          row.needsTranslation = false; // ¡Apaga el ícono del mundo!
+          row.translated_count = row.english_count; // Finge que tenemos todos los registros
+        }
+      }
     }
+
+    return new Response(JSON.stringify(rows), {
+      headers: makeHeaders("public, max-age=3600"),
+    });
 
     const params: any[] = [bookOrder, chapter, language];
 
