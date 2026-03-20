@@ -549,7 +549,7 @@ async function translateCommentaryFile(abbr, sourceEntries, pool, state, isGitEn
   const startTime    = Date.now();
 
   // Concurrencia = número de keys (una petición simultánea por key)
-  const CONCURRENCY = 2
+  const CONCURRENCY = 4
   const limit       = pLimit(CONCURRENCY);
 
   const processBatch = async (batch) => {
